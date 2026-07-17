@@ -14,6 +14,7 @@ const DerbyEngine = require('./horserace-engine');
 const DominoesEngine = require('./dominoes-engine');
 const SkipBoEngine = require('./skipbo-engine');
 const MallMadnessEngine = require('./mallmadness-engine');
+const { startComputerPlayer } = require('./computer-player');
 
 const app = express();
 const server = http.createServer(app);
@@ -66,6 +67,8 @@ const CARD_TYPES = ['Wind Gust', 'Shield', 'Pluck'];
 const CARD_COSTS = { 'Wind Gust': 1, Shield: 2, Pluck: 1 };
 const rooms = new Map();
 const sessions = new Map();
+const computerSecrets = new Map();
+const computerSockets = new Map();
 const USERS_FILE = path.join(process.env.LOUNGE_DATA_DIR || __dirname, 'users.json');
 const scrypt = promisify(crypto.scrypt);
 let userWriteQueue = Promise.resolve();
@@ -455,6 +458,25 @@ function joinSocketToRoom(socket, room, playerId, playerName) {
 }
 
 io.on('connection', (socket) => {
+  socket.on('authenticate-computer', (data = {}, callback) => {
+    const code=String(data.roomCode||'').trim().toUpperCase(),room=rooms.get(code),expected=computerSecrets.get(code);
+    if(!room||!expected||data.secret!==expected)return acknowledge(callback,{ok:false,error:'Computer player authorization failed.'});
+    const playerId=`computer-${code.toLowerCase()}`;socket.data.playerId=playerId;socket.data.username='Computer Player';socket.data.isComputer=true;joinSocketToRoom(socket,room,playerId,'Computer Player');computerSecrets.delete(code);
+    if(room.game==='Monopoly Multi-Edition'){const taken=new Set([...room.monopolyTokens.values()].map(token=>token.id)),token=(MonopolyBoards.tokens[room.monopolyEdition]||[]).find(item=>!taken.has(item.id));if(token)room.monopolyTokens.set(playerId,{...token})}
+    if(room.game==="Duck's Race")room.raceSelections.set(playerId,{type:'Rubber Duck',color:'Yellow'});
+    if(room.game==='Horse Race')room.raceSelections.set(playerId,{type:'Miniature Horse',color:'Palomino'});
+    io.to(code).emit('lobby-updated',publicRoom(room));broadcastGames();acknowledge(callback,{ok:true,playerId,room:publicRoom(room)});
+  });
+  socket.on('add-computer-player', (_data, callback) => {
+    const room=roomForPlayer(socket,callback);if(!room)return;
+    if(room.hostId!==socket.data.playerId)return acknowledge(callback,{ok:false,error:'Only the table host can add the computer player.'});
+    if(room.players.has(`computer-${room.code.toLowerCase()}`))return acknowledge(callback,{ok:true,message:'The computer player is already in this game.'});
+    if(publicRoom(room).status!=='waiting')return acknowledge(callback,{ok:false,error:'Add the computer player before starting the game.'});
+    const secret=crypto.randomBytes(24).toString('hex');computerSecrets.set(room.code,secret);let answered=false;
+    const answer=result=>{if(answered)return;answered=true;acknowledge(callback,result)};
+    const activePort=server.address()?.port||PORT,bot=startComputerPlayer({url:`http://127.0.0.1:${activePort}`,roomCode:room.code,secret,onReady:result=>answer({ok:true,message:'Computer Player joined the game.',playerId:result.playerId})});computerSockets.set(room.code,bot);
+    setTimeout(()=>{if(computerSecrets.get(room.code)===secret){computerSecrets.delete(room.code);answer({ok:false,error:'The computer player could not join. Please try again.'})}},5000);
+  });
   socket.on('register', async (data = {}, callback) => {
     const username = String(data.username || '').trim();
     const password = data.password;
@@ -992,8 +1014,15 @@ function leaveCurrentRoom(socket, permanent) {
     if (!current || current.socketId) return;
     room.players.delete(playerId);
     room.monopolyTokens?.delete(playerId);
+    if (room.players.size > 0 && [...room.players.keys()].every(id => id.startsWith('computer-'))) {
+      rooms.delete(code);
+      const bot=computerSockets.get(code);computerSockets.delete(code);if(bot?.connected)bot.disconnect();
+      broadcastGames();
+      return;
+    }
     if (room.players.size === 0) {
       rooms.delete(code);
+      computerSockets.delete(code);
       broadcastGames();
       return;
     }
