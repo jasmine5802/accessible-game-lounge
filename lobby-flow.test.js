@@ -63,15 +63,24 @@ const once = (socket, event) => new Promise((resolve, reject) => {
     const [guestPrivate,hostPrivate]=await Promise.all([privateAtGuest,privateAtHost]);
     if(!privatelyChatted.ok||!privatelyChatted.private||!guestPrivate.private||!hostPrivate.private||guestPrivate.text!==`Private ${game} message.`)throw new Error(`${game} private chat failed.`);
     if(game==="Duck's Race"){
-      const hostOptions=await call(host,'set-race-options',{type:'Mandarin Duck',color:'Purple',startingCards:5,startingFeathers:8});
-      const guestOptions=await call(guest,'set-race-options',{type:'Rubber Duck',color:'Yellow'});
+      const hostOptions=await call(host,'set-game-options',{type:'Mandarin Duck',secondary:'Purple',startingCards:5,startingFeathers:8});
+      const guestOptions=await call(guest,'set-game-options',{type:'Rubber Duck',secondary:'Yellow'});
       if(!hostOptions.ok||!guestOptions.ok)throw new Error('Duck race options failed.');
     }
     if(game==='Horse Race'){
-      const hostOptions=await call(host,'set-race-options',{type:'Miniature Horse',color:'Pinto',startingCards:5});
-      const guestOptions=await call(guest,'set-race-options',{type:'Full-size Clydesdale',color:'Black'});
+      const hostOptions=await call(host,'set-game-options',{type:'Miniature Horse',secondary:'Pinto',startingCards:5});
+      const guestOptions=await call(guest,'set-game-options',{type:'Full-size Clydesdale',secondary:'Black'});
       if(!hostOptions.ok||!guestOptions.ok)throw new Error('Horse race options failed.');
     }
+    if(game==='Monopoly'){
+      const hostOptions=await call(host,'set-game-options',{type:'Classic',secondary:'Top Hat'}),guestOptions=await call(guest,'set-game-options',{type:'Classic',secondary:'Race Car'});
+      if(!hostOptions.ok||!guestOptions.ok)throw new Error('Monopoly in-game options failed.');
+    }
+    if(['Classic UNO','UNO Flip','DOS',"UNO Show 'Em No Mercy",'UNO Attack'].includes(game)){
+      const option=await call(host,'set-game-options',{type:unoVariants[game],secondary:'Standard deck'});if(!option.ok)throw new Error(`${game} in-game options failed.`);
+    }
+    if(game==='Dominoes'){const option=await call(host,'set-game-options',{type:'Double-Nine',secondary:'All Fives'});if(!option.ok)throw new Error('Dominoes in-game options failed.');}
+    if(game==='The Game of Life'){const option=await call(host,'set-game-options',{type:'Space Colonization',secondary:'Standard rules'});if(!option.ok)throw new Error('Life in-game options failed.');}
     const startEvent = once(guest, 'game-started');
     const started = await call(host, 'start-game', {});
     const launch = await startEvent;

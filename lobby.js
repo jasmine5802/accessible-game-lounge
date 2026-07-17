@@ -14,7 +14,7 @@ const GAME_HELP = {
   'Mall Madness': { how:'Move around the mall, visit stores on your private shopping list, manage cash, and complete the list before the other shoppers.', keys:'S presses the electronic director. Arrow Keys move. Enter swipes or uses an ATM. L reads the shopping list. C reports position. O reads opponents.' },
   'The Game of Life': { how:'Spin and follow the branching path through careers, family events, investments, and retirement. The player with the strongest final result wins.', keys:'S or Enter spins. C describes the current tile and card. H reports player statistics. Left and Right choose a path at a fork.' }
 };
-const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','game-setup','setup-title','setup-form','monopoly-options','edition-choice','token-choice','uno-options','life-options','domino-options','confirm-create','waiting-table','table-summary','table-settings','waiting-players','host-instruction','leave-table','status','logout'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','waiting-table','table-summary','table-settings','waiting-players','host-instruction','leave-table','status','logout'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
 let screen = 'auth';
 let gameIndex = 0;
 let tableIndex = 0;
@@ -59,37 +59,27 @@ function renderTables(){
   tableIndex=Math.min(tableIndex,options.length-1); setSelection(elements.tableMenu,tableIndex,false);
 }
 function chooseGame(title){ selectedGame=title; swipeSound(); socket.emit('get-game-tables',{category:GAME_CATEGORIES[title]},result=>{if(!result.ok)return announce(result.error);tables=result.tables;tableIndex=0;elements.lobby.hidden=true;elements.tablePicker.hidden=false;elements.tablesTitle.textContent=`${title}: Create or Join a Game`;screen='tables';renderTables();announce(`${title}. ${tables.length} open game${tables.length===1?'':'s'}. Create Game selected. Use Up and Down Arrow, then Enter.`);}); }
-function refreshMonopolyTokens(){
-  const edition=elements.editionChoice.value;
-  elements.tokenChoice.replaceChildren(...(MonopolyBoards.tokens[edition]||[]).map(token=>new Option(token.name,token.id)));
-}
 function openSetup(){
-  elements.tablePicker.hidden=true;elements.gameSetup.hidden=false;screen='setup';elements.setupTitle.textContent=`Create ${selectedGame}`;
-  elements.monopolyOptions.hidden=selectedGame!=='Monopoly';elements.unoOptions.hidden=!UNO_GAMES[selectedGame];elements.lifeOptions.hidden=selectedGame!=='The Game of Life';elements.dominoOptions.hidden=selectedGame!=='Dominoes';
-  if(UNO_GAMES[selectedGame]) elements.unoOptions.querySelector('select').value=UNO_GAMES[selectedGame];
-  if(selectedGame==='Monopoly'&&!elements.editionChoice.options.length){elements.editionChoice.replaceChildren(...MonopolyBoards.editions.map(edition=>new Option(edition,edition)));refreshMonopolyTokens();}
-  elements.confirmCreate.textContent=`Create ${selectedGame}`;elements.confirmCreate.focus();announce(`${selectedGame} setup. Review the game options, then choose Create ${selectedGame}. Instructions and keyboard commands will be offered after entering the game.`);
+  announce(`Creating ${selectedGame}. Game options will be offered after entering the game.`);createTable();
 }
 function createTable(data={}){ swipeSound(); socket.emit('create-game',{category:GAME_CATEGORIES[selectedGame],...data},result=>{if(!result.ok)return announce(result.error);const finish=()=>showWaiting(result.room);if(selectedGame==='Monopoly'&&data.tokenId){socket.emit('monopoly-select-token',{tokenId:data.tokenId},tokenResult=>{if(!tokenResult.ok)announce(tokenResult.error);finish();});}else finish();}); }
 function joinTable(id){ swipeSound(); socket.emit('join-game',{gameId:id},result=>result.ok?showWaiting(result.room):announce(result.error)); }
-function showWaiting(room){ currentRoom=room;sessionStorage.setItem('loungeGameId',room.id);elements.lobby.hidden=true;elements.tablePicker.hidden=true;elements.gameSetup.hidden=true;elements.waitingTable.hidden=false;screen='waiting';updateWaiting(room);elements.waitingTable.focus({preventScroll:false}); }
+function showWaiting(room){ currentRoom=room;sessionStorage.setItem('loungeGameId',room.id);elements.lobby.hidden=true;elements.tablePicker.hidden=true;elements.waitingTable.hidden=false;screen='waiting';updateWaiting(room);elements.waitingTable.focus({preventScroll:false}); }
 function updateWaiting(room){
   currentRoom=room;
   elements.tableSummary.textContent=`${room.displayGame||selectedGame} table hosted by ${room.players.find(player=>player.id===room.hostId)?.name||'Host'}. ${room.players.length} of ${room.maxPlayers} players.`;
   elements.tableSettings.textContent=[room.monopolyEdition&&`Board: ${room.monopolyEdition}`,room.unoVariant&&`Rules: ${room.unoVariant}`,room.lifeTheme&&`Board: ${room.lifeTheme}`,room.dominoSet&&`${room.dominoSet}, ${room.dominoMode}`].filter(Boolean).join('. ');
   elements.waitingPlayers.replaceChildren(...room.players.map(player=>{const li=document.createElement('li');li.textContent=`${player.name}${player.id===room.hostId?' (host)':''}${player.connected?'':' (reconnecting)'}`;return li;}));
   const amHost=room.players.find(player=>player.id===room.hostId)?.name===myUsername;
-  elements.hostInstruction.textContent=amHost?'When at least two players are here, press Enter to start.':'Waiting for the host to press Enter and start.';
+  elements.hostInstruction.textContent=amHost?'When at least two players are here, press Enter to take everyone into the game setup.':'Waiting for the host to take everyone into the game setup.';
   announce(`${room.players.length} of ${room.maxPlayers} players at the table. ${elements.hostInstruction.textContent}`);
 }
 function startTable(){ if(!currentRoom)return;const amHost=currentRoom.players.find(player=>player.id===currentRoom.hostId)?.name===myUsername;if(!amHost)return announce('Waiting for the host to start.');swipeSound();socket.emit('start-game',{},result=>{if(!result.ok){announce(result.error);tone(150,audio().currentTime,.25,.12,'sawtooth');}}); }
 function enterLobby(result){ myUsername=result.username;sessionStorage.setItem('loungeUsername',myUsername);if(result.token)sessionStorage.setItem('loungeSessionToken',result.token);elements.password.value='';elements.authScreen.hidden=true;elements.lobby.hidden=false;screen='games';gameIndex=0;renderGames();announce(`Welcome, ${myUsername}. Duck's Race selected. Use Up and Down Arrow to choose a game, then press Enter.`); }
 
 elements.authForm.addEventListener('submit',event=>{event.preventDefault();const action=event.submitter?.dataset.action||'login';elements.authStatus.textContent=action==='register'?'Registering.':'Logging in.';socket.emit(action,{username:elements.username.value,password:elements.password.value},result=>{if(result.ok)enterLobby(result);else elements.authStatus.textContent=result.error;});});
-function returnToGameList(){if(currentRoom)socket.emit('leave-room');sessionStorage.removeItem('loungeGameId');currentRoom=null;elements.waitingTable.hidden=true;elements.tablePicker.hidden=true;elements.gameSetup.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex,false);announce('Returned to the main game list.');}
+function returnToGameList(){if(currentRoom)socket.emit('leave-room');sessionStorage.removeItem('loungeGameId');currentRoom=null;elements.waitingTable.hidden=true;elements.tablePicker.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex,false);announce('Returned to the main game list.');}
 elements.leaveTable.addEventListener('click',returnToGameList);
-elements.editionChoice.addEventListener('change',refreshMonopolyTokens);
-elements.setupForm.addEventListener('submit',event=>{event.preventDefault();createTable(Object.fromEntries(new FormData(event.currentTarget)));});
 elements.logout.addEventListener('click',()=>{sessionStorage.clear();socket.emit('logout',{},()=>location.reload());});
 document.addEventListener('keydown',event=>{
   if(['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName))return;
@@ -102,7 +92,6 @@ document.addEventListener('keydown',event=>{
     else if(screen==='waiting'&&event.target!==elements.leaveTable){event.preventDefault();startTable();}
   }
   if(event.key==='Escape'&&screen==='tables'){event.preventDefault();elements.tablePicker.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex);}
-  else if(event.key==='Escape'&&screen==='setup'){event.preventDefault();elements.gameSetup.hidden=true;elements.tablePicker.hidden=false;screen='tables';setSelection(elements.tableMenu,tableIndex);}
   else if(event.key==='Escape'&&screen==='waiting'){event.preventDefault();returnToGameList();}
 });
 socket.on('lobby-updated',room=>{if(screen==='waiting')updateWaiting(room);});

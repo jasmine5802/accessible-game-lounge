@@ -954,18 +954,22 @@ io.on('connection', (socket) => {
     acknowledge(callback, { ok: true, private: true, recipient: recipient.name });
   });
 
-  socket.on('set-race-options', (data = {}, callback) => {
+  socket.on('set-game-options', (data = {}, callback) => {
     const room=roomForPlayer(socket,callback);if(!room)return;
     const duckTypes=['Mallard','Rubber Duck','Wood Duck','Mandarin Duck','Pekin Duck','Muscovy Duck','Duckling'];
     const horseTypes=['Miniature Horse','Shetland Pony','Miniature Appaloosa','Full-size Thoroughbred','Full-size Arabian','Full-size Quarter Horse','Full-size Clydesdale'];
     const colors=['Black','White','Gray','Brown','Chestnut','Bay','Palomino','Pinto','Blue','Green','Yellow','Red','Purple','Pink','Orange','Green and brown'];
-    const allowedTypes=room.game==="Duck's Race"?duckTypes:room.game==='Horse Race'?horseTypes:null;
-    if(!allowedTypes)return acknowledge(callback,{ok:false,error:'Race options are available only for Duck Race and Horse Race.'});
-    const type=allowedTypes.includes(data.type)?data.type:allowedTypes[0],color=colors.includes(data.color)?data.color:colors[0];
-    room.raceSelections.set(socket.data.playerId,{type,color});
-    if(room.hostId===socket.data.playerId){if([2,3,5].includes(Number(data.startingCards)))room.raceSettings.startingCards=Number(data.startingCards);if(room.game==="Duck's Race"&&[3,5,8].includes(Number(data.startingFeathers)))room.raceSettings.startingFeathers=Number(data.startingFeathers);}
+    if(room.game==="Duck's Race"||room.game==='Horse Race'){
+      const allowedTypes=room.game==="Duck's Race"?duckTypes:horseTypes,type=allowedTypes.includes(data.type)?data.type:allowedTypes[0],color=colors.includes(data.secondary)?data.secondary:colors[0];room.raceSelections.set(socket.data.playerId,{type,color});
+      if(room.hostId===socket.data.playerId){if([2,3,5].includes(Number(data.startingCards)))room.raceSettings.startingCards=Number(data.startingCards);if(room.game==="Duck's Race"&&[3,5,8].includes(Number(data.startingFeathers)))room.raceSettings.startingFeathers=Number(data.startingFeathers);}
+    }else if(room.game==='Monopoly Multi-Edition'){
+      if(room.hostId===socket.data.playerId&&MonopolyBoards.editions.includes(data.type)&&room.monopolyEdition!==data.type){room.monopolyEdition=data.type;room.monopolyTokens.clear();}
+      const tokens=MonopolyBoards.tokens[room.monopolyEdition]||[],selected=tokens.find(token=>token.name===data.secondary)||tokens[0],taken=[...room.monopolyTokens.entries()].some(([id,token])=>id!==socket.data.playerId&&token.id===selected.id);if(taken)return acknowledge(callback,{ok:false,error:`${selected.name} is already selected. Choose another token.`});room.monopolyTokens.set(socket.data.playerId,{...selected});
+    }else if(room.game==='Accessible Uno & Dos Lounge'&&room.hostId===socket.data.playerId&&UnoRules.VARIANTS.includes(data.type))room.unoVariant=data.type;
+    else if(room.game==='The Game of Life Lounge'&&room.hostId===socket.data.playerId&&LifeThemes.themes.includes(data.type))room.lifeTheme=data.type;
+    else if(room.game==='Accessible Dominoes Lounge'&&room.hostId===socket.data.playerId){if(Object.hasOwn(DominoesEngine.SETS,data.type))room.dominoSet=data.type;if(DominoesEngine.MODES.includes(data.secondary))room.dominoMode=data.secondary;}
     io.to(room.code).emit('lobby-updated',publicRoom(room));
-    acknowledge(callback,{ok:true,message:`Selected ${color} ${type}.`});
+    acknowledge(callback,{ok:true,message:'Game options saved. The host can start when everyone is ready.'});
   });
 
   socket.on('leave-room', () => leaveCurrentRoom(socket, true));

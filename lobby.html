@@ -72,32 +72,6 @@
       <ul id="table-menu" class="menu" role="listbox" tabindex="0" aria-labelledby="tables-title" aria-describedby="table-menu-help" aria-keyshortcuts="ArrowUp ArrowDown Enter Escape"></ul>
     </section>
 
-    <section id="game-setup" class="panel" hidden aria-labelledby="setup-title">
-      <h2 id="setup-title">Create Game</h2>
-      <p id="setup-help" class="hint">Choose any options for this game. Press Enter on Create Game when ready, or Escape to return.</p>
-      <form id="setup-form" class="configuration">
-        <div id="monopoly-options" hidden>
-          <label for="edition-choice">Monopoly board</label>
-          <select id="edition-choice" name="edition"></select>
-          <label for="token-choice">Your token</label>
-          <select id="token-choice" name="tokenId"></select>
-        </div>
-        <div id="uno-options" hidden>
-          <label for="uno-choice">UNO or DOS rules</label>
-          <select id="uno-choice" name="unoVariant"><option>Classic Uno</option><option>Uno Flip!</option><option>Uno Dos</option><option>Show 'Em No Mercy</option><option>Uno Attack</option></select>
-        </div>
-        <div id="life-options" hidden>
-          <label for="life-choice">Game of Life board</label>
-          <select id="life-choice" name="lifeTheme"><option>Classic 1960</option><option>Modern Electronic</option><option>Super Mario</option><option>Broadcaster's Playground</option><option>Space Colonization</option><option>Retro Pop Culture</option></select>
-        </div>
-        <div id="domino-options" hidden>
-          <label for="domino-set">Domino set</label><select id="domino-set" name="dominoSet"><option>Double-Six</option><option>Double-Nine</option></select>
-          <label for="domino-mode">Domino rules</label><select id="domino-mode" name="dominoMode"><option>Draw Game</option><option>Block Game</option><option>All Fives</option></select>
-        </div>
-        <button id="confirm-create" type="submit">Create Game</button>
-      </form>
-    </section>
-
     <section id="waiting-table" class="panel" hidden tabindex="-1" aria-labelledby="waiting-title" aria-keyshortcuts="Enter">
       <h2 id="waiting-title">Waiting Table</h2>
       <p id="table-summary"></p>
