@@ -19,9 +19,9 @@
     button.secondary { background:#294462; color:#fff; }
     :focus-visible { outline:6px solid var(--focus); outline-offset:4px; }
     .actions { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-top:1rem; }
-    .menu { list-style:none; padding:0; margin:0; display:grid; gap:.45rem; }
-    .menu button { margin:0; text-align:left; background:#172a45; color:#fff; border-color:#8ca4c8; }
-    .menu button[aria-selected="true"] { background:var(--accent); color:#07101c; border-color:#fff; box-shadow:0 0 0 4px var(--focus); }
+    .menu { list-style:none; padding:.35rem; margin:0; display:grid; gap:.45rem; border:3px solid #8ca4c8; border-radius:.45rem; background:#0b1728; }
+    .menu li { min-height:3.25rem; padding:.65rem .8rem; border:3px solid transparent; border-radius:.35rem; background:#172a45; color:#fff; font-weight:900; }
+    .menu li[aria-selected="true"] { background:var(--accent); color:#07101c; border-color:#fff; box-shadow:0 0 0 3px var(--focus); }
     #status,#auth-status { min-height:3rem; padding:.6rem; border-left:7px solid var(--accent); }
     #waiting-players { font-size:1.15rem; }
     .hint { color:var(--muted); }
@@ -45,18 +45,18 @@
 
     <section id="lobby" class="panel" hidden aria-labelledby="menu-title">
       <h2 id="menu-title">Choose a Game</h2>
-      <p class="hint">Use Up and Down Arrow, then Enter.</p>
-      <ul id="game-menu" class="menu" role="listbox" aria-labelledby="menu-title"></ul>
+      <p id="game-menu-help" class="hint">Use Up and Down Arrow to choose a game, then press Enter.</p>
+      <ul id="game-menu" class="menu" role="listbox" tabindex="0" aria-labelledby="menu-title" aria-describedby="game-menu-help" aria-keyshortcuts="ArrowUp ArrowDown Enter"></ul>
       <button id="logout" type="button" class="secondary">Log Out</button>
     </section>
 
     <section id="table-picker" class="panel" hidden aria-labelledby="tables-title">
       <h2 id="tables-title">Tables</h2>
-      <p class="hint">Use Up and Down Arrow, then Enter. Press Escape to return.</p>
-      <ul id="table-menu" class="menu" role="listbox" aria-labelledby="tables-title"></ul>
+      <p id="table-menu-help" class="hint">Use Up and Down Arrow to choose Create Game or an open game to join, then press Enter. Press Escape to return.</p>
+      <ul id="table-menu" class="menu" role="listbox" tabindex="0" aria-labelledby="tables-title" aria-describedby="table-menu-help" aria-keyshortcuts="ArrowUp ArrowDown Enter Escape"></ul>
     </section>
 
-    <section id="waiting-table" class="panel" hidden aria-labelledby="waiting-title">
+    <section id="waiting-table" class="panel" hidden tabindex="-1" aria-labelledby="waiting-title" aria-keyshortcuts="Enter">
       <h2 id="waiting-title">Waiting Table</h2>
       <p id="table-summary"></p>
       <ul id="waiting-players"></ul>
