@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessible Game Lounge</title>
+  <style>
+    :root { color-scheme: dark; --bg: #070b12; --panel: #151d2b; --text: #fff; --accent: #ffe14d; --focus: #5cdbff; --muted: #b9c5d8; --danger: #ff8295; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #182941, var(--bg) 45rem); color: var(--text); font: 1.1rem/1.55 system-ui, sans-serif; }
+    header, main, footer { width: min(72rem, 92%); margin-inline: auto; }
+    header { padding: 2rem 0 1rem; }
+    h1 { margin: 0; color: var(--accent); font-size: clamp(2.2rem, 6vw, 4rem); letter-spacing: -.03em; }
+    h2 { margin-top: 0; }
+    .tagline { color: var(--muted); }
+    .panel { margin: 1.25rem 0; padding: clamp(1rem, 3vw, 1.6rem); border: 2px solid #768aa7; border-radius: .9rem; background: color-mix(in srgb, var(--panel) 94%, transparent); box-shadow: 0 .8rem 2rem #0005; }
+    #auth-screen { width: min(34rem, 100%); margin: 2rem auto; border-color: var(--accent); }
+    label { display: block; margin-top: 1rem; font-weight: 800; }
+    input, select, button { min-height: 3.2rem; border: 3px solid #fff; border-radius: .5rem; font: inherit; }
+    input, select { width: 100%; margin-top: .35rem; padding: .55rem; background: #fff; color: #000; }
+    button { padding: .6rem 1rem; background: var(--accent); color: #07101b; font-weight: 900; cursor: pointer; }
+    button.secondary { background: #263a55; color: #fff; }
+    button:hover { background: var(--focus); color: #000; }
+    :focus-visible { outline: 6px solid var(--focus) !important; outline-offset: 4px; }
+    .actions, nav ul { display: flex; flex-wrap: wrap; gap: .75rem; padding: 0; list-style: none; }
+    .actions { margin-top: 1.25rem; }
+    #auth-status, #status { min-height: 3rem; padding: .65rem; border-left: 7px solid var(--accent); }
+    #auth-status.error { border-color: var(--danger); }
+    #available-games { padding: 0; list-style: none; }
+    #available-games li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; margin: .7rem 0; padding: .8rem; border: 2px solid #768aa7; border-radius: .6rem; }
+    #messages { max-height: 16rem; overflow-y: auto; border: 1px solid #768aa7; padding: .7rem; }
+    [hidden] { display: none !important; }
+    .skip-link { position: absolute; left: -9999px; top: .5rem; padding: .7rem; background: #fff; color: #000; z-index: 20; }
+    .skip-link:focus { left: .5rem; }
+    footer { padding: 2rem 0; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header>
+    <h1>Accessible Game Lounge</h1>
+    <p class="tagline">Play together—by sight, sound, keyboard, or screen reader.</p>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <section id="auth-screen" class="panel" aria-labelledby="auth-title">
+      <h2 id="auth-title">Login or Register</h2>
+      <p>Sign in to enter the lounge. New players can create an account here.</p>
+      <form id="auth-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" autocomplete="username" required aria-describedby="username-help">
+        <p id="username-help">3 to 24 letters, numbers, or underscores.</p>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" required>
+        <div class="actions">
+          <button type="submit" data-action="login">Login</button>
+          <button type="submit" class="secondary" data-action="register">Register New Account</button>
+        </div>
+      </form>
+      <p id="auth-status" role="status" aria-live="assertive" aria-atomic="true">Enter your username and password.</p>
+    </section>
+
+    <div id="lounge" hidden>
+      <p id="status" role="status" aria-live="polite">Welcome to the game lounge.</p>
+      <nav aria-label="Lounge actions">
+        <ul>
+          <li><button id="create-game" type="button">Create Game</button></li>
+          <li><button id="refresh-games" type="button" class="secondary">Refresh Games</button></li>
+          <li><button id="logout" type="button" class="secondary">Log Out</button></li>
+        </ul>
+      </nav>
+
+      <section id="create-panel" class="panel" hidden aria-labelledby="create-title">
+        <h2 id="create-title">Create a game</h2>
+        <form id="create-form">
+          <label for="game-choice">Game</label>
+          <select id="game-choice" name="game"><option>Duck's Race</option><option>Horse Race</option><option>Accessible Dominoes Lounge</option><option>Accessible Skip-Bo Lounge</option><option>Accessible Mall Madness Lounge</option><option>Monopoly Multi-Edition</option><option>Accessible Uno &amp; Dos Lounge</option><option>The Game of Life Lounge</option></select>
+          <div id="edition-fields" hidden>
+            <label for="edition-choice">Edition</label>
+            <select id="edition-choice" name="edition" aria-describedby="edition-help">
+              <optgroup label="Core and local editions">
+                <option>Classic</option><option>Bakersfield Local</option><option>Electronic Banking</option><option>Space Exploration</option>
+              </optgroup>
+              <optgroup label="Music, shopping, and tabletop editions">
+                <option>Country Music Hall of Fame</option><option>Latin Music Legends</option><option>Retro Pop &amp; Rock Icons</option><option>Mall Madness Crossover</option><option>Ultimate Board Game Mashup</option>
+              </optgroup>
+              <optgroup label="Community and creative editions">
+                <option>National Federation of the Blind</option><option>Lego Creator</option>
+              </optgroup>
+              <optgroup label="Animation, film, and game editions">
+                <option>Disney Animation</option><option>SpongeBob SquarePants</option><option>Classic Cartoons</option><option>Back to the Future</option><option>The Godfather</option><option>Nintendo / Animal Crossing</option><option>Pac-Man Arcade</option><option>Atari Classics</option><option>Cinematic Blockbusters</option>
+              </optgroup>
+              <optgroup label="Television, movies, and decade editions">
+                <option>Classic TV Shows</option><option>50s-70s TV Classics</option><option>80s-90s TV Hits</option><option>Full House</option><option>Totally 80's</option><option>Totally 90's</option><option>Blockbuster Movies</option>
+              </optgroup>
+              <optgroup label="Sports editions">
+                <option>Baseball Fever</option><option>Basketball Court</option>
+              </optgroup>
+              <optgroup label="Food and restaurant editions">
+                <option>Fast Food Boulevard</option><option>The Restaurant Tour</option>
+              </optgroup>
+              <optgroup label="Food, drink, and fishing editions">
+                <option>Coca-Cola Classic</option><option>Hershey's Chocolate</option><option>Bass Fishing</option><option>Ice Cream Dream</option><option>Burger Joint</option>
+              </optgroup>
+              <optgroup label="Cafe and sweets editions">
+                <option>Coffee House</option><option>Cookie Jar</option><option>Cake Palace</option><option>Candy Land Tour</option>
+              </optgroup>
+              <optgroup label="Vehicles and equestrian editions">
+                <option>Cars and Trucks</option><option>Horse Stable</option>
+              </optgroup>
+              <optgroup label="Travel and road editions">
+                <option>National Parks</option><option>My NFL</option><option>Harley-Davidson</option>
+              </optgroup>
+              <optgroup label="State Editions (50 Options)">
+                <option>Alabama State Edition</option><option>Alaska State Edition</option><option>Arizona State Edition</option><option>Arkansas State Edition</option><option>California State Edition</option>
+                <option>Colorado State Edition</option><option>Connecticut State Edition</option><option>Delaware State Edition</option><option>Florida State Edition</option><option>Georgia State Edition</option>
+                <option>Hawaii State Edition</option><option>Idaho State Edition</option><option>Illinois State Edition</option><option>Indiana State Edition</option><option>Iowa State Edition</option>
+                <option>Kansas State Edition</option><option>Kentucky State Edition</option><option>Louisiana State Edition</option><option>Maine State Edition</option><option>Maryland State Edition</option>
+                <option>Massachusetts State Edition</option><option>Michigan State Edition</option><option>Minnesota State Edition</option><option>Mississippi State Edition</option><option>Missouri State Edition</option>
+                <option>Montana State Edition</option><option>Nebraska State Edition</option><option>Nevada State Edition</option><option>New Hampshire State Edition</option><option>New Jersey State Edition</option>
+                <option>New Mexico State Edition</option><option>New York State Edition</option><option>North Carolina State Edition</option><option>North Dakota State Edition</option><option>Ohio State Edition</option>
+                <option>Oklahoma State Edition</option><option>Oregon State Edition</option><option>Pennsylvania State Edition</option><option>Rhode Island State Edition</option><option>South Carolina State Edition</option>
+                <option>South Dakota State Edition</option><option>Tennessee State Edition</option><option>Texas State Edition</option><option>Utah State Edition</option><option>Vermont State Edition</option>
+                <option>Virginia State Edition</option><option>Washington State Edition</option><option>West Virginia State Edition</option><option>Wisconsin State Edition</option><option>Wyoming State Edition</option>
+              </optgroup>
+            </select>
+            <p id="edition-help">Choose from 95 complete boards, including every US state. Editions are grouped by theme for easier keyboard and screen-reader navigation.</p>
+          </div>
+          <div id="uno-fields" hidden>
+            <label for="uno-variant">UNO / DOS rules</label>
+            <select id="uno-variant" name="unoVariant" aria-describedby="uno-help"><option>Classic Uno</option><option>Uno Flip!</option><option>Uno Dos</option><option>Show 'Em No Mercy</option><option>Uno Attack</option></select>
+            <p id="uno-help">Choose one of five multiplayer rule sets. The game page provides complete keyboard commands and private hand announcements.</p>
+          </div>
+          <div id="life-fields" hidden>
+            <label for="life-theme">Life theme</label>
+            <select id="life-theme" name="lifeTheme" aria-describedby="life-help"><option>Classic 1960</option><option>Modern Electronic</option><option>Super Mario</option><option>Broadcaster's Playground</option><option>Space Colonization</option><option>Retro Pop Culture</option></select>
+            <p id="life-help">Choose one of six branching Life boards. Private investments are visible only to their owner.</p>
+          </div>
+          <div id="domino-fields" hidden>
+            <label for="domino-set">Domino set</label><select id="domino-set" name="dominoSet"><option>Double-Six</option><option>Double-Nine</option></select>
+            <label for="domino-mode">Game mode</label><select id="domino-mode" name="dominoMode"><option>Draw Game</option><option>Block Game</option><option>All Fives</option></select>
+            <p>Hands remain private. Opponents receive only tile counts.</p>
+          </div>
+          <button id="create-submit" type="submit">Create Duck's Race</button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="games-title">
+        <h2 id="games-title">Available Games</h2>
+        <ul id="available-games"><li>No games are currently waiting. Create one to begin.</li></ul>
+      </section>
+
+      <section id="current-game" class="panel" hidden aria-labelledby="current-title">
+        <h2 id="current-title">Your Current Game</h2>
+        <p id="current-summary"></p>
+        <h3>Players</h3>
+        <ul id="players"></ul>
+        <button id="enter-game" type="button">Enter Duck's Race</button>
+      </section>
+
+      <section class="panel" aria-labelledby="chat-title">
+        <h2 id="chat-title">Lounge Chat</h2>
+        <div id="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+        <form id="chat-form">
+          <label for="chat-message">Message</label>
+          <input id="chat-message" maxlength="500" required autocomplete="off">
+          <button type="submit">Send Message</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <footer><p>Your password is never stored in the browser or saved as readable text.</p></footer>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="audio.js"></script>
+  <script src="index.js"></script>
+</body>
+</html>

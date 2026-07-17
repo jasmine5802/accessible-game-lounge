@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: accessible-game-lounge
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm run start:server
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20

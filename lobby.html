@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jazzy Jay's Accessible Game Lounge</title>
+  <style>
+    :root { color-scheme: dark; --bg:#06101c; --panel:#111f33; --text:#fff; --accent:#ffe45c; --focus:#56dcff; --muted:#c8d4e7; --danger:#ff8ba0; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at top,#17365b,var(--bg) 42rem); color:var(--text); font:1.2rem/1.5 system-ui,sans-serif; }
+    header,main,footer { width:min(46rem,92%); margin-inline:auto; }
+    header { padding:1.5rem 0 .5rem; }
+    h1 { color:var(--accent); font-size:clamp(2rem,6vw,3.6rem); margin:0; }
+    .panel { margin:1rem 0; padding:1.25rem; background:var(--panel); border:3px solid #8298b9; border-radius:.8rem; }
+    label { display:block; margin-top:.8rem; font-weight:800; }
+    input,button { width:100%; min-height:3.25rem; margin-top:.35rem; padding:.6rem .8rem; border:3px solid #fff; border-radius:.45rem; font:inherit; }
+    input { background:#fff; color:#000; }
+    button { background:var(--accent); color:#08111d; font-weight:900; cursor:pointer; }
+    button.secondary { background:#294462; color:#fff; }
+    :focus-visible { outline:6px solid var(--focus); outline-offset:4px; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-top:1rem; }
+    .menu { list-style:none; padding:0; margin:0; display:grid; gap:.45rem; }
+    .menu button { margin:0; text-align:left; background:#172a45; color:#fff; border-color:#8ca4c8; }
+    .menu button[aria-selected="true"] { background:var(--accent); color:#07101c; border-color:#fff; box-shadow:0 0 0 4px var(--focus); }
+    #status,#auth-status { min-height:3rem; padding:.6rem; border-left:7px solid var(--accent); }
+    #waiting-players { font-size:1.15rem; }
+    .hint { color:var(--muted); }
+    [hidden] { display:none !important; }
+    footer { color:var(--muted); padding:1rem 0 2rem; }
+    @media (max-width:34rem) { .actions { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header><h1>Accessible Game Lounge</h1><p class="hint">Fast menus for keyboard, screen reader, and mouse players.</p></header>
+  <main>
+    <section id="auth-screen" class="panel" aria-labelledby="auth-title">
+      <h2 id="auth-title">Login or Register</h2>
+      <form id="auth-form">
+        <label for="username">Username</label><input id="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" autocomplete="username" required>
+        <label for="password">Password</label><input id="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" required>
+        <div class="actions"><button type="submit" data-action="login">Login</button><button type="submit" data-action="register" class="secondary">Register</button></div>
+      </form>
+      <p id="auth-status" role="status" aria-live="assertive">Enter your username and password.</p>
+    </section>
+
+    <section id="lobby" class="panel" hidden aria-labelledby="menu-title">
+      <h2 id="menu-title">Choose a Game</h2>
+      <p class="hint">Use Up and Down Arrow, then Enter.</p>
+      <ul id="game-menu" class="menu" role="listbox" aria-labelledby="menu-title"></ul>
+      <button id="logout" type="button" class="secondary">Log Out</button>
+    </section>
+
+    <section id="table-picker" class="panel" hidden aria-labelledby="tables-title">
+      <h2 id="tables-title">Tables</h2>
+      <p class="hint">Use Up and Down Arrow, then Enter. Press Escape to return.</p>
+      <ul id="table-menu" class="menu" role="listbox" aria-labelledby="tables-title"></ul>
+    </section>
+
+    <section id="waiting-table" class="panel" hidden aria-labelledby="waiting-title">
+      <h2 id="waiting-title">Waiting Table</h2>
+      <p id="table-summary"></p>
+      <ul id="waiting-players"></ul>
+      <p id="host-instruction" class="hint"></p>
+      <button id="leave-table" type="button" class="secondary">Return to Game Menu</button>
+    </section>
+
+    <p id="status" role="status" aria-live="polite" aria-atomic="true">Welcome.</p>
+  </main>
+  <footer><p>Your password is never stored in the browser as readable text.</p></footer>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="lobby.js"></script>
+</body>
+</html>

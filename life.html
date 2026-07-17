@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Game of Life Lounge | Accessible Game Lounge</title>
+  <script defer src="/game-chat.js"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#06101b;--panel:#102942;--text:#fff;--gold:#ffe05b;--focus:#65e8ff;--path:#f8fbff;--ink:#06101b;--branch:#ffb85c;--current:#8cff9b}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#17466e,var(--bg) 55rem);color:var(--text);font:1.08rem/1.5 system-ui,sans-serif}header,main{width:min(92rem,95%);margin:auto}header{padding:1.1rem 0}.skip{position:absolute;left:-9999px;background:#fff;color:#000;padding:.7rem}.skip:focus{left:.5rem}h1{color:var(--gold);font-size:clamp(2rem,5vw,3.5rem);margin:.2rem 0}a{color:var(--focus)}.panel{background:var(--panel);border:3px solid #b9d8ed;border-radius:.7rem;padding:1rem;margin:1rem 0}.toolbar{display:flex;gap:.7rem;flex-wrap:wrap}button,select{min-height:3rem;padding:.55rem .9rem;border:3px solid #fff;border-radius:.45rem;font:inherit;font-weight:800}button{background:var(--gold);color:#07121e}select{background:#fff;color:#000}:focus-visible{outline:6px solid var(--focus);outline-offset:4px}.board{display:flex;align-items:stretch;gap:.55rem;overflow-x:auto;list-style:none;padding:1rem}.space{flex:0 0 10rem;min-height:8rem;background:var(--path);color:var(--ink);border:4px solid #07121e;border-radius:.6rem;padding:.6rem}.space.fork{background:var(--branch);clip-path:polygon(0 0,100% 0,84% 50%,100% 100%,0 100%,16% 50%)}.space.current{box-shadow:inset 0 0 0 7px #087b22}.space strong,.space span{display:block}.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.7rem;list-style:none;padding:0}.players li{border:3px solid #b9d8ed;border-radius:.5rem;padding:.7rem}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}[hidden]{display:none!important}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#controls">Skip to game controls</a>
+  <header><h1>The Game of Life Lounge</h1><p><a href="/">Return to lounge</a> · S or Enter: spin · C: describe tile/card · H: player stats · Left/Right Arrow: choose fork</p></header>
+  <main>
+    <p id="connection" class="panel" role="status">Connecting to your game…</p>
+    <section id="controls" class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Life controls</h2><div class="toolbar"><button id="start" hidden>Start Life</button><button id="spin" disabled>Spin (S or Enter)</button><button id="describe">Describe Tile and Card (C)</button><button id="stats">Hear My Stats (H)</button></div><p id="turn-status">Waiting for the game.</p><div id="fork" hidden><p id="fork-prompt">Choose a path.</p><label for="route-choice">Route</label><select id="route-choice"></select><button id="choose">Take Selected Route (Enter)</button></div></section>
+    <section class="panel" aria-labelledby="private-title"><h2 id="private-title">Your private assets</h2><p id="private-note">Only you receive these financial cards and investments from the server.</p><ul id="private-assets"><li>No private assets yet.</li></ul></section>
+    <section class="panel" aria-labelledby="players-title"><h2 id="players-title">Players</h2><ul id="players" class="players"><li>Waiting for players.</li></ul></section>
+    <section aria-labelledby="board-title"><h2 id="board-title"><span id="theme">Life</span> branching path</h2><p id="board-help">The path is displayed in indexed order. Fork tiles announce their available destinations; use Left or Right Arrow and Enter when a choice is required.</p><ol id="board" class="board" aria-describedby="board-help"><li>Loading board…</li></ol></section>
+    <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><div id="instant-announcer" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script><script src="life-themes.js"></script><script src="life.js"></script>
+</body></html>

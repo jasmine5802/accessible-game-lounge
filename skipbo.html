@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Accessible Skip-Bo Lounge</title>
+  <script defer src="/game-chat.js"></script>
+  <style>
+    :root{color-scheme:dark;--navy:#071827;--panel:#102f46;--gold:#ffe066;--cyan:#9ee7ff;--white:#fff;--red:#ff8a8a;--green:#80f0ad}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#06121d,var(--navy));color:var(--white);font:1.1rem/1.5 system-ui,sans-serif}header,main{max-width:1200px;margin:auto;padding:1rem 1.5rem}h1{color:var(--gold);font-size:clamp(2rem,6vw,3.7rem);margin:.2rem 0}h2{margin-top:0}.panel{background:var(--panel);border:3px solid var(--cyan);border-radius:16px;padding:1rem;margin:1rem 0}.table{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:1rem}.slot{min-height:150px;border:4px solid var(--cyan);border-radius:14px;background:#071827;color:white;display:grid;place-items:center;text-align:center;padding:.6rem}.card{width:88px;height:126px;border:5px solid white;border-radius:12px;background:#164f74;color:white;display:grid;place-items:center;font-size:2.7rem;font-weight:900;box-shadow:0 5px 0 #000}.wild{background:#7b2fa3;color:#fff59d}.selected{outline:6px solid var(--gold);outline-offset:5px}.controls{display:flex;flex-wrap:wrap;gap:.65rem}button{font:inherit;font-weight:800;padding:.7rem 1rem;border:3px solid white;border-radius:9px;background:var(--gold);color:#111}button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:5px solid var(--green);outline-offset:4px}button:disabled{opacity:.45}.hand{display:flex;flex-wrap:wrap;gap:1rem;list-style:none;padding:1rem}.players{display:flex;flex-wrap:wrap;gap:.75rem;list-style:none;padding:0}.players li{border:2px solid var(--cyan);padding:.7rem;border-radius:8px}.error{color:var(--red)}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:700px){.table{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <a class="sr-only" href="#controls">Skip to game controls</a>
+  <header><h1>Accessible Skip-Bo Lounge</h1><p><a href="/">Return to lounge</a> · Up/Down: hand · S: stock · 1–4: discard · Enter/Space: play · B: buildings · D: discards · O: opponents</p></header>
+  <main>
+    <p id="connection" class="panel" role="status">Connecting…</p><p id="turn" class="panel">Waiting for a game.</p>
+    <section class="panel" aria-labelledby="build-title"><h2 id="build-title">Central building piles</h2><div id="buildings" class="table"></div></section>
+    <section id="controls" class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Game controls</h2><p id="selection">No card selected.</p><div class="controls"><button id="start" type="button">Start Skip-Bo</button><button id="play" type="button" disabled>Play Selected Card</button><button id="read-buildings" type="button">Read Buildings (B)</button><button id="read-discards" type="button">Read Discards (D)</button><button id="read-opponents" type="button">Read Opponents (O)</button></div><p id="target-help">After confirming a card, press B1–B4 for a building pile or D1–D4 for a discard pile.</p></section>
+    <section class="panel" aria-labelledby="hand-title"><h2 id="hand-title">Your private hand</h2><p>Only your browser receives these card values.</p><ul id="hand" class="hand" role="listbox" aria-label="Your private hand"></ul></section>
+    <section class="panel" aria-labelledby="private-title"><h2 id="private-title">Your stock and discards</h2><div id="private-piles" class="table"></div></section>
+    <section class="panel" aria-labelledby="players-title"><h2 id="players-title">Players</h2><ul id="players" class="players"></ul></section>
+    <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><div id="urgent" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script><script src="/skipbo-engine.js"></script><script src="/skipbo.js"></script>
+</body>
+</html>

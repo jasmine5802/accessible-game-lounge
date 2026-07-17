@@ -1,0 +1,60 @@
+{
+  "name": "accessible-game-lounge",
+  "version": "1.0.0",
+  "description": "Playroom style accessible multiplayer game lounge",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:server": "node server.js",
+    "test:uno": "node uno-rules.test.js",
+    "test:lobby": "node lobby-flow.test.js",
+    "dev": "node server.js",
+    "package-win": "electron-packager . AccessibleGameLounge --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/node_modules\\.pre-npm-install($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/users\\.json(?:\\.tmp)?$\"",
+    "build-installer": "electron-builder --win"
+  },
+  "keywords": [
+    "accessibility",
+    "multiplayer",
+    "games",
+    "socket.io",
+    "electron"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-packager": "^17.1.2"
+  },
+  "build": {
+    "appId": "com.jazzyjay.accessiblegamelounge",
+    "productName": "Jazzy Jay's Accessible Game Lounge",
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "AccessibleGameLounge Setup ${version}.${ext}",
+    "files": [
+      "**/*",
+      "!users.json",
+      "!users.json.tmp",
+      "!node_modules.pre-npm-install/**",
+      "!dist/**",
+      "!installer-dist/**"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

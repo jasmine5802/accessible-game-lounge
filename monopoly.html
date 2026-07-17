@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monopoly Multi-Edition | Accessible Game Lounge</title>
+  <script defer src="/game-chat.js"></script>
+  <style>
+    :root { color-scheme:dark; --bg:#071510; --panel:#12291f; --text:#fff; --gold:#ffd95a; --focus:#62dcff; --property:#f4fff8; --special:#fff1bd; --ink:#071510; --border:#b7d8c6; --owned:#2d8cff; --grid-line:#ffffff18; --grid-size:2rem; --theme-font:system-ui,sans-serif }
+    * { box-sizing:border-box } body { margin:0; background-color:var(--bg); background-image:linear-gradient(var(--grid-line) 2px,transparent 2px),linear-gradient(90deg,var(--grid-line) 2px,transparent 2px),radial-gradient(circle at top,var(--panel),var(--bg) 48rem); background-size:var(--grid-size) var(--grid-size),var(--grid-size) var(--grid-size),auto; color:var(--text); font:1.05rem/1.5 var(--theme-font); transition:background-color .25s ease }
+    header,main { width:min(88rem,95%); margin:auto } header { padding:1.2rem 0 .4rem } h1 { color:var(--gold); margin:0; font-size:clamp(2rem,5vw,3.6rem) } a { color:var(--focus) }
+    .panel { margin:1rem 0; padding:1rem; border:3px solid var(--border); border-radius:.7rem; background:var(--panel) } #announcement { border-left:8px solid var(--gold); font-weight:750 }
+    button,select,input { min-height:3rem; padding:.55rem .9rem; border:3px solid #fff; border-radius:.45rem; font:inherit } button { background:var(--gold); color:var(--ink); font-weight:850; cursor:pointer } select,input { background:#fff;color:#000 } button:disabled { opacity:.55 }
+    :focus-visible { outline:6px solid var(--focus)!important; outline-offset:4px }.toolbar { display:flex; flex-wrap:wrap; gap:.7rem }.skip-link { position:absolute; left:-9999px; background:#fff; color:#000; padding:.7rem }.skip-link:focus { left:.5rem }
+    #players { display:flex; flex-wrap:wrap; gap:.7rem; padding:0; list-style:none } #players li { border:3px solid var(--border); border-radius:.5rem; padding:.6rem }
+    .token-icon { display:inline-grid; place-items:center; min-width:2.2rem; min-height:2.2rem; margin-right:.35rem; border:3px solid currentColor; border-radius:50%; background:#fff; color:#000; font-size:1.35rem } dialog { width:min(46rem,92%); border:5px solid var(--gold); border-radius:.8rem; background:var(--panel); color:var(--text) } dialog::backdrop { background:#000c } .token-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.75rem } .token-choice { min-height:7rem } .token-choice[aria-pressed="true"] { box-shadow:inset 0 0 0 6px var(--owned) } .token-choice:disabled { opacity:.5 }
+    #board { display:grid; grid-template-columns:repeat(10,minmax(5.5rem,1fr)); gap:.45rem; padding:.7rem; border:4px solid var(--gold); border-radius:.65rem; background-color:var(--panel); background-image:linear-gradient(45deg,var(--grid-line) 25%,transparent 25%,transparent 75%,var(--grid-line) 75%),linear-gradient(45deg,var(--grid-line) 25%,transparent 25%,transparent 75%,var(--grid-line) 75%); background-position:0 0,calc(var(--grid-size)/2) calc(var(--grid-size)/2); background-size:var(--grid-size) var(--grid-size); list-style:none }
+    .space { min-height:6.5rem; padding:.45rem; border:3px solid var(--ink); border-radius:.4rem; background:var(--property); color:var(--ink); cursor:default }.space[tabindex="0"] { border-color:var(--gold); box-shadow:0 0 0 3px var(--ink),0 0 0 7px var(--focus) }.space.special { background:var(--special) }.space.owned { box-shadow:inset 0 0 0 6px var(--owned) }.space.owned[tabindex="0"] { box-shadow:inset 0 0 0 6px var(--owned),0 0 0 3px var(--ink),0 0 0 7px var(--focus) }.number,.occupants { display:block; font-weight:850 }
+    .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0 } [hidden] { display:none!important }
+    @media(max-width:850px){#board{grid-template-columns:repeat(10,minmax(4.8rem,1fr));overflow-x:auto}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#game">Skip to game controls</a>
+  <header><h1>Monopoly Multi-Edition</h1><p><a href="/">Return to lobby</a> · Arrow Keys: explore board · Enter: roll · F: balance · P: properties · H: room state · Y/N: answer offers</p></header>
+  <main id="game" tabindex="-1">
+    <p id="connection" class="panel" role="status">Connecting to your room…</p>
+    <p id="announcement" class="panel">Waiting for Monopoly.</p>
+    <section class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Turn controls</h2><div class="toolbar">
+      <button id="start" type="button" hidden>Start Monopoly</button><button id="token-picker" type="button">Choose Themed Token</button><button id="roll" type="button" disabled>Roll Dice (Enter)</button><button id="balance" type="button">Check Balance (F)</button><button id="properties" type="button">List Properties (P)</button><button id="room-state" type="button">Hear Room State (H)</button><button id="trade" type="button">Offer Trade</button>
+      <button id="buy" type="button" hidden>Buy (Y)</button><button id="decline" type="button" hidden>Decline (N)</button>
+    </div><form id="trade-form" hidden><h3>Offer a property trade</h3><label for="trade-player">Player</label><select id="trade-player"></select><label for="trade-property">Your property</label><select id="trade-property"></select><label for="trade-amount">Cash requested</label><input id="trade-amount" type="number" min="0" step="1" value="0"><button type="submit">Send Trade Offer</button></form><p id="turn-status">The game has not started.</p></section>
+    <section class="panel" aria-labelledby="players-title"><h2 id="players-title">Players</h2><ul id="players"><li>Waiting for players.</li></ul></section>
+    <section aria-labelledby="board-title"><h2 id="board-title">40-space <span id="edition">Monopoly</span> board</h2><p id="board-help">Use any Arrow Key to move focus around the 40 spaces. Each grid cell announces its name, type, description, purchase cost, color group, current owner, and rent.</p><ol id="board" role="grid" aria-rowcount="4" aria-colcount="10" aria-label="Monopoly board" aria-describedby="board-help"></ol></section>
+    <div id="game-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="polite-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    <dialog id="token-dialog" aria-labelledby="token-title" aria-describedby="token-help"><h2 id="token-title">Choose your themed token</h2><p id="token-help">Choose one of six pieces for this board. Each token can belong to only one player.</p><div id="token-options" class="token-grid"></div><div class="toolbar"><button id="token-cancel" type="button">Close Token Selection</button></div></dialog>
+  </main>
+  <script src="/socket.io/socket.io.js"></script><script src="audio.js"></script><script src="monopoly-boards.js"></script><script src="monopoly.js"></script>
+</body></html>

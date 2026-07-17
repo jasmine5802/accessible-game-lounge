@@ -1,0 +1,11 @@
+users.json
+users.json.tmp
+node_modules/
+node_modules.pre-npm-install/
+.pnpm-store/
+dist/
+installer-dist/
+.agents/
+.codex/
+.env
+.env.*

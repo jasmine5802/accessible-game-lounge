@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Duck's Race | Accessible Game Lounge</title>
+  <script defer src="/game-chat.js"></script>
+  <style>
+    :root { color-scheme: dark; --bg: #07131b; --panel: #102836; --text: #fff; --yellow: #ffe34f; --focus: #65d9ff; --trap: #9b2948; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: linear-gradient(#07131b, #0c2834); color: var(--text); font: 1.05rem/1.5 system-ui, sans-serif; }
+    header, main { width: min(82rem, 94%); margin-inline: auto; }
+    header { padding: 1.25rem 0 .5rem; }
+    h1 { margin: 0; color: var(--yellow); font-size: clamp(2rem, 5vw, 3.5rem); }
+    a { color: var(--focus); }
+    button, select { min-height: 3rem; padding: .55rem .8rem; border: 3px solid #fff; border-radius: .45rem; font: inherit; }
+    button { background: var(--yellow); color: #07131b; font-weight: 850; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    :focus-visible { outline: 6px solid var(--focus) !important; outline-offset: 4px; }
+    .skip-link { position: absolute; left: -9999px; top: .5rem; background: #fff; color: #000; padding: .7rem; z-index: 20; }
+    .skip-link:focus { left: .5rem; }
+    .panel { margin: 1rem 0; padding: 1rem; border: 2px solid #7ba4b7; border-radius: .75rem; background: var(--panel); }
+    #announcement { border-left: 7px solid var(--yellow); font-weight: 700; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: .7rem; }
+    label { display: block; font-weight: 750; }
+    #board { display: grid; grid-template-columns: repeat(8, minmax(5.5rem, 1fr)); gap: .45rem; margin: 1rem 0 2rem; padding: 0; list-style: none; }
+    .square { min-height: 6.3rem; padding: .45rem; border: 3px solid #7ba4b7; border-radius: .5rem; background: #e8f7f2; color: #07131b; }
+    .square[tabindex="0"] { border-color: var(--yellow); }
+    .square.trap { background: #ffdbe5; border-color: var(--trap); }
+    .square.feathers { background: #fff4bd; }
+    .square.forward { background: #c8f3ff; }
+    .square.backward { background: #e2d5ff; }
+    .square-number { display: block; font-weight: 900; }
+    .duck { display: block; margin-top: .2rem; font-weight: 750; }
+    .duck::before { content: "🦆 "; }
+    .cards { display: flex; flex-wrap: wrap; gap: .8rem; padding: 0; list-style: none; }
+    .card { max-width: 22rem; padding: .8rem; border: 2px solid #fff; border-radius: .6rem; background: #193b4b; }
+    .card.selected-card { border-color: var(--yellow); box-shadow: 0 0 0 4px #07131b, 0 0 0 8px var(--focus); }
+    .card button { width: 100%; margin-top: .4rem; }
+    #players { display: flex; flex-wrap: wrap; gap: 1rem; padding: 0; list-style: none; }
+    #players li { padding: .65rem; border: 2px solid #7ba4b7; border-radius: .5rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) { #board { grid-template-columns: repeat(4, minmax(4.6rem, 1fr)); } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#game">Skip to game controls</a>
+  <header>
+    <h1>Duck's Race</h1>
+    <p><a href="/">Return to lobby</a> · Enter: roll or play selected card · Up/Down: cycle cards · C: cards · F: feathers · Left/Right: explore board</p>
+  </header>
+  <main id="game" tabindex="-1">
+    <p id="connection" class="panel" role="status">Connecting to your room…</p>
+    <p id="announcement" class="panel" role="status" aria-live="assertive" aria-atomic="true">Waiting for the race.</p>
+
+    <section class="panel" aria-labelledby="controls-title">
+      <h2 id="controls-title">Turn controls</h2>
+      <div class="toolbar">
+        <button id="start" type="button" hidden>Start Duck's Race</button>
+        <button id="roll" type="button" disabled>Roll Dice (Enter)</button>
+        <button id="show-cards" type="button" aria-expanded="false" aria-controls="cards-panel">View Cards (C)</button>
+        <button id="feathers" type="button">Check Feathers (F)</button>
+      </div>
+      <p id="turn-status">The race has not started.</p>
+    </section>
+
+    <section id="cards-panel" class="panel" hidden aria-labelledby="cards-title">
+      <h2 id="cards-title" tabindex="-1">Your cards</h2>
+      <p>Use Up or Down Arrow to select a card, then Enter to play it. Cards do not end your turn; after playing one, press Enter outside this card list to roll.</p>
+      <ul id="cards" class="cards"><li>No cards available.</li></ul>
+      <div id="target-menu" hidden aria-labelledby="target-title">
+        <h3 id="target-title" tabindex="-1">Select target</h3>
+        <p>Arrow up or down to choose a duck. Press Enter to cast the card.</p>
+        <ul id="targets" class="cards" aria-label="Card targets"></ul>
+        <button id="cancel-target" type="button" class="secondary">Cancel Target Selection</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="players-title">
+      <h2 id="players-title">Racers</h2>
+      <ul id="players"><li>Waiting for players.</li></ul>
+    </section>
+
+    <section aria-labelledby="board-title">
+      <h2 id="board-title">40-square race loop</h2>
+      <p id="board-help">Focus the board, then use Left or Right Arrow to hear each space’s name, effect, and occupants. Up and Down Arrow cycle through your cards.</p>
+      <ol id="board" aria-describedby="board-help" aria-label="Duck's Race board"></ol>
+    </section>
+    <div id="polite-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="audio.js"></script>
+  <script src="ducks-race.js"></script>
+</body>
+</html>

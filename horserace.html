@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Horse Race | Accessible Game Lounge</title>
+  <script defer src="/game-chat.js"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#06140b;--panel:#123822;--text:#fff;--gold:#ffe467;--focus:#63e6ff;--turf:#eaffdf;--ink:#07120a;--mud:#8b4d26;--boost:#fff176;--wind:#b8ecff;--hurdle:#ff9b60}*{box-sizing:border-box}body{margin:0;background:linear-gradient(#07180d,#0e3b20);color:var(--text);font:1.08rem/1.5 system-ui,sans-serif}header,main{width:min(96rem,96%);margin:auto}header{padding:1rem 0}h1{color:var(--gold);font-size:clamp(2rem,5vw,3.6rem);margin:.2rem 0}a{color:var(--focus)}.skip{position:absolute;left:-9999px;background:#fff;color:#000;padding:.7rem}.skip:focus{left:.5rem}.panel{border:3px solid #c9f0d5;border-radius:.7rem;background:var(--panel);padding:1rem;margin:1rem 0}.toolbar{display:flex;flex-wrap:wrap;gap:.7rem}button,select{min-height:3rem;padding:.55rem .9rem;border:3px solid #fff;border-radius:.45rem;font:inherit;font-weight:800}button{background:var(--gold);color:#07120a}select{background:#fff;color:#000}:focus-visible{outline:6px solid var(--focus);outline-offset:4px}.players{display:flex;gap:.7rem;flex-wrap:wrap;list-style:none;padding:0}.players li{border:3px solid #c9f0d5;border-radius:.5rem;padding:.65rem}.hand{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem;list-style:none;padding:0}.card{display:block;width:100%;min-height:7rem;text-align:left}.card[aria-selected="true"]{box-shadow:inset 0 0 0 7px #046dc4}.lanes{display:grid;gap:1rem}.lane{border:3px solid #c9f0d5;border-radius:.6rem;padding:.65rem}.track{display:grid;grid-template-columns:repeat(25,minmax(4.6rem,1fr));gap:.3rem;overflow-x:auto;list-style:none;padding:.5rem}.space{min-height:6rem;background:var(--turf);color:var(--ink);border:3px solid #07120a;border-radius:.35rem;padding:.3rem;text-align:center}.space.deep-turf{background:var(--mud);color:#fff}.space.hurdle{background:var(--hurdle)}.space.sugar-boost{background:var(--boost)}.space.wind-pocket{background:var(--wind)}.space.horse{box-shadow:inset 0 0 0 7px #005fcc}.hazard-icon,.horse-icon{display:block;font-size:1.6rem}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}[hidden]{display:none!important}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#controls">Skip to race controls</a>
+  <header><h1>Horse Race</h1><p><a href="/">Return to lounge</a> · Up/Down: hand · Enter: play · C: space and lap · S: leaderboard · D or Space: draw</p></header>
+  <main>
+    <p id="connection" class="panel" role="status">Connecting to the race…</p><p id="announcement" class="panel">Waiting for Horse Race.</p>
+    <section id="controls" class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Race controls</h2><p id="active-event">Lap 1 of 6 — The Gates Open: Standard, clean track.</p><div class="toolbar"><button id="start" hidden>Start Derby</button><button id="draw" disabled>Draw Card (D or Space)</button><button id="describe">Describe Space and Lap (C)</button><button id="standings">Six-Lap Leaderboard (S)</button><button id="end-turn" hidden>End Sabotage Turn</button></div><p id="turn-status">Waiting for the race.</p><div id="target-panel" hidden><label for="target">Choose opponent</label><select id="target"></select><button id="confirm-target">Play on Selected Opponent</button><button id="cancel-target">Cancel</button></div></section>
+    <section class="panel" aria-labelledby="hand-title"><h2 id="hand-title">Your private action cards</h2><p id="hand-help">Use Up and Down Arrow to select a card, then press Enter. Opponents receive only your card count.</p><ul id="hand" class="hand" role="listbox" aria-describedby="hand-help"><li>No cards.</li></ul></section>
+    <section class="panel" aria-labelledby="players-title"><h2 id="players-title">Six-lap race standings</h2><ol id="players" class="players"><li>Waiting for horses.</li></ol></section>
+    <section aria-labelledby="lanes-title"><h2 id="lanes-title">25-space racetrack lanes</h2><div id="lanes" class="lanes"></div></section>
+    <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><div id="urgent" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script><script src="horserace-engine.js"></script><script src="horserace.js"></script>
+</body></html>
