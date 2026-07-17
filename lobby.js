@@ -4,6 +4,7 @@ const socket = io();
 const UNO_GAMES = Object.freeze({ 'Classic UNO':'Classic Uno', 'UNO Flip':'Uno Flip!', DOS:'Uno Dos', "UNO Show 'Em No Mercy":"Show 'Em No Mercy", 'UNO Attack':'Uno Attack' });
 const GAME_TITLES = ["Duck's Race", 'Monopoly', ...Object.keys(UNO_GAMES), 'Horse Race', 'Dominoes', 'Skip-Bo', 'Mall Madness', 'The Game of Life'];
 const GAME_CATEGORIES = { "Duck's Race":'ducks-race', Monopoly:'monopoly', 'Classic UNO':'uno-classic', 'UNO Flip':'uno-flip', DOS:'uno-dos', "UNO Show 'Em No Mercy":'uno-no-mercy', 'UNO Attack':'uno-attack', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
+const GAME_PAGES = { "Duck's Race":'ducks-race.html', Monopoly:'monopoly.html', 'Classic UNO':'uno.html', 'UNO Flip':'uno.html', DOS:'uno.html', "UNO Show 'Em No Mercy":'uno.html', 'UNO Attack':'uno.html', 'Horse Race':'horserace.html', Dominoes:'dominoes.html', 'Skip-Bo':'skipbo.html', 'Mall Madness':'mallmadness.html', 'The Game of Life':'life.html' };
 const GAME_HELP = {
   "Duck's Race": { how:'Race once around the 40-space pond. Roll on your turn, collect feathers, and use cards to protect yourself or slow opponents. The first duck to complete the loop wins.', keys:'Up and Down choose cards or targets. Enter rolls or confirms. C opens cards. F reports feathers. Escape returns to the previous menu.' },
   Monopoly: { how:'Move around the selected 40-space board, buy properties, collect rent, trade, and remain solvent. Choose a unique themed token before play. The last player who has not gone bankrupt wins.', keys:'Arrow Keys explore the board. Enter rolls. F reports balance. P lists properties. H reports the room. Y and N answer offers.' },
@@ -62,8 +63,9 @@ function chooseGame(title){ selectedGame=title; swipeSound(); socket.emit('get-g
 function openSetup(){
   announce(`Creating ${selectedGame}. Game options will be offered after entering the game.`);createTable();
 }
-function createTable(data={}){ swipeSound(); socket.emit('create-game',{category:GAME_CATEGORIES[selectedGame],...data},result=>{if(!result.ok)return announce(result.error);const finish=()=>showWaiting(result.room);if(selectedGame==='Monopoly'&&data.tokenId){socket.emit('monopoly-select-token',{tokenId:data.tokenId},tokenResult=>{if(!tokenResult.ok)announce(tokenResult.error);finish();});}else finish();}); }
-function joinTable(id){ swipeSound(); socket.emit('join-game',{gameId:id},result=>result.ok?showWaiting(result.room):announce(result.error)); }
+function enterGame(room){sessionStorage.setItem('loungeGameId',room.id||room.code);announce(`Entering ${selectedGame}.`);location.href=`/${GAME_PAGES[selectedGame]}?game=${encodeURIComponent(room.code||room.id)}`;}
+function createTable(data={}){ swipeSound(); socket.emit('create-game',{category:GAME_CATEGORIES[selectedGame],...data},result=>{if(!result.ok)return announce(result.error);const finish=()=>enterGame(result.room);if(selectedGame==='Monopoly'&&data.tokenId){socket.emit('monopoly-select-token',{tokenId:data.tokenId},tokenResult=>{if(!tokenResult.ok)return announce(tokenResult.error);finish();});}else finish();}); }
+function joinTable(id){ swipeSound(); socket.emit('join-game',{gameId:id},result=>result.ok?enterGame(result.room):announce(result.error)); }
 function showWaiting(room){ currentRoom=room;sessionStorage.setItem('loungeGameId',room.id);elements.lobby.hidden=true;elements.tablePicker.hidden=true;elements.waitingTable.hidden=false;screen='waiting';updateWaiting(room);elements.waitingTable.focus({preventScroll:false}); }
 function updateWaiting(room){
   currentRoom=room;
