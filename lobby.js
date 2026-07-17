@@ -1,19 +1,20 @@
 'use strict';
 
 const socket = io();
-const GAME_TITLES = ["Duck's Race", 'Monopoly', 'Uno Flip', 'Horse Race', 'Dominoes', 'Skip-Bo', 'Mall Madness', 'The Game of Life'];
-const GAME_CATEGORIES = { "Duck's Race":'ducks-race', Monopoly:'monopoly', 'Uno Flip':'uno-flip', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
+const UNO_GAMES = Object.freeze({ 'Classic UNO':'Classic Uno', 'UNO Flip':'Uno Flip!', DOS:'Uno Dos', "UNO Show 'Em No Mercy":"Show 'Em No Mercy", 'UNO Attack':'Uno Attack' });
+const GAME_TITLES = ["Duck's Race", 'Monopoly', ...Object.keys(UNO_GAMES), 'Horse Race', 'Dominoes', 'Skip-Bo', 'Mall Madness', 'The Game of Life'];
+const GAME_CATEGORIES = { "Duck's Race":'ducks-race', Monopoly:'monopoly', 'Classic UNO':'uno-classic', 'UNO Flip':'uno-flip', DOS:'uno-dos', "UNO Show 'Em No Mercy":'uno-no-mercy', 'UNO Attack':'uno-attack', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
 const GAME_HELP = {
   "Duck's Race": { how:'Race once around the 40-space pond. Roll on your turn, collect feathers, and use cards to protect yourself or slow opponents. The first duck to complete the loop wins.', keys:'Up and Down choose cards or targets. Enter rolls or confirms. C opens cards. F reports feathers. Escape returns to the previous menu.' },
   Monopoly: { how:'Move around the selected 40-space board, buy properties, collect rent, trade, and remain solvent. Choose a unique themed token before play. The last player who has not gone bankrupt wins.', keys:'Arrow Keys explore the board. Enter rolls. F reports balance. P lists properties. H reports the room. Y and N answer offers.' },
-  'Uno Flip': { how:'Match color, number, or symbol and empty your hand. The selected variant changes the deck and special-card rules. UNO and DOS declarations are available where required.', keys:'Up and Down choose a card. Space marks a DOS combination. Enter plays or draws. C reports the center. H reads your hand. S reads scores. U declares UNO. D declares DOS.' },
+  ...Object.fromEntries(Object.keys(UNO_GAMES).map(title=>[title,{ how:'Match color, number, or symbol and empty your hand. This selection uses its own deck and special-card rules. UNO and DOS declarations are available where required.', keys:'Up and Down choose a card. Space marks a DOS combination. Enter plays or draws. C reports the center. H reads your hand. S reads scores. U declares UNO. D declares DOS.' }])),
   'Horse Race': { how:'Play movement and sabotage cards across six laps. Track terrain and lap events, and be the first horse to finish all six laps.', keys:'Up and Down choose a card. Enter plays. C describes the space and lap. S reads standings. D or Space draws.' },
   Dominoes: { how:'Play a matching tile on either open end. Draw or pass when no tile can be played. The selected set and mode control the tiles and scoring.', keys:'Left and Right choose a tile. Up and Down flip it. L or 1 plays left. R or 2 plays right. C reads ends. B reads the board. H reads your hand. D or Space draws or passes.' },
   'Skip-Bo': { how:'Play cards in order from 1 through 12 onto shared building piles. Use your hand and discard piles to empty your stock pile first.', keys:'Up and Down choose a hand card. S selects stock. 1 through 4 select discard piles. Enter or Space plays. B reads buildings. D reads discards. O reads opponents.' },
   'Mall Madness': { how:'Move around the mall, visit stores on your private shopping list, manage cash, and complete the list before the other shoppers.', keys:'S presses the electronic director. Arrow Keys move. Enter swipes or uses an ATM. L reads the shopping list. C reports position. O reads opponents.' },
   'The Game of Life': { how:'Spin and follow the branching path through careers, family events, investments, and retirement. The player with the strongest final result wins.', keys:'S or Enter spins. C describes the current tile and card. H reports player statistics. Left and Right choose a path at a fork.' }
 };
-const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','game-setup','setup-title','setup-form','monopoly-options','edition-choice','token-choice','uno-options','life-options','domino-options','how-to-play','keyboard-commands','confirm-create','waiting-table','table-summary','table-settings','waiting-players','host-instruction','leave-table','help-dialog','help-title','help-content','close-help','status','logout'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','game-setup','setup-title','setup-form','monopoly-options','edition-choice','token-choice','uno-options','life-options','domino-options','confirm-create','waiting-table','table-summary','table-settings','waiting-players','host-instruction','leave-table','status','logout'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
 let screen = 'auth';
 let gameIndex = 0;
 let tableIndex = 0;
@@ -64,9 +65,10 @@ function refreshMonopolyTokens(){
 }
 function openSetup(){
   elements.tablePicker.hidden=true;elements.gameSetup.hidden=false;screen='setup';elements.setupTitle.textContent=`Create ${selectedGame}`;
-  elements.monopolyOptions.hidden=selectedGame!=='Monopoly';elements.unoOptions.hidden=selectedGame!=='Uno Flip';elements.lifeOptions.hidden=selectedGame!=='The Game of Life';elements.dominoOptions.hidden=selectedGame!=='Dominoes';
+  elements.monopolyOptions.hidden=selectedGame!=='Monopoly';elements.unoOptions.hidden=!UNO_GAMES[selectedGame];elements.lifeOptions.hidden=selectedGame!=='The Game of Life';elements.dominoOptions.hidden=selectedGame!=='Dominoes';
+  if(UNO_GAMES[selectedGame]) elements.unoOptions.querySelector('select').value=UNO_GAMES[selectedGame];
   if(selectedGame==='Monopoly'&&!elements.editionChoice.options.length){elements.editionChoice.replaceChildren(...MonopolyBoards.editions.map(edition=>new Option(edition,edition)));refreshMonopolyTokens();}
-  elements.confirmCreate.textContent=`Create ${selectedGame}`;elements.confirmCreate.focus();announce(`${selectedGame} setup. Review the options, How to Play, and Keyboard Commands, then choose Create ${selectedGame}.`);
+  elements.confirmCreate.textContent=`Create ${selectedGame}`;elements.confirmCreate.focus();announce(`${selectedGame} setup. Review the game options, then choose Create ${selectedGame}. Instructions and keyboard commands will be offered after entering the game.`);
 }
 function createTable(data={}){ swipeSound(); socket.emit('create-game',{category:GAME_CATEGORIES[selectedGame],...data},result=>{if(!result.ok)return announce(result.error);const finish=()=>showWaiting(result.room);if(selectedGame==='Monopoly'&&data.tokenId){socket.emit('monopoly-select-token',{tokenId:data.tokenId},tokenResult=>{if(!tokenResult.ok)announce(tokenResult.error);finish();});}else finish();}); }
 function joinTable(id){ swipeSound(); socket.emit('join-game',{gameId:id},result=>result.ok?showWaiting(result.room):announce(result.error)); }
@@ -84,11 +86,10 @@ function startTable(){ if(!currentRoom)return;const amHost=currentRoom.players.f
 function enterLobby(result){ myUsername=result.username;sessionStorage.setItem('loungeUsername',myUsername);if(result.token)sessionStorage.setItem('loungeSessionToken',result.token);elements.password.value='';elements.authScreen.hidden=true;elements.lobby.hidden=false;screen='games';gameIndex=0;renderGames();announce(`Welcome, ${myUsername}. Duck's Race selected. Use Up and Down Arrow to choose a game, then press Enter.`); }
 
 elements.authForm.addEventListener('submit',event=>{event.preventDefault();const action=event.submitter?.dataset.action||'login';elements.authStatus.textContent=action==='register'?'Registering.':'Logging in.';socket.emit(action,{username:elements.username.value,password:elements.password.value},result=>{if(result.ok)enterLobby(result);else elements.authStatus.textContent=result.error;});});
-elements.leaveTable.addEventListener('click',()=>location.reload());
+function returnToGameList(){if(currentRoom)socket.emit('leave-room');sessionStorage.removeItem('loungeGameId');currentRoom=null;elements.waitingTable.hidden=true;elements.tablePicker.hidden=true;elements.gameSetup.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex,false);announce('Returned to the main game list.');}
+elements.leaveTable.addEventListener('click',returnToGameList);
 elements.editionChoice.addEventListener('change',refreshMonopolyTokens);
 elements.setupForm.addEventListener('submit',event=>{event.preventDefault();createTable(Object.fromEntries(new FormData(event.currentTarget)));});
-function showHelp(type){const help=GAME_HELP[selectedGame];elements.helpTitle.textContent=`${selectedGame}: ${type==='how'?'How to Play':'Keyboard Commands'}`;elements.helpContent.textContent=help[type];elements.helpDialog.showModal();elements.closeHelp.focus();}
-elements.howToPlay.addEventListener('click',()=>showHelp('how'));elements.keyboardCommands.addEventListener('click',()=>showHelp('keys'));elements.closeHelp.addEventListener('click',()=>{elements.helpDialog.close();elements.confirmCreate.focus();});
 elements.logout.addEventListener('click',()=>{sessionStorage.clear();socket.emit('logout',{},()=>location.reload());});
 document.addEventListener('keydown',event=>{
   if(['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName))return;
@@ -102,10 +103,11 @@ document.addEventListener('keydown',event=>{
   }
   if(event.key==='Escape'&&screen==='tables'){event.preventDefault();elements.tablePicker.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex);}
   else if(event.key==='Escape'&&screen==='setup'){event.preventDefault();elements.gameSetup.hidden=true;elements.tablePicker.hidden=false;screen='tables';setSelection(elements.tableMenu,tableIndex);}
+  else if(event.key==='Escape'&&screen==='waiting'){event.preventDefault();returnToGameList();}
 });
 socket.on('lobby-updated',room=>{if(screen==='waiting')updateWaiting(room);});
 socket.on('table-player-joined',data=>{if(screen==='waiting'){bellSound();announce(data.message);}});
 socket.on('update-room-list',()=>{if(screen==='tables'&&selectedGame)socket.emit('get-game-tables',{category:GAME_CATEGORIES[selectedGame]},result=>{if(result.ok){tables=result.tables;renderTables();}});});
-socket.on('game-started',data=>{startSound(data.cue);announce(data.message);setTimeout(()=>{location.href=data.destination;},650);});
+socket.on('game-started',data=>{startSound(data.cue);announce(data.message);setTimeout(()=>{location.href=data.destination;},350);});
 socket.on('connect',()=>{socket.emit('get-active-rooms');const token=sessionStorage.getItem('loungeSessionToken');if(!token){elements.username.focus();return;}socket.emit('authenticate-token',{token},result=>result.ok?enterLobby(result):(sessionStorage.clear(),elements.username.focus()));});
 socket.on('disconnect',()=>announce('Connection lost. Trying to reconnect.'));

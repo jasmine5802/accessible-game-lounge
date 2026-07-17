@@ -5,41 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jazzy Jay's Accessible Game Lounge</title>
   <style>
-    :root { color-scheme:light; --navy:#082b55; --blue:#0c4f91; --select:#0b5cab; --pale:#eaf3fb; --line:#7b96b2; --text:#101820; --focus:#ffbf00; --muted:#43576a; }
+    :root { color-scheme:light; --navy:#17365d; --blue:#245d91; --select:#0a64ad; --pale:#f1f4f8; --line:#8b98a8; --text:#111; --focus:#ffbf00; --muted:#34495e; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; background:#b9cce0; color:var(--text); font:1.08rem/1.4 "Segoe UI",Arial,sans-serif; }
-    .app-shell { width:min(62rem,100%); min-height:100vh; margin:auto; background:#f7f9fb; border-inline:1px solid #7890aa; box-shadow:0 0 2rem #263f5c55; }
-    header { background:linear-gradient(#125b9e,#082b55); color:#fff; padding:.75rem 1.1rem; border-bottom:1px solid #001a35; }
-    h1 { margin:0; font-size:1.65rem; line-height:1.2; letter-spacing:.01em; }
-    .subtitle { margin:.2rem 0 0; color:#dceeff; font-size:.95rem; }
-    .menu-bar { display:flex; gap:1.5rem; padding:.35rem 1rem; background:#eef2f6; border-bottom:1px solid #8b9daf; font-size:.95rem; }
+    body { margin:0; min-height:100vh; background:#d4d9df; color:var(--text); font:1rem/1.32 "Segoe UI",Tahoma,Arial,sans-serif; }
+    .app-shell { width:min(54rem,100%); min-height:100vh; margin:auto; background:#eef1f4; border-inline:1px solid #747f8b; box-shadow:0 0 1.25rem #25364a55; display:flex; flex-direction:column; }
+    header { background:#17365d; color:#fff; padding:.48rem .8rem; border-bottom:1px solid #061a31; }
+    h1 { margin:0; font-size:1.28rem; line-height:1.2; font-weight:600; }
+    .subtitle { margin:.12rem 0 0; color:#e7eef7; font-size:.82rem; }
+    .menu-bar { display:flex; gap:1.3rem; padding:.24rem .65rem; background:#f5f5f5; border-bottom:1px solid #9aa2ab; font-size:.88rem; box-shadow:inset 0 1px #fff; }
     .menu-bar span::first-letter { text-decoration:underline; }
-    main { width:min(47rem,calc(100% - 2rem)); margin:1.3rem auto; }
-    .panel { margin:0 0 1rem; padding:1.1rem; background:#fff; border:1px solid var(--line); box-shadow:0 2px 7px #26415c25; }
-    h2 { margin:0 0 .35rem; color:var(--navy); font-size:1.35rem; border-bottom:1px solid #b6c5d4; padding-bottom:.45rem; }
-    label { display:block; margin-top:.75rem; font-weight:700; }
-    input,button { width:100%; min-height:2.8rem; margin-top:.3rem; padding:.5rem .7rem; border:2px solid #5d7690; border-radius:2px; font:inherit; }
+    main { width:calc(100% - 1.2rem); max-width:48rem; margin:.6rem auto; flex:1; }
+    .panel { margin:0 0 .55rem; padding:.65rem; background:#f7f7f7; border:1px solid #7f8994; box-shadow:inset 0 0 0 1px #fff; }
+    h2 { margin:0 0 .25rem; color:#111; font-size:1.05rem; border-bottom:1px solid #aab1b9; padding-bottom:.3rem; font-weight:600; }
+    label { display:block; margin-top:.5rem; font-weight:600; }
+    input,button { width:100%; min-height:2.2rem; margin-top:.22rem; padding:.32rem .55rem; border:1px solid #626d78; border-radius:1px; font:inherit; }
     input { background:#fff; color:#000; }
-    button { background:linear-gradient(#fff,#d8e4ef); color:#102a43; font-weight:700; cursor:pointer; }
-    button:hover { background:#edf6ff; }
-    button.secondary { background:linear-gradient(#f7f7f7,#d5d5d5); color:#222; }
-    :focus-visible { outline:4px solid var(--focus); outline-offset:2px; }
-    .actions { display:grid; grid-template-columns:1fr 1fr; gap:.65rem; margin-top:.9rem; }
-    .menu { list-style:none; padding:0; margin:.8rem 0; border:2px solid #4c6883; background:#fff; min-height:18rem; box-shadow:inset 0 0 0 1px #d9e4ee; }
-    .menu li { min-height:2.7rem; padding:.58rem .8rem; border-bottom:1px solid #d5e0ea; color:#142536; font-weight:650; cursor:default; }
+    button { background:linear-gradient(#fff,#d7dce1); color:#111; font-weight:600; cursor:pointer; }
+    button:hover { background:#e8f2fc; }
+    button.secondary { background:linear-gradient(#fafafa,#d5d8dc); color:#222; }
+    :focus-visible { outline:3px solid var(--focus); outline-offset:1px; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; margin-top:.6rem; }
+    .menu { list-style:none; padding:0; margin:.45rem 0; border:1px solid #535f6b; background:#fff; min-height:17.5rem; max-height:22rem; overflow-y:auto; box-shadow:inset 1px 1px #c7ccd1; }
+    .menu li { min-height:2.05rem; padding:.34rem .55rem; border-bottom:1px solid #e0e3e6; color:#111; font-weight:500; cursor:default; }
     .menu li:last-child { border-bottom:0; }
-    .menu li[aria-selected="true"] { background:var(--select); color:#fff; outline:3px solid var(--focus); outline-offset:-3px; }
-    .configuration { display:grid; gap:.65rem; margin:.8rem 0; }
-    .configuration select { width:100%; min-height:2.8rem; padding:.45rem; border:2px solid #5d7690; background:#fff; color:#000; font:inherit; }
-    .help-actions { display:grid; grid-template-columns:1fr 1fr; gap:.65rem; margin:.8rem 0; }
+    .menu li[aria-selected="true"] { background:var(--select); color:#fff; outline:2px dotted #fff; outline-offset:-3px; }
+    .configuration { display:grid; gap:.4rem; margin:.45rem 0; }
+    .configuration select { width:100%; min-height:2.2rem; padding:.3rem; border:1px solid #626d78; background:#fff; color:#000; font:inherit; }
+    .help-actions { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; margin:.5rem 0; }
     dialog { width:min(42rem,92vw); max-height:82vh; overflow:auto; border:3px solid var(--navy); background:#fff; color:#111; }
     dialog::backdrop { background:#00152aaa; }
-    #status { min-height:2.7rem; margin:1rem 0; padding:.55rem .75rem; background:#eef4f9; border:1px solid #92a6ba; border-left:6px solid var(--blue); }
-    #auth-status { min-height:2.7rem; padding:.55rem .75rem; background:var(--pale); border-left:5px solid var(--blue); }
+    #status { min-height:2rem; margin:.5rem 0; padding:.32rem .5rem; background:#fff; border:1px inset #a0a8b0; }
+    #auth-status { min-height:2rem; padding:.35rem .5rem; background:var(--pale); border:1px solid #a4adb7; }
     #waiting-players { padding:.7rem 2rem; background:#f4f8fc; border:1px solid #b3c2d1; }
-    .hint { color:var(--muted); margin:.35rem 0 .7rem; }
+    .hint { color:var(--muted); margin:.22rem 0 .4rem; font-size:.9rem; }
     [hidden] { display:none !important; }
-    footer { padding:.7rem 1rem; color:#33495e; background:#e8edf2; border-top:1px solid #9cafc1; font-size:.9rem; }
+    footer { padding:.3rem .65rem; color:#26384a; background:#e4e7ea; border-top:1px solid #9aa2ab; font-size:.82rem; }
     footer p { margin:0; }
     @media (max-width:34rem) { .actions,.help-actions { grid-template-columns:1fr; } .menu-bar { gap:.8rem; } main { width:calc(100% - 1rem); } }
   </style>
@@ -68,7 +68,7 @@
 
     <section id="table-picker" class="panel" hidden aria-labelledby="tables-title">
       <h2 id="tables-title">Tables</h2>
-      <p id="table-menu-help" class="hint">Use Up and Down Arrow to choose Create Game or an open game to join, then press Enter. Press Escape to return.</p>
+      <p id="table-menu-help" class="hint">Use Up and Down Arrow to choose Create Game or an open game to join, then press Enter. Press Escape to return to the main game list.</p>
       <ul id="table-menu" class="menu" role="listbox" tabindex="0" aria-labelledby="tables-title" aria-describedby="table-menu-help" aria-keyshortcuts="ArrowUp ArrowDown Enter Escape"></ul>
     </section>
 
@@ -94,7 +94,6 @@
           <label for="domino-set">Domino set</label><select id="domino-set" name="dominoSet"><option>Double-Six</option><option>Double-Nine</option></select>
           <label for="domino-mode">Domino rules</label><select id="domino-mode" name="dominoMode"><option>Draw Game</option><option>Block Game</option><option>All Fives</option></select>
         </div>
-        <div class="help-actions"><button id="how-to-play" type="button" class="secondary">How to Play</button><button id="keyboard-commands" type="button" class="secondary">Keyboard Commands</button></div>
         <button id="confirm-create" type="submit">Create Game</button>
       </form>
     </section>
@@ -104,13 +103,12 @@
       <p id="table-summary"></p>
       <p id="table-settings"></p>
       <ul id="waiting-players"></ul>
-      <p id="host-instruction" class="hint"></p>
+      <p id="host-instruction" class="hint"></p><p class="hint">Press Escape to leave this table and return to the main game list.</p>
       <button id="leave-table" type="button" class="secondary">Return to Game Menu</button>
     </section>
 
     <p id="status" role="status" aria-live="polite" aria-atomic="true">Welcome.</p>
   </main>
-  <dialog id="help-dialog" aria-labelledby="help-title"><h2 id="help-title">Game Help</h2><div id="help-content"></div><button id="close-help" type="button">Close</button></dialog>
   <footer><p>Accessible Game Lounge &mdash; use Up and Down Arrow to move and Enter to select.</p></footer>
  </div>
   <script src="/socket.io/socket.io.js"></script>

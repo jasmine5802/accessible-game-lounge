@@ -52,7 +52,7 @@ function renderBoard() {
     for (const player of game?.players.filter(candidate => candidate.square === square) || []) {
       const duck = document.createElement('span');
       duck.className = 'duck';
-      duck.textContent = player.name;
+      duck.textContent = `${player.name}, ${player.color} ${player.duckType}`;
       item.append(duck);
     }
     item.addEventListener('focus', () => { boardIndex = index; announcePolite(squareDescription(square)); });
@@ -64,7 +64,7 @@ function renderPlayers() {
   elements.players.replaceChildren(...(game?.players || []).map(player => {
     const item = document.createElement('li');
     const turn = player.id === game.turnPlayerId ? ', current turn' : '';
-    item.textContent = `${player.name}: square ${player.square}, ${player.feathers} feathers${player.shielded ? ', shield active' : ''}${turn}${player.connected ? '' : ', reconnecting'}`;
+    item.textContent = `${player.name}: ${player.color} ${player.duckType}, square ${player.square}, ${player.feathers} feathers${player.shielded ? ', shield active' : ''}${turn}${player.connected ? '' : ', reconnecting'}`;
     return item;
   }));
 }

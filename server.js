@@ -82,7 +82,11 @@ app.get('/', (_request, response) => response.sendFile(path.join(__dirname, 'lob
 const LOBBY_GAMES = Object.freeze({
   "Duck's Race": { serverName: "Duck's Race", category: 'ducks-race', maxPlayers: 6, page: '/ducks-race.html' },
   Monopoly: { serverName: 'Monopoly Multi-Edition', category: 'monopoly', maxPlayers: 6, page: '/monopoly.html' },
-  'Uno Flip': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-flip', maxPlayers: 4, page: '/uno.html' },
+  'Classic UNO': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-classic', maxPlayers: 4, page: '/uno.html', unoVariant: 'Classic Uno' },
+  'UNO Flip': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-flip', maxPlayers: 4, page: '/uno.html', unoVariant: 'Uno Flip!' },
+  DOS: { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-dos', maxPlayers: 4, page: '/uno.html', unoVariant: 'Uno Dos' },
+  "UNO Show 'Em No Mercy": { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-no-mercy', maxPlayers: 4, page: '/uno.html', unoVariant: "Show 'Em No Mercy" },
+  'UNO Attack': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-attack', maxPlayers: 4, page: '/uno.html', unoVariant: 'Uno Attack' },
   'Horse Race': { serverName: 'Horse Race', category: 'horse-race', maxPlayers: 6, page: '/horserace.html' },
   Dominoes: { serverName: 'Accessible Dominoes Lounge', category: 'dominoes', maxPlayers: 4, page: '/dominoes.html' },
   'Skip-Bo': { serverName: 'Accessible Skip-Bo Lounge', category: 'skip-bo', maxPlayers: 6, page: '/skipbo.html' },
@@ -190,6 +194,8 @@ function publicDuckGame(room) {
       return {
         id,
         name: room.players.get(id)?.name || duck.name,
+        duckType: duck.duckType,
+        color: duck.color,
         square: duck.square,
         feathers: duck.feathers,
         hand: [...duck.hand],
@@ -201,7 +207,7 @@ function publicDuckGame(room) {
 }
 
 function publicRoom(room) {
-  const lobbyEntry = lobbyGameForServerName(room.game);
+  const lobbyEntry = room.displayGame && LOBBY_GAMES[room.displayGame] ? [room.displayGame, LOBBY_GAMES[room.displayGame]] : lobbyGameForServerName(room.game);
   return {
     id: room.code,
     code: room.code,
@@ -232,7 +238,7 @@ function publicRoom(room) {
 
 function publicGames() {
   return [...rooms.values()].map(room => {
-    const lobbyEntry = lobbyGameForServerName(room.game);
+    const lobbyEntry = room.displayGame && LOBBY_GAMES[room.displayGame] ? [room.displayGame, LOBBY_GAMES[room.displayGame]] : lobbyGameForServerName(room.game);
     return ({
     id: room.code,
     game: room.game,
@@ -261,13 +267,15 @@ function randomCard() {
   return CARD_TYPES[Math.floor(Math.random() * CARD_TYPES.length)];
 }
 
-function makeDuck(name) {
-  return { name, square: 1, distance: 0, feathers: 5, hand: [randomCard(), randomCard(), randomCard()], shielded: false };
+function makeDuck(name, appearance = {}, settings = {}) {
+  const cardCount = [2,3,5].includes(settings.startingCards) ? settings.startingCards : 3;
+  const feathers = [3,5,8].includes(settings.startingFeathers) ? settings.startingFeathers : 5;
+  return { name, duckType: appearance.type || 'Mallard', color: appearance.color || 'Green and brown', square: 1, distance: 0, feathers, hand: Array.from({length:cardCount},randomCard), shielded: false };
 }
 
 function beginDucksRace(room) {
   const turnOrder = [...room.players.keys()];
-  const ducks = new Map(turnOrder.map(id => [id, makeDuck(room.players.get(id).name)]));
+  const ducks = new Map(turnOrder.map(id => [id, makeDuck(room.players.get(id).name, room.raceSelections?.get(id), room.raceSettings)]));
   const firstName = room.players.get(turnOrder[0])?.name || 'the first player';
   room.ducksRace = {
     status: 'playing', turnOrder, turnIndex: 0, ducks, winnerId: null, sequence: 1,
@@ -396,7 +404,7 @@ function applyLifeLanding(game, playerId) {
 function publicDerbyGame(room, viewerId) {
   if (!room.derby) return null;
   const game=room.derby,viewer=game.players.get(viewerId);
-  return { track:DerbyEngine.TRACK,totalLaps:DerbyEngine.TOTAL_LAPS,activeLap:game.activeLap,lapEvent:DerbyEngine.LAP_EVENTS[game.activeLap-1],lapHazards:game.lapHazards,sabotagePlays:viewerId===game.turnOrder[game.turnIndex]?game.sabotagePlays:0,status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,myHand:viewer?[...viewer.hand]:[],hazards:Object.fromEntries(game.turnOrder.filter(id=>game.players.has(id)).map(id=>[id,[...game.players.get(id).mudHazards].sort((a,b)=>a-b)])),players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,position:player.position,completedLaps:player.completedLaps,lap:Math.min(DerbyEngine.TOTAL_LAPS,player.completedLaps+1),cardCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};
+  return { track:DerbyEngine.TRACK,totalLaps:DerbyEngine.TOTAL_LAPS,activeLap:game.activeLap,lapEvent:DerbyEngine.LAP_EVENTS[game.activeLap-1],lapHazards:game.lapHazards,sabotagePlays:viewerId===game.turnOrder[game.turnIndex]?game.sabotagePlays:0,status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,myHand:viewer?[...viewer.hand]:[],hazards:Object.fromEntries(game.turnOrder.filter(id=>game.players.has(id)).map(id=>[id,[...game.players.get(id).mudHazards].sort((a,b)=>a-b)])),players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,horseType:player.horseType,color:player.color,position:player.position,completedLaps:player.completedLaps,lap:Math.min(DerbyEngine.TOTAL_LAPS,player.completedLaps+1),cardCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};
 }
 
 function dealDerbyCard(game) {
@@ -405,9 +413,9 @@ function dealDerbyCard(game) {
 }
 
 function beginDerby(room) {
-  const turnOrder=[...room.players.keys()],deck=DerbyEngine.createDeck(),players=new Map(turnOrder.map(id=>[id,{name:room.players.get(id).name,position:0,completedLaps:0,hand:[],mudHazards:new Set()}]));
+  const turnOrder=[...room.players.keys()],deck=DerbyEngine.createDeck(),players=new Map(turnOrder.map(id=>{const choice=room.raceSelections?.get(id)||{};return[id,{name:room.players.get(id).name,horseType:choice.type||'Full-size Thoroughbred',color:choice.color||'Bay',position:0,completedLaps:0,hand:[],mudHazards:new Set()}]}));
   room.derby={status:'playing',turnOrder,turnIndex:0,players,deck,activeLap:1,lapHazards:DerbyEngine.createLapHazards(1),sabotagePlays:0,winnerId:null,sequence:1,announcement:`Horse Race has started. Lap 1 of 6: The Gates Open. Standard, clean track. ${players.get(turnOrder[0]).name} goes first.`};
-  for(let round=0;round<3;round+=1)for(const id of turnOrder)players.get(id).hand.push(dealDerbyCard(room.derby));
+  const startingCards=[2,3,5].includes(room.raceSettings?.startingCards)?room.raceSettings.startingCards:3;for(let round=0;round<startingCards;round+=1)for(const id of turnOrder)players.get(id).hand.push(dealDerbyCard(room.derby));
 }
 
 function emitDerbyState(room,cue=null){for(const[id,member]of room.players)if(member.socketId)io.to(member.socketId).emit('derby-state',{game:publicDerbyGame(room,id),cue})}
@@ -513,10 +521,10 @@ io.on('connection', (socket) => {
     const lobbyDefinition = LOBBY_GAMES[requestedDisplayGame];
     const requestedGame = lobbyDefinition?.serverName || String(data.game || "Duck's Race").slice(0, 40);
     const edition = MonopolyBoards.editions.includes(data.edition) ? data.edition : 'Classic';
-    const unoVariant=UnoRules.VARIANTS.includes(data.unoVariant)?data.unoVariant:(requestedDisplayGame === 'Uno Flip' ? 'Uno Flip!' : 'Classic Uno');
+    const unoVariant=UnoRules.VARIANTS.includes(data.unoVariant)?data.unoVariant:(lobbyDefinition?.unoVariant || 'Classic Uno');
     const lifeTheme=LifeThemes.themes.includes(data.lifeTheme)?data.lifeTheme:'Classic 1960';
     const dominoSet=Object.hasOwn(DominoesEngine.SETS,data.dominoSet)?data.dominoSet:'Double-Six',dominoMode=DominoesEngine.MODES.includes(data.dominoMode)?data.dominoMode:'Draw Game';
-    const room = { code, hostId: playerId, game: requestedGame, monopolyEdition: requestedGame === 'Monopoly Multi-Edition' ? edition : null, monopolyTokens: requestedGame === 'Monopoly Multi-Edition' ? new Map() : null, unoVariant: requestedGame === 'Accessible Uno & Dos Lounge' ? unoVariant : null, lifeTheme: requestedGame === 'The Game of Life Lounge' ? lifeTheme : null, dominoSet: requestedGame === 'Accessible Dominoes Lounge' ? dominoSet : null, dominoMode: requestedGame === 'Accessible Dominoes Lounge' ? dominoMode : null, players: new Map(), gameState: {}, ducksRace: null, monopoly: null, uno: null, life: null, derby: null, dominoes: null, skipbo: null, mall: null };
+    const room = { code, hostId: playerId, game: requestedGame, displayGame: requestedDisplayGame, raceSelections:new Map(), raceSettings:{startingCards:3,startingFeathers:5}, monopolyEdition: requestedGame === 'Monopoly Multi-Edition' ? edition : null, monopolyTokens: requestedGame === 'Monopoly Multi-Edition' ? new Map() : null, unoVariant: requestedGame === 'Accessible Uno & Dos Lounge' ? unoVariant : null, lifeTheme: requestedGame === 'The Game of Life Lounge' ? lifeTheme : null, dominoSet: requestedGame === 'Accessible Dominoes Lounge' ? dominoSet : null, dominoMode: requestedGame === 'Accessible Dominoes Lounge' ? dominoMode : null, players: new Map(), gameState: {}, ducksRace: null, monopoly: null, uno: null, life: null, derby: null, dominoes: null, skipbo: null, mall: null };
     rooms.set(code, room);
     joinSocketToRoom(socket, room, playerId, socket.data.username);
     acknowledge(callback, { ok: true, room: publicRoom(room) });
@@ -530,7 +538,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return acknowledge(callback, { ok: false, error: 'That game is no longer available.' });
     const playerId = socket.data.playerId;
-    const lobbyEntry = lobbyGameForServerName(room.game);
+    const lobbyEntry = room.displayGame && LOBBY_GAMES[room.displayGame] ? [room.displayGame, LOBBY_GAMES[room.displayGame]] : lobbyGameForServerName(room.game);
     const maxPlayers = lobbyEntry?.[1].maxPlayers || 6;
     if (room.players.size >= maxPlayers && !room.players.has(playerId)) return acknowledge(callback, { ok: false, error: `That table is full. It supports ${maxPlayers} players.` });
     if (room.monopoly?.status === 'playing' && !room.monopoly.players.has(playerId)) return acknowledge(callback, { ok: false, error: 'This Monopoly game has already started.' });
@@ -587,34 +595,10 @@ io.on('connection', (socket) => {
     if (!room) return;
     if (room.hostId !== socket.data.playerId) return acknowledge(callback, { ok: false, error: 'Only the table host can start the game.' });
     if (room.players.size < 2) return acknowledge(callback, { ok: false, error: 'At least two players are needed to start.' });
-    const lobbyEntry = lobbyGameForServerName(room.game);
+    const lobbyEntry = room.displayGame && LOBBY_GAMES[room.displayGame] ? [room.displayGame, LOBBY_GAMES[room.displayGame]] : lobbyGameForServerName(room.game);
     if (!lobbyEntry) return acknowledge(callback, { ok: false, error: 'This table does not support the unified start command.' });
-    const alreadyStarted = room.mall?.status === 'playing' || room.skipbo?.status === 'playing' || room.dominoes?.status === 'playing' || room.derby?.status === 'playing' || room.uno?.status === 'playing' || room.monopoly?.status === 'playing' || room.life?.status === 'playing' || room.ducksRace?.status === 'playing';
-    if (alreadyStarted) return acknowledge(callback, { ok: false, error: 'This game has already started.' });
-
-    let cue;
-    if (room.game === 'Monopoly Multi-Edition') {
-      const tokens = MonopolyBoards.tokens[room.monopolyEdition] || [];
-      [...room.players.keys()].forEach((id, index) => { if (!room.monopolyTokens.get(id) && tokens[index]) room.monopolyTokens.set(id, { ...tokens[index] }); });
-      beginMonopoly(room); emitMonopolyState(room); cue = 'horn';
-    } else if (room.game === 'Accessible Uno & Dos Lounge') {
-      beginUno(room); emitUnoState(room, { type: 'card' }); cue = 'deal';
-    } else if (room.game === 'Horse Race') {
-      beginDerby(room); emitDerbyState(room, { type: 'move', terrain: 'Normal Turf' }); cue = 'horn';
-    } else if (room.game === 'Accessible Dominoes Lounge') {
-      beginDominoes(room); emitDominoState(room, { type: 'shuffle' }); cue = 'deal';
-    } else if (room.game === 'Accessible Skip-Bo Lounge') {
-      beginSkipBo(room); emitSkipBoState(room, { type: 'draw' }); cue = 'deal';
-    } else if (room.game === 'Accessible Mall Madness Lounge') {
-      beginMall(room); emitMallState(room, { type: 'pa' }); cue = 'horn';
-    } else if (room.game === "Duck's Race") {
-      beginDucksRace(room); emitDuckState(room, { type: 'card', square: 1 }); cue = 'horn';
-    } else if (room.game === 'The Game of Life Lounge') {
-      beginLife(room); emitLifeState(room, { type: 'career' }); cue = 'horn';
-    }
     const destination = `${lobbyEntry[1].page}?game=${encodeURIComponent(room.code)}`;
-    io.to(room.code).emit('game-started', { game: lobbyEntry[0], destination, cue, message: `${lobbyEntry[0]} is starting.` });
-    broadcastGames();
+    io.to(room.code).emit('game-started', { game: lobbyEntry[0], destination, cue: 'horn', message: `Entering ${lobbyEntry[0]}. Listen to or skip the instructions, then the host can start the game.` });
     acknowledge(callback, { ok: true, destination });
   });
 
@@ -952,10 +936,36 @@ io.on('connection', (socket) => {
     if (!requireAuthentication(socket, callback)) return;
     const room = rooms.get(socket.data.roomCode);
     if (!room || !room.players.has(socket.data.playerId)) return acknowledge(callback, { ok: false, error: 'Join a game before sending chat messages.' });
-    const text = String(message || '').trim().slice(0, 500);
+    const payload = message && typeof message === 'object' ? message : { text: message, recipientId: 'everyone' };
+    const text = String(payload.text || '').trim().slice(0, 500);
     if (!text) return acknowledge(callback, { ok: false, error: 'Message cannot be empty.' });
-    io.to(room.code).emit('chat-message', { sender: socket.data.username, text, sentAt: new Date().toISOString() });
-    acknowledge(callback, { ok: true });
+    const recipientId = String(payload.recipientId || 'everyone');
+    const sentAt = new Date().toISOString();
+    if (recipientId === 'everyone') {
+      io.to(room.code).emit('chat-message', { sender: socket.data.username, senderId: socket.data.playerId, text, private: false, sentAt });
+      return acknowledge(callback, { ok: true, private: false });
+    }
+    const recipient = room.players.get(recipientId);
+    if (!recipient) return acknowledge(callback, { ok: false, error: 'That player is no longer in this game.' });
+    if (!recipient.socketId) return acknowledge(callback, { ok: false, error: `${recipient.name} is reconnecting. Try again shortly.` });
+    const privateMessage = { sender: socket.data.username, senderId: socket.data.playerId, recipient: recipient.name, recipientId, text, private: true, sentAt };
+    io.to(socket.id).emit('chat-message', privateMessage);
+    if (recipient.socketId !== socket.id) io.to(recipient.socketId).emit('chat-message', privateMessage);
+    acknowledge(callback, { ok: true, private: true, recipient: recipient.name });
+  });
+
+  socket.on('set-race-options', (data = {}, callback) => {
+    const room=roomForPlayer(socket,callback);if(!room)return;
+    const duckTypes=['Mallard','Rubber Duck','Wood Duck','Mandarin Duck','Pekin Duck','Muscovy Duck','Duckling'];
+    const horseTypes=['Miniature Horse','Shetland Pony','Miniature Appaloosa','Full-size Thoroughbred','Full-size Arabian','Full-size Quarter Horse','Full-size Clydesdale'];
+    const colors=['Black','White','Gray','Brown','Chestnut','Bay','Palomino','Pinto','Blue','Green','Yellow','Red','Purple','Pink','Orange','Green and brown'];
+    const allowedTypes=room.game==="Duck's Race"?duckTypes:room.game==='Horse Race'?horseTypes:null;
+    if(!allowedTypes)return acknowledge(callback,{ok:false,error:'Race options are available only for Duck Race and Horse Race.'});
+    const type=allowedTypes.includes(data.type)?data.type:allowedTypes[0],color=colors.includes(data.color)?data.color:colors[0];
+    room.raceSelections.set(socket.data.playerId,{type,color});
+    if(room.hostId===socket.data.playerId){if([2,3,5].includes(Number(data.startingCards)))room.raceSettings.startingCards=Number(data.startingCards);if(room.game==="Duck's Race"&&[3,5,8].includes(Number(data.startingFeathers)))room.raceSettings.startingFeathers=Number(data.startingFeathers);}
+    io.to(room.code).emit('lobby-updated',publicRoom(room));
+    acknowledge(callback,{ok:true,message:`Selected ${color} ${type}.`});
   });
 
   socket.on('leave-room', () => leaveCurrentRoom(socket, true));
