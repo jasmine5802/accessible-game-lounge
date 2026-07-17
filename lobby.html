@@ -72,13 +72,13 @@
       <ul id="table-menu" class="menu" role="listbox" tabindex="0" aria-labelledby="tables-title" aria-describedby="table-menu-help" aria-keyshortcuts="ArrowUp ArrowDown Enter Escape"></ul>
     </section>
 
-    <section id="waiting-table" class="panel" hidden tabindex="-1" aria-labelledby="waiting-title" aria-keyshortcuts="Enter">
-      <h2 id="waiting-title">Waiting Table</h2>
+    <section id="waiting-table" class="panel" hidden tabindex="-1" aria-labelledby="waiting-title" aria-describedby="table-summary host-instruction" aria-keyshortcuts="Enter Escape">
+      <h2 id="waiting-title">Game Table</h2>
       <p id="table-summary"></p>
       <p id="table-settings"></p>
-      <ul id="waiting-players"></ul>
-      <p id="host-instruction" class="hint"></p><p class="hint">Press Escape to leave this table and return to the main game list.</p>
-      <button id="leave-table" type="button" class="secondary">Return to Game Menu</button>
+      <h3 id="players-title">Players at the Table</h3>
+      <ul id="waiting-players" aria-labelledby="players-title"></ul>
+      <p id="host-instruction" class="hint"></p>
     </section>
 
     <p id="status" role="status" aria-live="polite" aria-atomic="true">Welcome.</p>

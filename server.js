@@ -616,7 +616,6 @@ io.on('connection', (socket) => {
     const room = roomForPlayer(socket, callback);
     if (!room) return;
     if (room.hostId !== socket.data.playerId) return acknowledge(callback, { ok: false, error: 'Only the table host can start the game.' });
-    if (room.players.size < 2) return acknowledge(callback, { ok: false, error: 'At least two players are needed to start.' });
     const lobbyEntry = room.displayGame && LOBBY_GAMES[room.displayGame] ? [room.displayGame, LOBBY_GAMES[room.displayGame]] : lobbyGameForServerName(room.game);
     if (!lobbyEntry) return acknowledge(callback, { ok: false, error: 'This table does not support the unified start command.' });
     const destination = `${lobbyEntry[1].page}?game=${encodeURIComponent(room.code)}`;

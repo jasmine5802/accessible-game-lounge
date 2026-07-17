@@ -14,7 +14,7 @@ const GAME_HELP = {
   'Mall Madness': { how:'Move around the mall, visit stores on your private shopping list, manage cash, and complete the list before the other shoppers.', keys:'S presses the electronic director. Arrow Keys move. Enter swipes or uses an ATM. L reads the shopping list. C reports position. O reads opponents.' },
   'The Game of Life': { how:'Spin and follow the branching path through careers, family events, investments, and retirement. The player with the strongest final result wins.', keys:'S or Enter spins. C describes the current tile and card. H reports player statistics. Left and Right choose a path at a fork.' }
 };
-const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','waiting-table','table-summary','table-settings','waiting-players','host-instruction','leave-table','status','logout'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','waiting-table','waiting-title','table-summary','table-settings','waiting-players','host-instruction','status','logout'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
 let screen = 'auth';
 let gameIndex = 0;
 let tableIndex = 0;
@@ -67,19 +67,19 @@ function joinTable(id){ swipeSound(); socket.emit('join-game',{gameId:id},result
 function showWaiting(room){ currentRoom=room;sessionStorage.setItem('loungeGameId',room.id);elements.lobby.hidden=true;elements.tablePicker.hidden=true;elements.waitingTable.hidden=false;screen='waiting';updateWaiting(room);elements.waitingTable.focus({preventScroll:false}); }
 function updateWaiting(room){
   currentRoom=room;
-  elements.tableSummary.textContent=`${room.displayGame||selectedGame} table hosted by ${room.players.find(player=>player.id===room.hostId)?.name||'Host'}. ${room.players.length} of ${room.maxPlayers} players.`;
+  const hostName=room.players.find(player=>player.id===room.hostId)?.name||'Host';
+  elements.waitingTitle.textContent=`${room.displayGame||selectedGame} Table`;
+  elements.tableSummary.textContent=`Hosted by ${hostName}. ${room.players.length} of ${room.maxPlayers} players.`;
   elements.tableSettings.textContent=[room.monopolyEdition&&`Board: ${room.monopolyEdition}`,room.unoVariant&&`Rules: ${room.unoVariant}`,room.lifeTheme&&`Board: ${room.lifeTheme}`,room.dominoSet&&`${room.dominoSet}, ${room.dominoMode}`].filter(Boolean).join('. ');
   elements.waitingPlayers.replaceChildren(...room.players.map(player=>{const li=document.createElement('li');li.textContent=`${player.name}${player.id===room.hostId?' (host)':''}${player.connected?'':' (reconnecting)'}`;return li;}));
   const amHost=room.players.find(player=>player.id===room.hostId)?.name===myUsername;
-  elements.hostInstruction.textContent=amHost?'When at least two players are here, press Enter to take everyone into the game setup.':'Waiting for the host to take everyone into the game setup.';
-  announce(`${room.players.length} of ${room.maxPlayers} players at the table. ${elements.hostInstruction.textContent}`);
+  elements.hostInstruction.textContent=amHost?'Press Enter to continue to game setup. Press Escape to leave the table.':`Waiting for ${hostName} to continue to game setup. Press Escape to leave the table.`;
 }
 function startTable(){ if(!currentRoom)return;const amHost=currentRoom.players.find(player=>player.id===currentRoom.hostId)?.name===myUsername;if(!amHost)return announce('Waiting for the host to start.');swipeSound();socket.emit('start-game',{},result=>{if(!result.ok){announce(result.error);tone(150,audio().currentTime,.25,.12,'sawtooth');}}); }
 function enterLobby(result){ myUsername=result.username;sessionStorage.setItem('loungeUsername',myUsername);if(result.token)sessionStorage.setItem('loungeSessionToken',result.token);elements.password.value='';elements.authScreen.hidden=true;elements.lobby.hidden=false;screen='games';gameIndex=0;renderGames();announce(`Welcome, ${myUsername}. Duck's Race selected. Use Up and Down Arrow to choose a game, then press Enter.`); }
 
 elements.authForm.addEventListener('submit',event=>{event.preventDefault();const action=event.submitter?.dataset.action||'login';elements.authStatus.textContent=action==='register'?'Registering.':'Logging in.';socket.emit(action,{username:elements.username.value,password:elements.password.value},result=>{if(result.ok)enterLobby(result);else elements.authStatus.textContent=result.error;});});
 function returnToGameList(){if(currentRoom)socket.emit('leave-room');sessionStorage.removeItem('loungeGameId');currentRoom=null;elements.waitingTable.hidden=true;elements.tablePicker.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex,false);announce('Returned to the main game list.');}
-elements.leaveTable.addEventListener('click',returnToGameList);
 elements.logout.addEventListener('click',()=>{sessionStorage.clear();socket.emit('logout',{},()=>location.reload());});
 document.addEventListener('keydown',event=>{
   if(['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName))return;
@@ -89,7 +89,7 @@ document.addEventListener('keydown',event=>{
   if(event.key==='Enter'){
     if(screen==='games'){event.preventDefault();chooseGame(GAME_TITLES[gameIndex]);}
     else if(screen==='tables'){event.preventDefault();selectedOption(elements.tableMenu,tableIndex)?.click();}
-    else if(screen==='waiting'&&event.target!==elements.leaveTable){event.preventDefault();startTable();}
+    else if(screen==='waiting'){event.preventDefault();startTable();}
   }
   if(event.key==='Escape'&&screen==='tables'){event.preventDefault();elements.tablePicker.hidden=true;elements.lobby.hidden=false;screen='games';setSelection(elements.gameMenu,gameIndex);}
   else if(event.key==='Escape'&&screen==='waiting'){event.preventDefault();returnToGameList();}
