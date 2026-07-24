@@ -31,7 +31,7 @@ const once = (socket, event) => new Promise((resolve, reject) => {
   ]);
   if (registered.some(result => !result.ok)) throw new Error(`Registration failed: ${JSON.stringify(registered)}`);
   const games = [
-    ["Duck's Race", '/ducks-race.html'],
+    ['Duck Race', '/ducks-race.html'],
     ['Monopoly', '/monopoly.html'], ['Classic UNO', '/uno.html'], ['UNO Flip', '/uno.html'], ['DOS', '/uno.html'], ["UNO Show 'Em No Mercy", '/uno.html'], ['UNO Attack', '/uno.html'], ['Horse Race', '/horserace.html'],
     ['Dominoes', '/dominoes.html'], ['Skip-Bo', '/skipbo.html'], ['Mall Madness', '/mallmadness.html'],
     ['The Game of Life', '/life.html']
@@ -59,7 +59,7 @@ const once = (socket, event) => new Promise((resolve, reject) => {
   }
   let lastRoomId;
   for (const [game, page] of games) {
-    const categories = { "Duck's Race":'ducks-race', Monopoly:'monopoly', 'Classic UNO':'uno-classic', 'UNO Flip':'uno-flip', DOS:'uno-dos', "UNO Show 'Em No Mercy":'uno-no-mercy', 'UNO Attack':'uno-attack', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
+    const categories = { 'Duck Race':'ducks-race', Monopoly:'monopoly', 'Classic UNO':'uno-classic', 'UNO Flip':'uno-flip', DOS:'uno-dos', "UNO Show 'Em No Mercy":'uno-no-mercy', 'UNO Attack':'uno-attack', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
     const filtered = await call(guest, 'get-game-tables', { category: categories[game] });
     if (!filtered.ok || filtered.tables.some(table => table.displayGame !== game)) throw new Error(`${game} table filtering failed.`);
     const unoVariants = { 'Classic UNO':'Classic Uno', 'UNO Flip':'Uno Flip!', DOS:'Uno Dos', "UNO Show 'Em No Mercy":"Show 'Em No Mercy", 'UNO Attack':'Uno Attack' };
@@ -84,7 +84,7 @@ const once = (socket, event) => new Promise((resolve, reject) => {
     const privatelyChatted=await call(host,'chat-message',{text:`Private ${game} message.`,recipientId:guestPlayer.id});
     const [guestPrivate,hostPrivate]=await Promise.all([privateAtGuest,privateAtHost]);
     if(!privatelyChatted.ok||!privatelyChatted.private||!guestPrivate.private||!hostPrivate.private||guestPrivate.text!==`Private ${game} message.`)throw new Error(`${game} private chat failed.`);
-    if(game==="Duck's Race"){
+    if(game==='Duck Race'){
       const hostOptions=await call(host,'set-game-options',{type:'Mandarin Duck',secondary:'Purple',startingCards:5,startingFeathers:8});
       const guestOptions=await call(guest,'set-game-options',{type:'Rubber Duck',secondary:'Yellow'});
       if(!hostOptions.ok||!guestOptions.ok)throw new Error('Duck race options failed.');
@@ -107,7 +107,7 @@ const once = (socket, event) => new Promise((resolve, reject) => {
     const started = await call(host, 'start-game', {});
     const launch = await startEvent;
     if (!started.ok || !launch.destination.startsWith(`${page}?game=`)) throw new Error(`${game} unified host start failed.`);
-    if(game==="Duck's Race"){
+    if(game==='Duck Race'){
       const race=await call(host,'start-ducks-race',{}),mine=race.game.players.find(player=>player.name===`Host${suffix}`),other=race.game.players.find(player=>player.name===`Guest${suffix}`);
       if(!race.ok||mine.duckType!=='Mandarin Duck'||mine.color!=='Purple'||mine.hand.length!==5||mine.feathers!==8||other.duckType!=='Rubber Duck')throw new Error('Duck appearance or race settings were not applied.');
     }

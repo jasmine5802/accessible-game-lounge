@@ -83,7 +83,7 @@ app.use(express.static(__dirname, { index: false }));
 app.get('/', (_request, response) => response.sendFile(path.join(__dirname, 'lobby.html')));
 
 const LOBBY_GAMES = Object.freeze({
-  "Duck's Race": { serverName: "Duck's Race", category: 'ducks-race', maxPlayers: 6, page: '/ducks-race.html' },
+  'Duck Race': { serverName: 'Duck Race', category: 'ducks-race', maxPlayers: 6, page: '/ducks-race.html' },
   Monopoly: { serverName: 'Monopoly Multi-Edition', category: 'monopoly', maxPlayers: 6, page: '/monopoly.html' },
   'Classic UNO': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-classic', maxPlayers: 4, page: '/uno.html', unoVariant: 'Classic Uno' },
   'UNO Flip': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-flip', maxPlayers: 4, page: '/uno.html', unoVariant: 'Uno Flip!' },
@@ -282,7 +282,7 @@ function beginDucksRace(room) {
   const firstName = room.players.get(turnOrder[0])?.name || 'the first player';
   room.ducksRace = {
     status: 'playing', turnOrder, turnIndex: 0, ducks, winnerId: null, sequence: 1,
-    announcement: `Duck's Race has started. ${firstName} goes first. Press Enter to roll.`
+    announcement: `Duck Race has started. ${firstName} goes first. Press Enter to roll.`
   };
 }
 
@@ -463,7 +463,7 @@ io.on('connection', (socket) => {
     if(!room||!expected||data.secret!==expected)return acknowledge(callback,{ok:false,error:'Computer player authorization failed.'});
     const playerId=`computer-${code.toLowerCase()}`;socket.data.playerId=playerId;socket.data.username='Computer Player';socket.data.isComputer=true;joinSocketToRoom(socket,room,playerId,'Computer Player');computerSecrets.delete(code);
     if(room.game==='Monopoly Multi-Edition'){const taken=new Set([...room.monopolyTokens.values()].map(token=>token.id)),token=(MonopolyBoards.tokens[room.monopolyEdition]||[]).find(item=>!taken.has(item.id));if(token)room.monopolyTokens.set(playerId,{...token})}
-    if(room.game==="Duck's Race")room.raceSelections.set(playerId,{type:'Rubber Duck',color:'Yellow'});
+    if(room.game==='Duck Race')room.raceSelections.set(playerId,{type:'Rubber Duck',color:'Yellow'});
     if(room.game==='Horse Race')room.raceSelections.set(playerId,{type:'Miniature Horse',color:'Palomino'});
     io.to(code).emit('lobby-updated',publicRoom(room));broadcastGames();acknowledge(callback,{ok:true,playerId,room:publicRoom(room)});
   });
@@ -541,7 +541,7 @@ io.on('connection', (socket) => {
     const categoryEntry = Object.entries(LOBBY_GAMES).find(([, definition]) => definition.category === requestedCategory);
     const requestedDisplayGame = categoryEntry?.[0] || String(data.displayGame || '').trim();
     const lobbyDefinition = LOBBY_GAMES[requestedDisplayGame];
-    const requestedGame = lobbyDefinition?.serverName || String(data.game || "Duck's Race").slice(0, 40);
+    const requestedGame = lobbyDefinition?.serverName || String(data.game || 'Duck Race').slice(0, 40);
     const edition = MonopolyBoards.editions.includes(data.edition) ? data.edition : 'Classic';
     const unoVariant=UnoRules.VARIANTS.includes(data.unoVariant)?data.unoVariant:(lobbyDefinition?.unoVariant || 'Classic Uno');
     const lifeTheme=LifeThemes.themes.includes(data.lifeTheme)?data.lifeTheme:'Classic 1960';
@@ -626,7 +626,7 @@ io.on('connection', (socket) => {
   socket.on('start-ducks-race', (_data, callback) => {
     const room = roomForPlayer(socket, callback);
     if (!room) return;
-    if (room.game !== "Duck's Race") return acknowledge(callback, { ok: false, error: "This room is not set to Duck's Race." });
+    if (room.game !== 'Duck Race') return acknowledge(callback, { ok: false, error: 'This room is not set to Duck Race.' });
     if (room.hostId !== socket.data.playerId) return acknowledge(callback, { ok: false, error: 'Only the host can start the race.' });
     beginDucksRace(room);
     emitDuckState(room, { type: 'card', square: 1 });
@@ -881,9 +881,9 @@ io.on('connection', (socket) => {
     if (duck.distance >= BOARD_SIZE) {
       game.status = 'finished';
       game.winnerId = playerId;
-      const winStory = ` ${duck.name} completed the loop and wins Duck's Race!`;
+      const winStory = ` ${duck.name} completed the loop and wins Duck Race!`;
       announcement += winStory;
-      localAnnouncement += ` You completed the loop and won Duck's Race!`;
+      localAnnouncement += ` You completed the loop and won Duck Race!`;
       cue.localAnnouncement = localAnnouncement;
     }
 
@@ -980,9 +980,9 @@ io.on('connection', (socket) => {
     const duckTypes=['Mallard','Rubber Duck','Wood Duck','Mandarin Duck','Pekin Duck','Muscovy Duck','Duckling'];
     const horseTypes=['Miniature Horse','Shetland Pony','Miniature Appaloosa','Full-size Thoroughbred','Full-size Arabian','Full-size Quarter Horse','Full-size Clydesdale'];
     const colors=['Black','White','Gray','Brown','Chestnut','Bay','Palomino','Pinto','Blue','Green','Yellow','Red','Purple','Pink','Orange','Green and brown'];
-    if(room.game==="Duck's Race"||room.game==='Horse Race'){
-      const allowedTypes=room.game==="Duck's Race"?duckTypes:horseTypes,type=allowedTypes.includes(data.type)?data.type:allowedTypes[0],color=colors.includes(data.secondary)?data.secondary:colors[0];room.raceSelections.set(socket.data.playerId,{type,color});
-      if(room.hostId===socket.data.playerId){if([2,3,5].includes(Number(data.startingCards)))room.raceSettings.startingCards=Number(data.startingCards);if(room.game==="Duck's Race"&&[3,5,8].includes(Number(data.startingFeathers)))room.raceSettings.startingFeathers=Number(data.startingFeathers);}
+    if(room.game==='Duck Race'||room.game==='Horse Race'){
+      const allowedTypes=room.game==='Duck Race'?duckTypes:horseTypes,type=allowedTypes.includes(data.type)?data.type:allowedTypes[0],color=colors.includes(data.secondary)?data.secondary:colors[0];room.raceSelections.set(socket.data.playerId,{type,color});
+      if(room.hostId===socket.data.playerId){if([2,3,5].includes(Number(data.startingCards)))room.raceSettings.startingCards=Number(data.startingCards);if(room.game==='Duck Race'&&[3,5,8].includes(Number(data.startingFeathers)))room.raceSettings.startingFeathers=Number(data.startingFeathers);}
     }else if(room.game==='Monopoly Multi-Edition'){
       if(room.hostId===socket.data.playerId&&MonopolyBoards.editions.includes(data.type)&&room.monopolyEdition!==data.type){room.monopolyEdition=data.type;room.monopolyTokens.clear();}
       const tokens=MonopolyBoards.tokens[room.monopolyEdition]||[],selected=tokens.find(token=>token.name===data.secondary)||tokens[0],taken=[...room.monopolyTokens.entries()].some(([id,token])=>id!==socket.data.playerId&&token.id===selected.id);if(taken)return acknowledge(callback,{ok:false,error:`${selected.name} is already selected. Choose another token.`});room.monopolyTokens.set(socket.data.playerId,{...selected});
