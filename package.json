@@ -1,6 +1,6 @@
 {
   "name": "accessible-game-lounge",
-  "version": "1.0.0",
+  "version": "1.0.15",
   "description": "Playroom style accessible multiplayer game lounge",
   "main": "main.js",
   "scripts": {
@@ -8,6 +8,7 @@
     "start:server": "node server.js",
     "test:uno": "node uno-rules.test.js",
     "test:lobby": "node lobby-flow.test.js",
+    "test:computer": "node computer-player.test.js",
     "dev": "node server.js",
     "package-win": "electron-packager . AccessibleGameLounge --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/node_modules\\.pre-npm-install($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/users\\.json(?:\\.tmp)?$\"",
     "build-installer": "electron-builder --win"
@@ -31,6 +32,7 @@
     "electron-packager": "^17.1.2"
   },
   "build": {
+    "asar": false,
     "appId": "com.jazzyjay.accessiblegamelounge",
     "productName": "Jazzy Jay's Accessible Game Lounge",
     "directories": {
@@ -43,19 +45,18 @@
       "!users.json.tmp",
       "!node_modules.pre-npm-install/**",
       "!dist/**",
-      "!installer-dist/**"
+      "!installer-dist/**",
+      "!installer-dist-*/**",
+      "!installer-final-*/**"
+      ,"!electron-base-*/**"
     ],
     "win": {
       "target": "nsis"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Accessible Game Lounge",
-      "uninstallDisplayName": "Jazzy Jay's Accessible Game Lounge",
-      "deleteAppDataOnUninstall": false
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true
     }
   },
   "engines": {

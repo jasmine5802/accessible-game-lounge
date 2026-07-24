@@ -52,7 +52,7 @@ function renderBoard() {
     for (const player of game?.players.filter(candidate => candidate.square === square) || []) {
       const duck = document.createElement('span');
       duck.className = 'duck';
-      duck.textContent = player.name;
+      duck.textContent = `${player.name}, ${player.color} ${player.duckType}`;
       item.append(duck);
     }
     item.addEventListener('focus', () => { boardIndex = index; announcePolite(squareDescription(square)); });
@@ -64,7 +64,7 @@ function renderPlayers() {
   elements.players.replaceChildren(...(game?.players || []).map(player => {
     const item = document.createElement('li');
     const turn = player.id === game.turnPlayerId ? ', current turn' : '';
-    item.textContent = `${player.name}: square ${player.square}, ${player.feathers} feathers${player.shielded ? ', shield active' : ''}${turn}${player.connected ? '' : ', reconnecting'}`;
+    item.textContent = `${player.name}: ${player.color} ${player.duckType}, square ${player.square}, ${player.feathers} feathers${player.shielded ? ', shield active' : ''}${turn}${player.connected ? '' : ', reconnecting'}`;
     return item;
   }));
 }
@@ -258,8 +258,8 @@ function connectToGame() {
       room = result.room;
       sessionStorage.setItem('loungeGameId', room.id);
       elements.connection.textContent = `Connected to ${room.game} as ${authResult.username}.`;
-      if (room.game !== "Duck Race") {
-        elements.connection.textContent = `This game is ${room.game}, not Duck Race.`; return;
+      if (room.game !== "Duck's Race") {
+        elements.connection.textContent = `This game is ${room.game}, not Duck's Race.`; return;
       }
       if (room.ducksRace) receiveState({ game: room.ducksRace, cue: null });
       else {

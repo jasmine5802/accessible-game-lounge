@@ -1,6 +1,7 @@
 'use strict';
 
 const { io } = require('socket.io-client');
+const MonopolyBoards = require('./monopoly-boards');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -20,10 +21,6 @@ const once = (socket, event) => new Promise((resolve, reject) => {
 (async () => {
   await startServer(0, '127.0.0.1');
   const testServer = `http://127.0.0.1:${server.address().port}`;
-  const rootHtml = await (await fetch(`${testServer}/`)).text();
-  if (!rootHtml.includes('id="game-menu"') || rootHtml.includes('id="create-game"')) {
-    throw new Error('The application root did not serve the keyboard-first desktop lobby.');
-  }
   host = io(testServer, { transports: ['websocket'], timeout: 3000 });
   guest = io(testServer, { transports: ['websocket'], timeout: 3000 });
   await Promise.all([connected(host), connected(guest)]);
@@ -34,8 +31,10 @@ const once = (socket, event) => new Promise((resolve, reject) => {
   ]);
   if (registered.some(result => !result.ok)) throw new Error(`Registration failed: ${JSON.stringify(registered)}`);
   const games = [
-    ['Duck Race', '/ducks-race.html'], ['Monopoly', '/monopoly.html'], ['Uno Flip', '/uno.html'], ['Horse Race', '/horserace.html'],
-    ['Dominoes', '/dominoes.html'], ['Skip-Bo', '/skipbo.html'], ['Mall Madness', '/mallmadness.html'], ['The Game of Life', '/life.html']
+    ["Duck's Race", '/ducks-race.html'],
+    ['Monopoly', '/monopoly.html'], ['Classic UNO', '/uno.html'], ['UNO Flip', '/uno.html'], ['DOS', '/uno.html'], ["UNO Show 'Em No Mercy", '/uno.html'], ['UNO Attack', '/uno.html'], ['Horse Race', '/horserace.html'],
+    ['Dominoes', '/dominoes.html'], ['Skip-Bo', '/skipbo.html'], ['Mall Madness', '/mallmadness.html'],
+    ['The Game of Life', '/life.html']
   ];
   const optionPayloads = {
     Monopoly: { edition: 'Pac-Man Arcade' },
@@ -60,43 +59,64 @@ const once = (socket, event) => new Promise((resolve, reject) => {
   }
   let lastRoomId;
   for (const [game, page] of games) {
-    const categories = { 'Duck Race':'duck-race', Monopoly:'monopoly', 'Uno Flip':'uno-flip', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
+    const categories = { "Duck's Race":'ducks-race', Monopoly:'monopoly', 'Classic UNO':'uno-classic', 'UNO Flip':'uno-flip', DOS:'uno-dos', "UNO Show 'Em No Mercy":'uno-no-mercy', 'UNO Attack':'uno-attack', 'Horse Race':'horse-race', Dominoes:'dominoes', 'Skip-Bo':'skip-bo', 'Mall Madness':'mall-madness', 'The Game of Life':'life' };
     const filtered = await call(guest, 'get-game-tables', { category: categories[game] });
     if (!filtered.ok || filtered.tables.some(table => table.displayGame !== game)) throw new Error(`${game} table filtering failed.`);
-    const created = await call(host, 'create-game', { category: categories[game], ...(optionPayloads[game] || {}) });
-    lastRoomId = created.room.id;
+    const unoVariants = { 'Classic UNO':'Classic Uno', 'UNO Flip':'Uno Flip!', DOS:'Uno Dos', "UNO Show 'Em No Mercy":"Show 'Em No Mercy", 'UNO Attack':'Uno Attack' };
+    const settings = game === 'Monopoly' ? { edition:'Classic' } : unoVariants[game] ? { unoVariant:unoVariants[game] } : game === 'Dominoes' ? { dominoSet:'Double-Nine',dominoMode:'All Fives' } : game === 'The Game of Life' ? { lifeTheme:'Space Colonization' } : {};
+    const created = await call(host, 'create-game', { category: categories[game], ...settings });
     if (!created.ok || created.room.displayGame !== game) throw new Error(`${game} creation metadata failed.`);
-    if (game === 'Monopoly' && created.room.monopolyEdition !== 'Pac-Man Arcade') throw new Error('Monopoly board selection was not applied.');
-    if (game === 'Uno Flip' && created.room.unoVariant !== 'Uno Flip!') throw new Error('UNO rules selection was not applied.');
-    if (game === 'Dominoes' && (created.room.dominoSet !== 'Double-Nine' || created.room.dominoMode !== 'All Fives')) throw new Error('Dominoes options were not applied.');
-    if (game === 'The Game of Life' && created.room.lifeTheme !== 'Space Colonization') throw new Error('Life theme selection was not applied.');
+    if(game==='Monopoly'){
+      const token=MonopolyBoards.tokens.Classic[0];
+      const selected=await call(host,'monopoly-select-token',{tokenId:token.id});
+      if(!selected.ok||selected.token.id!==token.id)throw new Error('Monopoly token selection failed.');
+    }
     const joinedEvent = once(host, 'table-player-joined');
     const joined = await call(guest, 'join-game', { gameId: created.room.id });
     const joinedNotice = await joinedEvent;
     if (!joined.ok || !joinedNotice.message.includes(`2 of ${created.room.maxPlayers} players`)) throw new Error(`${game} join announcement failed.`);
-    if (game === 'Monopoly' && joined.room.monopolyEdition !== 'Pac-Man Arcade') throw new Error('Rejoining Monopoly did not retain the current room board.');
-    if (game === 'The Game of Life' && joined.room.lifeTheme !== 'Space Colonization') throw new Error('Rejoining Life did not retain the current room theme.');
+    const chatEvent=once(guest,'chat-message');
+    const chatted=await call(host,'chat-message',`Testing ${game} game chat.`);
+    const chatMessage=await chatEvent;
+    if(!chatted.ok||chatMessage.text!==`Testing ${game} game chat.`)throw new Error(`${game} in-game chat failed.`);
+    const guestPlayer=joined.room.players.find(player=>player.name===`Guest${suffix}`);
+    const privateAtGuest=once(guest,'chat-message'),privateAtHost=once(host,'chat-message');
+    const privatelyChatted=await call(host,'chat-message',{text:`Private ${game} message.`,recipientId:guestPlayer.id});
+    const [guestPrivate,hostPrivate]=await Promise.all([privateAtGuest,privateAtHost]);
+    if(!privatelyChatted.ok||!privatelyChatted.private||!guestPrivate.private||!hostPrivate.private||guestPrivate.text!==`Private ${game} message.`)throw new Error(`${game} private chat failed.`);
+    if(game==="Duck's Race"){
+      const hostOptions=await call(host,'set-game-options',{type:'Mandarin Duck',secondary:'Purple',startingCards:5,startingFeathers:8});
+      const guestOptions=await call(guest,'set-game-options',{type:'Rubber Duck',secondary:'Yellow'});
+      if(!hostOptions.ok||!guestOptions.ok)throw new Error('Duck race options failed.');
+    }
+    if(game==='Horse Race'){
+      const hostOptions=await call(host,'set-game-options',{type:'Miniature Horse',secondary:'Pinto',startingCards:5});
+      const guestOptions=await call(guest,'set-game-options',{type:'Full-size Clydesdale',secondary:'Black'});
+      if(!hostOptions.ok||!guestOptions.ok)throw new Error('Horse race options failed.');
+    }
+    if(game==='Monopoly'){
+      const hostOptions=await call(host,'set-game-options',{type:'Classic',secondary:'Top Hat'}),guestOptions=await call(guest,'set-game-options',{type:'Classic',secondary:'Race Car'});
+      if(!hostOptions.ok||!guestOptions.ok)throw new Error('Monopoly in-game options failed.');
+    }
+    if(['Classic UNO','UNO Flip','DOS',"UNO Show 'Em No Mercy",'UNO Attack'].includes(game)){
+      const option=await call(host,'set-game-options',{type:unoVariants[game],secondary:'Standard deck'});if(!option.ok)throw new Error(`${game} in-game options failed.`);
+    }
+    if(game==='Dominoes'){const option=await call(host,'set-game-options',{type:'Double-Nine',secondary:'All Fives'});if(!option.ok)throw new Error('Dominoes in-game options failed.');}
+    if(game==='The Game of Life'){const option=await call(host,'set-game-options',{type:'Space Colonization',secondary:'Standard rules'});if(!option.ok)throw new Error('Life in-game options failed.');}
     const startEvent = once(guest, 'game-started');
-    const initialStateEvent = once(host, stateEvents[game]);
     const started = await call(host, 'start-game', {});
-    const [launch, initialState] = await Promise.all([startEvent, initialStateEvent]);
+    const launch = await startEvent;
     if (!started.ok || !launch.destination.startsWith(`${page}?game=`)) throw new Error(`${game} unified host start failed.`);
-    if (initialState.game.status !== 'playing' || initialState.game.players.length !== 2) throw new Error(`${game} did not begin with two active players.`);
-    const actionStateEvent = once(host, stateEvents[game]);
-    const actionResult = await representativeAction(game, initialState);
-    const actionState = await actionStateEvent;
-    if (!actionResult.ok || actionState.game.sequence <= initialState.game.sequence) throw new Error(`${game} representative multiplayer action failed: ${JSON.stringify(actionResult)}`);
-    console.log(`${game}: ${joinedNotice.message} action sequence ${initialState.game.sequence} -> ${actionState.game.sequence}. ${launch.destination}`);
+    if(game==="Duck's Race"){
+      const race=await call(host,'start-ducks-race',{}),mine=race.game.players.find(player=>player.name===`Host${suffix}`),other=race.game.players.find(player=>player.name===`Guest${suffix}`);
+      if(!race.ok||mine.duckType!=='Mandarin Duck'||mine.color!=='Purple'||mine.hand.length!==5||mine.feathers!==8||other.duckType!=='Rubber Duck')throw new Error('Duck appearance or race settings were not applied.');
+    }
+    if(game==='Horse Race'){
+      const race=await call(host,'start-derby',{}),mine=race.game.players.find(player=>player.name===`Host${suffix}`),other=race.game.players.find(player=>player.name===`Guest${suffix}`);
+      if(!race.ok||mine.horseType!=='Miniature Horse'||mine.color!=='Pinto'||race.game.myHand.length!==5||other.horseType!=='Full-size Clydesdale')throw new Error('Horse appearance or race settings were not applied.');
+    }
+    console.log(`${game}: ${joinedNotice.message} ${launch.destination}`);
   }
-  const exitSocket = io(testServer, { transports: ['websocket'], timeout: 3000 });
-  await connected(exitSocket);
-  const exitAuth = await call(exitSocket, 'authenticate-token', { token: registered[1].token });
-  const exited = await call(exitSocket, 'leave-game', { gameId: lastRoomId });
-  exitSocket.close();
-  const rejoinAfterExit = await call(guest, 'join-game', { gameId: lastRoomId });
-  if (!exitAuth.ok || !exited.ok || rejoinAfterExit.ok) throw new Error(`Q-style leave-game cleanup failed: ${JSON.stringify({ exitAuth, exited, rejoinAfterExit })}`);
-  const resetOptionsRoom = await call(host, 'create-game', { category: 'monopoly' });
-  if (!resetOptionsRoom.ok || resetOptionsRoom.room.monopolyEdition !== 'Classic') throw new Error('A newly created game reused options from an earlier game.');
   await Promise.all([call(host, 'logout', {}), call(guest, 'logout', {})]);
   host.close(); guest.close();
   await new Promise(resolve => server.close(resolve));

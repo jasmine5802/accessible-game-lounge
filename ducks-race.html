@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Duck Race | Accessible Game Lounge</title>
+  <title>Duck's Race | Accessible Game Lounge</title>
   <script defer src="/game-chat.js"></script>
   <style>
     :root { color-scheme: dark; --bg: #07131b; --panel: #102836; --text: #fff; --yellow: #ffe34f; --focus: #65d9ff; --trap: #9b2948; }
@@ -47,7 +47,7 @@
 <body>
   <a class="skip-link" href="#game">Skip to game controls</a>
   <header>
-    <h1>Duck Race</h1>
+    <h1>Duck's Race</h1>
     <p><a href="/">Return to lobby</a> · Enter: roll or play selected card · Up/Down: cycle cards · C: cards · F: feathers · Left/Right: explore board</p>
   </header>
   <main id="game" tabindex="-1">
@@ -57,7 +57,7 @@
     <section class="panel" aria-labelledby="controls-title">
       <h2 id="controls-title">Turn controls</h2>
       <div class="toolbar">
-        <button id="start" type="button" hidden>Start Duck Race</button>
+        <button id="start" type="button" hidden>Start Duck's Race</button>
         <button id="roll" type="button" disabled>Roll Dice (Enter)</button>
         <button id="show-cards" type="button" aria-expanded="false" aria-controls="cards-panel">View Cards (C)</button>
         <button id="feathers" type="button">Check Feathers (F)</button>
@@ -85,13 +85,12 @@
     <section aria-labelledby="board-title">
       <h2 id="board-title">40-square race loop</h2>
       <p id="board-help">Focus the board, then use Left or Right Arrow to hear each space’s name, effect, and occupants. Up and Down Arrow cycle through your cards.</p>
-      <ol id="board" aria-describedby="board-help" aria-label="Duck Race board"></ol>
+      <ol id="board" aria-describedby="board-help" aria-label="Duck's Race board"></ol>
     </section>
     <div id="polite-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   </main>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="lounge-accessibility.js"></script>
   <script src="audio.js"></script>
-  <script src="ducks-race.js"></script>
+  <script src="ducks-race.js"></script><script src="game-help.js"></script>
 </body>
 </html>
