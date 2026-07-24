@@ -76,16 +76,18 @@ app.use((request, response, next) => {
   if (/^\/users\.json(?:\.tmp)?$/i.test(requestedPath)) return response.sendStatus(404);
   next();
 });
-app.use(express.static(__dirname));
 app.get('/', (_request, response) => response.sendFile(path.join(__dirname, 'lobby.html')));
+app.use(express.static(__dirname));
 
 const LOBBY_GAMES = Object.freeze({
+  'Duck Race': { serverName: 'Duck Race', category: 'duck-race', maxPlayers: 6, page: '/ducks-race.html' },
   Monopoly: { serverName: 'Monopoly Multi-Edition', category: 'monopoly', maxPlayers: 6, page: '/monopoly.html' },
   'Uno Flip': { serverName: 'Accessible Uno & Dos Lounge', category: 'uno-flip', maxPlayers: 4, page: '/uno.html' },
   'Horse Race': { serverName: 'Horse Race', category: 'horse-race', maxPlayers: 6, page: '/horserace.html' },
   Dominoes: { serverName: 'Accessible Dominoes Lounge', category: 'dominoes', maxPlayers: 4, page: '/dominoes.html' },
   'Skip-Bo': { serverName: 'Accessible Skip-Bo Lounge', category: 'skip-bo', maxPlayers: 6, page: '/skipbo.html' },
-  'Mall Madness': { serverName: 'Accessible Mall Madness Lounge', category: 'mall-madness', maxPlayers: 4, page: '/mallmadness.html' }
+  'Mall Madness': { serverName: 'Accessible Mall Madness Lounge', category: 'mall-madness', maxPlayers: 4, page: '/mallmadness.html' },
+  'The Game of Life': { serverName: 'The Game of Life Lounge', category: 'life', maxPlayers: 6, page: '/life.html' }
 });
 
 function lobbyGameForServerName(serverName) {
@@ -269,7 +271,7 @@ function beginDucksRace(room) {
   const firstName = room.players.get(turnOrder[0])?.name || 'the first player';
   room.ducksRace = {
     status: 'playing', turnOrder, turnIndex: 0, ducks, winnerId: null, sequence: 1,
-    announcement: `Duck's Race has started. ${firstName} goes first. Press Enter to roll.`
+    announcement: `Duck Race has started. ${firstName} goes first. Press Enter to roll.`
   };
 }
 
@@ -500,6 +502,19 @@ io.on('connection', (socket) => {
     acknowledge(callback, { ok: true });
   });
 
+  socket.on('leave-game', (data = {}, callback) => {
+    if (!requireAuthentication(socket, callback)) return;
+    const requestedCode = String(data.gameId || '').trim().toUpperCase();
+    let leavingSocket = socket;
+    if (requestedCode && rooms.get(requestedCode)?.players.has(socket.data.playerId)) {
+      const activeSocketId = rooms.get(requestedCode).players.get(socket.data.playerId)?.socketId;
+      leavingSocket = io.sockets.sockets.get(activeSocketId) || socket;
+      leavingSocket.data.roomCode = requestedCode;
+    }
+    if (leavingSocket.data.roomCode) leaveCurrentRoom(leavingSocket, true);
+    acknowledge(callback, { ok: true });
+  });
+
   socket.on('create-game', (data = {}, callback) => {
     if (!requireAuthentication(socket, callback)) return;
     if (socket.data.roomCode) leaveCurrentRoom(socket, true);
@@ -509,7 +524,7 @@ io.on('connection', (socket) => {
     const categoryEntry = Object.entries(LOBBY_GAMES).find(([, definition]) => definition.category === requestedCategory);
     const requestedDisplayGame = categoryEntry?.[0] || String(data.displayGame || '').trim();
     const lobbyDefinition = LOBBY_GAMES[requestedDisplayGame];
-    const requestedGame = lobbyDefinition?.serverName || String(data.game || "Duck's Race").slice(0, 40);
+    const requestedGame = lobbyDefinition?.serverName || String(data.game || "Duck Race").slice(0, 40);
     const edition = MonopolyBoards.editions.includes(data.edition) ? data.edition : 'Classic';
     const unoVariant=UnoRules.VARIANTS.includes(data.unoVariant)?data.unoVariant:(requestedDisplayGame === 'Uno Flip' ? 'Uno Flip!' : 'Classic Uno');
     const lifeTheme=LifeThemes.themes.includes(data.lifeTheme)?data.lifeTheme:'Classic 1960';
@@ -528,6 +543,8 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return acknowledge(callback, { ok: false, error: 'That game is no longer available.' });
     const playerId = socket.data.playerId;
+    const roomStatus = room.mall?.status || room.skipbo?.status || room.dominoes?.status || room.derby?.status || room.life?.status || room.uno?.status || room.monopoly?.status || room.ducksRace?.status || 'waiting';
+    if (roomStatus === 'finished' && !room.players.has(playerId)) return acknowledge(callback, { ok: false, error: 'That game has finished.' });
     const lobbyEntry = lobbyGameForServerName(room.game);
     const maxPlayers = lobbyEntry?.[1].maxPlayers || 6;
     if (room.players.size >= maxPlayers && !room.players.has(playerId)) return acknowledge(callback, { ok: false, error: `That table is full. It supports ${maxPlayers} players.` });
@@ -587,11 +604,13 @@ io.on('connection', (socket) => {
     if (room.players.size < 2) return acknowledge(callback, { ok: false, error: 'At least two players are needed to start.' });
     const lobbyEntry = lobbyGameForServerName(room.game);
     if (!lobbyEntry) return acknowledge(callback, { ok: false, error: 'This table does not support the unified start command.' });
-    const alreadyStarted = room.mall?.status === 'playing' || room.skipbo?.status === 'playing' || room.dominoes?.status === 'playing' || room.derby?.status === 'playing' || room.uno?.status === 'playing' || room.monopoly?.status === 'playing';
+    const alreadyStarted = room.mall?.status === 'playing' || room.skipbo?.status === 'playing' || room.dominoes?.status === 'playing' || room.derby?.status === 'playing' || room.life?.status === 'playing' || room.uno?.status === 'playing' || room.monopoly?.status === 'playing' || room.ducksRace?.status === 'playing';
     if (alreadyStarted) return acknowledge(callback, { ok: false, error: 'This game has already started.' });
 
     let cue;
-    if (room.game === 'Monopoly Multi-Edition') {
+    if (room.game === 'Duck Race') {
+      beginDucksRace(room); emitDuckState(room, { type: 'card', square: 1 }); cue = 'horn';
+    } else if (room.game === 'Monopoly Multi-Edition') {
       const tokens = MonopolyBoards.tokens[room.monopolyEdition] || [];
       [...room.players.keys()].forEach((id, index) => { if (!room.monopolyTokens.get(id) && tokens[index]) room.monopolyTokens.set(id, { ...tokens[index] }); });
       beginMonopoly(room); emitMonopolyState(room); cue = 'horn';
@@ -605,6 +624,8 @@ io.on('connection', (socket) => {
       beginSkipBo(room); emitSkipBoState(room, { type: 'draw' }); cue = 'deal';
     } else if (room.game === 'Accessible Mall Madness Lounge') {
       beginMall(room); emitMallState(room, { type: 'pa' }); cue = 'horn';
+    } else if (room.game === 'The Game of Life Lounge') {
+      beginLife(room); emitLifeState(room, { type: 'career' }); cue = 'horn';
     }
     const destination = `${lobbyEntry[1].page}?game=${encodeURIComponent(room.code)}`;
     io.to(room.code).emit('game-started', { game: lobbyEntry[0], destination, cue, message: `${lobbyEntry[0]} is starting.` });
@@ -615,7 +636,7 @@ io.on('connection', (socket) => {
   socket.on('start-ducks-race', (_data, callback) => {
     const room = roomForPlayer(socket, callback);
     if (!room) return;
-    if (room.game !== "Duck's Race") return acknowledge(callback, { ok: false, error: "This room is not set to Duck's Race." });
+    if (room.game !== "Duck Race") return acknowledge(callback, { ok: false, error: "This room is not set to Duck Race." });
     if (room.hostId !== socket.data.playerId) return acknowledge(callback, { ok: false, error: 'Only the host can start the race.' });
     beginDucksRace(room);
     emitDuckState(room, { type: 'card', square: 1 });
@@ -870,9 +891,9 @@ io.on('connection', (socket) => {
     if (duck.distance >= BOARD_SIZE) {
       game.status = 'finished';
       game.winnerId = playerId;
-      const winStory = ` ${duck.name} completed the loop and wins Duck's Race!`;
+      const winStory = ` ${duck.name} completed the loop and wins Duck Race!`;
       announcement += winStory;
-      localAnnouncement += ` You completed the loop and won Duck's Race!`;
+      localAnnouncement += ` You completed the loop and won Duck Race!`;
       cue.localAnnouncement = localAnnouncement;
     }
 

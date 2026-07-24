@@ -1,5 +1,5 @@
 'use strict';
-const socket=io("https://accessible-game-lounge.onrender.com"),gameId=new URLSearchParams(location.search).get('game')||sessionStorage.getItem('loungeGameId'),token=sessionStorage.getItem('loungeSessionToken'),username=sessionStorage.getItem('loungeUsername');
+const socket=io(),gameId=new URLSearchParams(location.search).get('game')||sessionStorage.getItem('loungeGameId'),token=sessionStorage.getItem('loungeSessionToken'),username=sessionStorage.getItem('loungeUsername');
 const $=id=>document.getElementById(id),el={connection:$('connection'),announcement:$('announcement'),live:$('live'),start:$('start'),act:$('act'),uno:$('declare-uno'),dos:$('declare-dos'),centerReport:$('center-report'),handReport:$('hand-report'),scoreReport:$('score-report'),voice:$('voice'),wild:$('wild-color'),centerChoice:$('center-choice'),turn:$('turn-status'),center:$('center'),players:$('players'),hand:$('hand')};
 let room=null,game=null,playerId=null,selected=0,marked=new Set(),lastSequence=0;
 const symbols={Red:'●',Yellow:'▲',Green:'■',Blue:'◆',Pink:'♥',Teal:'⬟',Orange:'⬢',Purple:'✦',Wild:'★'};

@@ -2,6 +2,8 @@
 
 const { app, BrowserWindow, dialog } = require('electron');
 
+const PRODUCTION_SERVER_URL = 'https://accessible-game-lounge.onrender.com/';
+
 let mainWindow;
 
 function configuredServerUrl() {
@@ -21,6 +23,10 @@ function configuredServerUrl() {
 
 async function createWindow() {
   let loungeUrl = configuredServerUrl();
+  if (!loungeUrl && app.isPackaged) {
+    loungeUrl = PRODUCTION_SERVER_URL;
+  }
+
   if (!loungeUrl) {
     process.env.LOUNGE_DATA_DIR = app.getPath('userData');
     const { startServer } = require('./server');

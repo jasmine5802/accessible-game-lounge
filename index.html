@@ -74,7 +74,7 @@
         <h2 id="create-title">Create a game</h2>
         <form id="create-form">
           <label for="game-choice">Game</label>
-          <select id="game-choice" name="game"><option>Duck's Race</option><option>Horse Race</option><option>Accessible Dominoes Lounge</option><option>Accessible Skip-Bo Lounge</option><option>Accessible Mall Madness Lounge</option><option>Monopoly Multi-Edition</option><option>Accessible Uno &amp; Dos Lounge</option><option>The Game of Life Lounge</option></select>
+          <select id="game-choice" name="game"><option>Duck Race</option><option>Horse Race</option><option>Accessible Dominoes Lounge</option><option>Accessible Skip-Bo Lounge</option><option>Accessible Mall Madness Lounge</option><option>Monopoly Multi-Edition</option><option>Accessible Uno &amp; Dos Lounge</option><option>The Game of Life Lounge</option></select>
           <div id="edition-fields" hidden>
             <label for="edition-choice">Edition</label>
             <select id="edition-choice" name="edition" aria-describedby="edition-help">
@@ -141,7 +141,7 @@
             <label for="domino-mode">Game mode</label><select id="domino-mode" name="dominoMode"><option>Draw Game</option><option>Block Game</option><option>All Fives</option></select>
             <p>Hands remain private. Opponents receive only tile counts.</p>
           </div>
-          <button id="create-submit" type="submit">Create Duck's Race</button>
+          <button id="create-submit" type="submit">Create Duck Race</button>
         </form>
       </section>
 
@@ -155,7 +155,7 @@
         <p id="current-summary"></p>
         <h3>Players</h3>
         <ul id="players"></ul>
-        <button id="enter-game" type="button">Enter Duck's Race</button>
+        <button id="enter-game" type="button">Enter Duck Race</button>
       </section>
 
       <section class="panel" aria-labelledby="chat-title">
@@ -171,6 +171,7 @@
   </main>
   <footer><p>Your password is never stored in the browser or saved as readable text.</p></footer>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="lounge-accessibility.js"></script>
   <script src="audio.js"></script>
   <script src="index.js"></script>
 </body>

@@ -51,8 +51,8 @@ function updateCurrentGame(room) {
     item.textContent = `${player.name}${player.id === room.hostId ? ' (host)' : ''}${player.connected ? '' : ' (reconnecting)'}`;
     return item;
   }));
-  elements.enterGame.hidden = !["Duck's Race", 'Horse Race', 'Accessible Dominoes Lounge', 'Accessible Skip-Bo Lounge', 'Accessible Mall Madness Lounge', 'Monopoly Multi-Edition', 'Accessible Uno & Dos Lounge', 'The Game of Life Lounge'].includes(room.game);
-  elements.enterGame.textContent = room.game === 'Monopoly Multi-Edition' ? 'Enter Monopoly' : room.game === 'Accessible Uno & Dos Lounge' ? 'Enter UNO & DOS Lounge' : room.game === 'The Game of Life Lounge' ? 'Enter The Game of Life' : room.game === 'Horse Race' ? 'Enter Horse Race' : room.game === 'Accessible Dominoes Lounge' ? 'Enter Dominoes Lounge' : room.game === 'Accessible Skip-Bo Lounge' ? 'Enter Skip-Bo Lounge' : room.game === 'Accessible Mall Madness Lounge' ? 'Enter Mall Madness Lounge' : "Enter Duck's Race";
+  elements.enterGame.hidden = !["Duck Race", 'Horse Race', 'Accessible Dominoes Lounge', 'Accessible Skip-Bo Lounge', 'Accessible Mall Madness Lounge', 'Monopoly Multi-Edition', 'Accessible Uno & Dos Lounge', 'The Game of Life Lounge'].includes(room.game);
+  elements.enterGame.textContent = room.game === 'Monopoly Multi-Edition' ? 'Enter Monopoly' : room.game === 'Accessible Uno & Dos Lounge' ? 'Enter UNO & DOS Lounge' : room.game === 'The Game of Life Lounge' ? 'Enter The Game of Life' : room.game === 'Horse Race' ? 'Enter Horse Race' : room.game === 'Accessible Dominoes Lounge' ? 'Enter Dominoes Lounge' : room.game === 'Accessible Skip-Bo Lounge' ? 'Enter Skip-Bo Lounge' : room.game === 'Accessible Mall Madness Lounge' ? 'Enter Mall Madness Lounge' : "Enter Duck Race";
   announce(`Joined ${room.game}. ${room.players.length} player${room.players.length === 1 ? '' : 's'} present.`);
 }
 
@@ -99,7 +99,7 @@ elements.gameChoice.addEventListener('change', () => {
   elements.unoFields.hidden = !uno;
   elements.lifeFields.hidden = !life;
   elements.dominoFields.hidden = !dominoes;
-  elements.createSubmit.textContent = monopoly ? 'Create Monopoly Game' : uno ? 'Create UNO / DOS Game' : life ? 'Create Game of Life' : dominoes ? 'Create Dominoes Game' : elements.gameChoice.value === 'Accessible Skip-Bo Lounge' ? 'Create Skip-Bo Game' : elements.gameChoice.value === 'Accessible Mall Madness Lounge' ? 'Create Mall Madness Game' : "Create Duck's Race";
+  elements.createSubmit.textContent = monopoly ? 'Create Monopoly Game' : uno ? 'Create UNO / DOS Game' : life ? 'Create Game of Life' : dominoes ? 'Create Dominoes Game' : elements.gameChoice.value === 'Accessible Skip-Bo Lounge' ? 'Create Skip-Bo Game' : elements.gameChoice.value === 'Accessible Mall Madness Lounge' ? 'Create Mall Madness Game' : "Create Duck Race";
 });
 elements.createForm.addEventListener('submit', event => {
   event.preventDefault();

@@ -258,8 +258,8 @@ function connectToGame() {
       room = result.room;
       sessionStorage.setItem('loungeGameId', room.id);
       elements.connection.textContent = `Connected to ${room.game} as ${authResult.username}.`;
-      if (room.game !== "Duck's Race") {
-        elements.connection.textContent = `This game is ${room.game}, not Duck's Race.`; return;
+      if (room.game !== "Duck Race") {
+        elements.connection.textContent = `This game is ${room.game}, not Duck Race.`; return;
       }
       if (room.ducksRace) receiveState({ game: room.ducksRace, cue: null });
       else {

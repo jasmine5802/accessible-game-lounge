@@ -1,6 +1,6 @@
 'use strict';
 
-const socket = io("https://accessible-game-lounge.onrender.com");
+const socket = io();
 const gameId = new URLSearchParams(location.search).get('game') || sessionStorage.getItem('loungeGameId');
 const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
@@ -79,7 +79,7 @@ function render() {
 function renderTokenChoices(openWhenMissing=false) {
   if (!room || !playerId) return;
   const choices=MonopolyBoards.tokens[room.monopolyEdition]||[];const current=room.players.find(player=>player.id===playerId)?.monopolyToken||playerToken(me());const taken=new Map(room.players.filter(player=>player.id!==playerId&&player.monopolyToken).map(player=>[player.monopolyToken.id,player.name]));
-  elements.tokenOptions.replaceChildren(...choices.map(token=>{const button=document.createElement('button');button.type='button';button.className='token-choice';button.dataset.tokenId=token.id;button.setAttribute('aria-label',`${token.name}${taken.has(token.id)?`, already selected by ${taken.get(token.id)}`:''}`);button.setAttribute('aria-pressed',String(current?.id===token.id));button.disabled=taken.has(token.id);const icon=document.createElement('span');icon.className='token-icon';icon.setAttribute('aria-hidden','true');icon.textContent=token.icon;const name=document.createElement('span');name.textContent=token.name;button.append(icon,name);button.addEventListener('click',()=>socket.emit('monopoly-select-token',{tokenId:token.id},result=>{if(!result.ok)return announcePolite(result.error);sessionStorage.setItem(`monopolyToken:${gameId}`,token.id);announcePolite(result.message);elements.tokenDialog.close();elements.tokenPicker.focus()}));return button}));
+  elements.tokenOptions.replaceChildren(...choices.map(token=>{const button=document.createElement('button');button.type='button';button.className='token-choice';button.dataset.tokenId=token.id;button.setAttribute('aria-label',`${token.name}${taken.has(token.id)?`, already selected by ${taken.get(token.id)}`:''}`);button.setAttribute('aria-pressed',String(current?.id===token.id));button.disabled=taken.has(token.id);const icon=document.createElement('span');icon.className='token-icon';icon.setAttribute('aria-hidden','true');icon.textContent=token.icon;const name=document.createElement('span');name.textContent=token.name;button.append(icon,name);button.addEventListener('click',()=>socket.emit('monopoly-select-token',{tokenId:token.id},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()}));return button}));
   if(openWhenMissing&&!current&&!elements.tokenDialog.open){elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.querySelector('button:not(:disabled)')?.focus())}
 }
 function syncWaitingRoom(updated) { room=updated;if(game?.status==='waiting'){game.players=room.players.map(player=>({...player,token:player.monopolyToken,balance:1500,position:0}));render();renderTokenChoices(true);} }

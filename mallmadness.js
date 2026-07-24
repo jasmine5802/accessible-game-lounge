@@ -1,5 +1,5 @@
 'use strict';
-const socket=io("https://accessible-game-lounge.onrender.com"),params=new URLSearchParams(location.search),gameId=params.get('game'),token=sessionStorage.getItem('loungeSessionToken'),playerId=(sessionStorage.getItem('loungeUsername')||'').trim().toLowerCase();
+const socket=io(),params=new URLSearchParams(location.search),gameId=params.get('game'),token=sessionStorage.getItem('loungeSessionToken'),playerId=(sessionStorage.getItem('loungeUsername')||'').trim().toLowerCase();
 const el={connection:document.querySelector('#connection'),turn:document.querySelector('#turn'),map:document.querySelector('#map'),start:document.querySelector('#start'),director:document.querySelector('#director'),action:document.querySelector('#action'),move:document.querySelector('#move-status'),list:document.querySelector('#shopping-list'),players:document.querySelector('#players'),announcer:document.querySelector('#announcer'),urgent:document.querySelector('#urgent')};
 let room=null,game=null,audio=null;
 function context(){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;audio||=new C();if(audio.state==='suspended')audio.resume().catch(()=>{});return audio}

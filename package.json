@@ -49,9 +49,13 @@
       "target": "nsis"
     },
     "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Accessible Game Lounge",
+      "uninstallDisplayName": "Jazzy Jay's Accessible Game Lounge",
+      "deleteAppDataOnUninstall": false
     }
   },
   "engines": {
