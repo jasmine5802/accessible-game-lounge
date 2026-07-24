@@ -4,7 +4,7 @@ const socket = io();
 const gameId = new URLSearchParams(location.search).get('game') || sessionStorage.getItem('loungeGameId');
 const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
-const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','buy','decline','turn-status','players','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','buy','decline','turn-status','players','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null;
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
@@ -79,10 +79,12 @@ function render() {
 function renderTokenChoices(openWhenMissing=false) {
   if (!room || !playerId) return;
   const choices=MonopolyBoards.tokens[room.monopolyEdition]||[];const current=room.players.find(player=>player.id===playerId)?.monopolyToken||playerToken(me());const taken=new Map(room.players.filter(player=>player.id!==playerId&&player.monopolyToken).map(player=>[player.monopolyToken.id,player.name]));
-  elements.tokenOptions.replaceChildren(...choices.map(token=>{const button=document.createElement('button');button.type='button';button.className='token-choice';button.dataset.tokenId=token.id;button.setAttribute('aria-label',`${token.name}${taken.has(token.id)?`, already selected by ${taken.get(token.id)}`:''}`);button.setAttribute('aria-pressed',String(current?.id===token.id));button.disabled=taken.has(token.id);const icon=document.createElement('span');icon.className='token-icon';icon.setAttribute('aria-hidden','true');icon.textContent=token.icon;const name=document.createElement('span');name.textContent=token.name;button.append(icon,name);button.addEventListener('click',()=>socket.emit('monopoly-select-token',{tokenId:token.id},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()}));return button}));
-  if(openWhenMissing&&!current&&!elements.tokenDialog.open){elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.querySelector('button:not(:disabled)')?.focus())}
+  elements.tokenOptions.replaceChildren(...choices.map(token=>{const option=new Option(`${token.name}${taken.has(token.id)?` (selected by ${taken.get(token.id)})`:''}`,token.id);option.disabled=taken.has(token.id);return option}));
+  const selectedAvailable=choices.find(token=>token.id===current?.id&&!taken.has(token.id))||choices.find(token=>!taken.has(token.id));if(selectedAvailable)elements.tokenOptions.value=selectedAvailable.id;
+  elements.tokenSave.disabled=!selectedAvailable;
+  if(openWhenMissing&&!current&&!elements.tokenDialog.open){elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())}
 }
-function syncWaitingRoom(updated) { room=updated;if(game?.status==='waiting'){game.players=room.players.map(player=>({...player,token:player.monopolyToken,balance:1500,position:0}));render();renderTokenChoices(true);} }
+function syncWaitingRoom(updated) { room=updated;if(game?.status==='waiting'){game.players=room.players.map(player=>({...player,token:player.monopolyToken,balance:1500,position:0}));render();renderTokenChoices();} }
 function receiveState(payload) {
   const isNewGameplayUpdate = payload.game.sequence !== lastSequence;
   game = payload.game;
@@ -102,7 +104,7 @@ function connectToGame() {
       if (!result.ok) { elements.connection.textContent = result.error; return; }
       room = result.room; playerId = room.players.find(player => player.name === username)?.id || room.players.find(player => player.name === auth.username)?.id;
       game = room.monopoly || { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], status:'waiting', players:room.players.map(player => ({...player,balance:1500,position:0})), owners:{}, announcement:`Waiting to start ${room.monopolyEdition} Monopoly.`, sequence:0 };
-      elements.connection.textContent = `Connected to room ${room.code}.`; render(); renderTokenChoices(true);
+      elements.connection.textContent = `Connected to room ${room.code}.`; render(); renderTokenChoices();
     });
   });
 }
@@ -115,7 +117,9 @@ elements.tradeForm.addEventListener('submit',event=>{event.preventDefault();sock
 elements.balance.addEventListener('click', () => announcePolite(`Your ${game?.edition === 'Electronic Banking' ? 'banking balance' : 'balance'} is ${money(me()?.balance ?? 0)}.`));
 elements.properties.addEventListener('click', () => { const owned=game?.board.filter(space => game.owners[space.index]===playerId).map(space=>space.name)||[]; announcePolite(owned.length ? `You own: ${owned.join(', ')}.` : 'You do not own any properties.'); });
 elements.roomState.addEventListener('click',()=>announcePolite(`Current room state. ${game?.players.map(player=>`${player.name} is using ${playerToken(player)?.name||'no token'}, has ${money(player.balance)}, and is on space ${player.position+1}${player.id===game.turnPlayerId?', with the current turn':''}`).join('. ')}.`));
-elements.tokenPicker.addEventListener('click',()=>{renderTokenChoices();elements.tokenDialog.showModal();requestAnimationFrame(()=>{const target=elements.tokenOptions.querySelector('[aria-pressed="true"]')||elements.tokenOptions.querySelector('button:not(:disabled)');target?.focus()})});elements.tokenCancel.addEventListener('click',()=>{elements.tokenDialog.close();elements.tokenPicker.focus()});
+elements.tokenPicker.addEventListener('click',()=>{renderTokenChoices();elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())});
+elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOptions.value;if(!tokenId)return announcePolite('No token is available.');socket.emit('monopoly-select-token',{tokenId},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()})});
+elements.tokenCancel.addEventListener('click',()=>{elements.tokenDialog.close();elements.tokenPicker.focus()});
 document.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);

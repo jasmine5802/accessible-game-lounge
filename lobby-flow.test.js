@@ -95,8 +95,11 @@ const once = (socket, event) => new Promise((resolve, reject) => {
       if(!hostOptions.ok||!guestOptions.ok)throw new Error('Horse race options failed.');
     }
     if(game==='Monopoly'){
-      const hostOptions=await call(host,'set-game-options',{type:'Classic',secondary:'Top Hat'}),guestOptions=await call(guest,'set-game-options',{type:'Classic',secondary:'Race Car'});
-      if(!hostOptions.ok||!guestOptions.ok)throw new Error('Monopoly in-game options failed.');
+      const [hostToken,guestToken]=MonopolyBoards.tokens.Classic;
+      const hostOptions=await call(host,'set-game-options',{type:'Classic',secondary:hostToken.id}),guestOptions=await call(guest,'set-game-options',{type:'Classic',secondary:guestToken.id});
+      if(!hostOptions.ok||!guestOptions.ok)throw new Error('Monopoly board and token options failed to save by token ID.');
+      const duplicate=await call(guest,'set-game-options',{type:'Classic',secondary:hostToken.id});
+      if(duplicate.ok)throw new Error('Monopoly allowed two players to save the same token.');
     }
     if(['Classic UNO','UNO Flip','DOS',"UNO Show 'Em No Mercy",'UNO Attack'].includes(game)){
       const option=await call(host,'set-game-options',{type:unoVariants[game],secondary:'Standard deck'});if(!option.ok)throw new Error(`${game} in-game options failed.`);
