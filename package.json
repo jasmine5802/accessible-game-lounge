@@ -1,6 +1,6 @@
 {
   "name": "accessible-game-lounge",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "Playroom style accessible multiplayer game lounge",
   "main": "main.js",
   "scripts": {
@@ -54,9 +54,13 @@
       "target": "nsis"
     },
     "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Jazzy Jay's Accessible Game Lounge",
+      "uninstallDisplayName": "Jazzy Jay's Accessible Game Lounge",
+      "deleteAppDataOnUninstall": false
     }
   },
   "engines": {
