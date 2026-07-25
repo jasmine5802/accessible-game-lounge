@@ -4,8 +4,8 @@ const socket = io();
 const gameId = new URLSearchParams(location.search).get('game') || sessionStorage.getItem('loungeGameId');
 const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
-const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','buy','decline','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
-let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null;
+const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','offer-panel','offer-title','offer-details','buy','decline','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
+let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null; let lastOfferKey = null; let gameplayStarted = false;
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
 function announceGameplay(message) { elements.gameAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.gameAnnouncer.textContent = message; }); }
@@ -69,14 +69,26 @@ function render() {
   applyEditionTheme(game.edition);
   elements.edition.textContent = `${game.edition} edition`;
   elements.announcement.textContent = game.announcement;
-  const mine = me(); const myTurn = game.turnPlayerId === playerId; const pending = game.pendingPurchase?.playerId === playerId || game.pendingTrade?.toId === playerId;
+  const mine = me(); const myTurn = game.turnPlayerId === playerId; const purchase = game.pendingPurchase?.playerId === playerId ? game.pendingPurchase : null; const incomingTrade = game.pendingTrade?.toId === playerId ? game.pendingTrade : null; const pending = Boolean(purchase || incomingTrade);
   elements.roll.disabled = game.status !== 'playing' || !myTurn || pending;
-  elements.buy.hidden = !pending; elements.decline.hidden = !pending;
-  elements.buy.textContent = game.pendingTrade?.toId === playerId ? 'Accept Trade (Y)' : 'Buy (Y)';
-  elements.decline.textContent = game.pendingTrade?.toId === playerId ? 'Decline Trade (N)' : 'Decline (N)';
+  elements.offerPanel.hidden = !pending;
+  elements.buy.textContent = incomingTrade ? 'Accept Trade (Y)' : 'Buy Property (Y)';
+  elements.decline.textContent = incomingTrade ? 'Decline Trade (N)' : 'Decline Property (N)';
+  if (purchase) {
+    const space=game.board[purchase.spaceIndex],group=groupLabel(space.group);
+    elements.offerTitle.textContent='Property purchase decision';
+    elements.offerDetails.textContent=`${space.name}. ${group} group. Price ${money(space.price)}. Your balance is ${money(mine?.balance||0)}.`;
+  } else if (incomingTrade) {
+    const space=game.board[incomingTrade.propertyIndex],seller=game.players.find(player=>player.id===incomingTrade.fromId);
+    elements.offerTitle.textContent='Property trade decision';
+    elements.offerDetails.textContent=`${seller?.name||'Another player'} offers ${space?.name||'a property'} for ${money(incomingTrade.amount)}.`;
+  }
+  const offerKey=purchase?`purchase-${purchase.spaceIndex}-${game.sequence}`:incomingTrade?`trade-${incomingTrade.fromId}-${incomingTrade.propertyIndex}-${game.sequence}`:null;
+  if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(()=>elements.buy.focus());}
+  if(!offerKey)lastOfferKey=null;
   elements.start.hidden = game.status !== 'waiting' || room?.hostId !== playerId;
   elements.tokenPicker.hidden = game.status !== 'waiting';
-  elements.turnStatus.textContent = game.status === 'waiting' ? 'Waiting for the room creator to start.' : myTurn ? (pending ? 'Purchase decision required. Press Y or N.' : 'It is your turn. Press Enter to roll.') : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name}.`;
+  elements.turnStatus.textContent = game.status === 'waiting' ? 'Waiting for the room creator to start.' : myTurn ? (purchase ? 'Property purchase decision required. Press Y to buy or N to decline.' : incomingTrade ? 'Trade decision required. Press Y to accept or N to decline.' : 'It is your turn. Press Enter to roll.') : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name}.`;
   elements.players.replaceChildren(...game.players.map(player => { const li=document.createElement('li'),token=playerToken(player);const icon=document.createElement('span');icon.className='token-icon';icon.setAttribute('aria-hidden','true');icon.textContent=token?.icon||'○';const details=document.createElement('span');details.textContent=`${player.name}, ${token?.name||'token not selected'}: ${money(player.balance)}, space ${player.position + 1}${player.id===game.turnPlayerId?' (current turn)':''}`;li.setAttribute('aria-label',details.textContent);li.append(icon,details);return li; }));
   elements.tradePlayer.replaceChildren(...game.players.filter(player=>player.id!==playerId).map(player=>new Option(player.name,player.id)));
   elements.tradeProperty.replaceChildren(...game.board.filter(space=>game.owners[space.index]===playerId).map(space=>new Option(space.name,String(space.index))));
@@ -104,6 +116,7 @@ function syncWaitingRoom(updated) { room=updated;if(game?.status==='waiting'){ga
 function receiveState(payload) {
   const isNewGameplayUpdate = payload.game.sequence !== lastSequence;
   game = payload.game;
+  if(game.status==='playing'&&!gameplayStarted){gameplayStarted=true;window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));}
   if (payload.cue?.type === 'dice') window.playDiceRoll?.();
   const cue = payload.cue?.secondary || payload.cue;
   if (cue?.type === 'transaction') window.playMonopolyEditionCue?.(payload.cue?.edition || game.edition, 'transaction');
@@ -126,7 +139,7 @@ function connectToGame() {
 }
 elements.start.addEventListener('click', () => socket.emit('start-monopoly', {}, result => { if (!result.ok) announcePolite(result.error); }));
 elements.roll.addEventListener('click', () => socket.emit('monopoly-roll', {}, result => { if (!result.ok) announcePolite(result.error); }));
-function answerOffer(accept) { const event=game?.pendingTrade?.toId===playerId?'monopoly-trade-response':'monopoly-purchase-response'; socket.emit(event, { accept }, result => { if (!result.ok) announcePolite(result.error); }); }
+function answerOffer(accept) { const event=game?.pendingTrade?.toId===playerId?'monopoly-trade-response':'monopoly-purchase-response';elements.buy.disabled=true;elements.decline.disabled=true;announcePolite(accept?'Accepting offer.':'Declining offer.');socket.emit(event, { accept }, result => {elements.buy.disabled=false;elements.decline.disabled=false;if (!result.ok) announcePolite(result.error);}); }
 elements.buy.addEventListener('click', () => answerOffer(true)); elements.decline.addEventListener('click', () => answerOffer(false));
 elements.trade.addEventListener('click',()=>{elements.tradeForm.hidden=!elements.tradeForm.hidden;if(!elements.tradeForm.hidden)elements.tradePlayer.focus();});
 elements.tradeForm.addEventListener('submit',event=>{event.preventDefault();socket.emit('monopoly-trade-offer',{toId:elements.tradePlayer.value,propertyIndex:Number(elements.tradeProperty.value),amount:Number(elements.tradeAmount.value)},result=>{if(result.ok)elements.tradeForm.hidden=true;else announcePolite(result.error);});});
@@ -143,6 +156,6 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !elements.roll.disabled && !['BUTTON','A'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.roll.click(); }
   if (key==='f') { event.preventDefault(); elements.balance.click(); } if (key==='p') { event.preventDefault(); elements.properties.click(); }
   if (key==='h') { event.preventDefault(); elements.roomState.click(); }
-  if (key==='y' && !elements.buy.hidden) { event.preventDefault(); answerOffer(true); } if (key==='n' && !elements.decline.hidden) { event.preventDefault(); answerOffer(false); }
+  if (key==='y' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(true); } if (key==='n' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(false); }
 });
 socket.on('connect', connectToGame); socket.on('lobby-updated', syncWaitingRoom); socket.on('monopoly-state', receiveState); socket.on('disconnect',()=>{elements.connection.textContent='Connection lost. Trying to reconnect…';});
