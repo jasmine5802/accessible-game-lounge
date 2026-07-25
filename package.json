@@ -11,6 +11,7 @@
     "test:computer": "node computer-player.test.js",
     "test:monopoly": "node monopoly-boards.test.js",
     "test:multiplayer": "node multiplayer-counts.test.js",
+    "test:options": "node game-options.test.js",
     "dev": "node server.js",
     "package-win": "electron-packager . AccessibleGameLounge --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/node_modules\\.pre-npm-install($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/users\\.json(?:\\.tmp)?$\"",
     "build-installer": "electron-builder --win"
