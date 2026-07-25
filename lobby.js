@@ -59,7 +59,7 @@ function renderTables(){
   elements.tableMenu.replaceChildren(...options.map((entry,index)=>{const option=document.createElement('li');option.id=`table-option-${index}`;option.setAttribute('role','option');option.textContent=entry.label;option.addEventListener('click',()=>{tableIndex=index;setSelection(elements.tableMenu,tableIndex,false);entry.create?openSetup():joinTable(entry.table.id);});return option;}));
   tableIndex=Math.min(tableIndex,options.length-1); setSelection(elements.tableMenu,tableIndex,false);
 }
-function chooseGame(title){ selectedGame=title; swipeSound(); socket.emit('get-game-tables',{category:GAME_CATEGORIES[title]},result=>{if(!result.ok)return announce(result.error);tables=result.tables;tableIndex=0;elements.lobby.hidden=true;elements.tablePicker.hidden=false;elements.tablesTitle.textContent=`${title}: Create or Join a Game`;screen='tables';renderTables();announce(`${title}. ${tables.length} open game${tables.length===1?'':'s'}. Create Game selected. Use Up and Down Arrow, then Enter.`);}); }
+function chooseGame(title){ selectedGame=title; swipeSound(); socket.emit('get-game-tables',{category:GAME_CATEGORIES[title]},result=>{if(!result.ok)return announce(result.error);tables=result.tables;tableIndex=0;elements.lobby.hidden=true;elements.tablePicker.hidden=false;elements.tablesTitle.textContent=`${title}: Create or Join a Game`;screen='tables';renderTables();announce(`${title}. ${tables.length} open game${tables.length===1?'':'s'}. No room code is needed. Create Game selected. Use Up and Down Arrow, then Enter.`);}); }
 function openSetup(){
   announce(`Creating ${selectedGame}. Game options will be offered after entering the game.`);createTable();
 }

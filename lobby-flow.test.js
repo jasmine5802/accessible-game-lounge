@@ -71,8 +71,11 @@ const once = (socket, event) => new Promise((resolve, reject) => {
       const selected=await call(host,'monopoly-select-token',{tokenId:token.id});
       if(!selected.ok||selected.token.id!==token.id)throw new Error('Monopoly token selection failed.');
     }
+    const discovered = await call(guest, 'get-game-tables', { category: categories[game] });
+    const openTable = discovered.tables.find(table => table.host === `Host${suffix}`);
+    if (!discovered.ok || !openTable || openTable.playerCount !== 1) throw new Error(`${game} could not be discovered in the public table list without a room code.`);
     const joinedEvent = once(host, 'table-player-joined');
-    const joined = await call(guest, 'join-game', { gameId: created.room.id });
+    const joined = await call(guest, 'join-game', { gameId: openTable.id });
     const joinedNotice = await joinedEvent;
     if (!joined.ok || !joinedNotice.message.includes(`2 of ${created.room.maxPlayers} players`)) throw new Error(`${game} join announcement failed.`);
     const chatEvent=once(guest,'chat-message');
