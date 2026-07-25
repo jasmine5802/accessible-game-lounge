@@ -477,6 +477,22 @@
     const members = board.filter(space => space.group === group);
     return members.length > 0 && members.every(space => owners[space.index] === playerId);
   }
+  function ownershipProgress(board, owners, playerId) {
+    const owned = board.filter(space => space.price && owners[space.index] === playerId);
+    const groupOrder = [...new Set(board.filter(space => space.price && space.group).map(space => space.group))];
+    return groupOrder.map(group => {
+      const members = board.filter(space => space.price && space.group === group);
+      const properties = owned.filter(space => space.group === group);
+      return {
+        group,
+        owned: properties.length,
+        total: members.length,
+        needed: members.length - properties.length,
+        complete: properties.length === members.length,
+        properties: properties.map(space => space.name)
+      };
+    }).filter(progress => progress.owned > 0);
+  }
   function rentFor(board, owners, space, ownerId) {
     if (!space.rent) return 0;
     if (space.group === 'transit') return 25 * (2 ** Math.max(0, board.filter(item => item.group === 'transit' && owners[item.index] === ownerId).length - 1));
@@ -492,5 +508,5 @@
     const currency = currencies[edition] || currencies.Classic;
     return currency.symbol ? `${currency.symbol}${amount}` : `${amount} ${Number(amount) === 1 ? currency.singular : currency.plural}`;
   }
-  return Object.freeze({ editions, boards, tokens, tokenCategories, audioProfiles, currencies, stateData, generateStateBoard, formatMoney, createBoard, ownsGroup, rentFor });
+  return Object.freeze({ editions, boards, tokens, tokenCategories, audioProfiles, currencies, stateData, generateStateBoard, formatMoney, createBoard, ownsGroup, ownershipProgress, rentFor });
 });

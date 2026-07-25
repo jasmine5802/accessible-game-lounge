@@ -791,7 +791,7 @@ io.on('connection', (socket) => {
     if (accepted && !game.owners[space.index] && player.balance >= space.price) {
       player.balance -= space.price; game.owners[space.index] = socket.data.playerId;
       const completeGroup = MonopolyBoards.ownsGroup(game.board, game.owners, socket.data.playerId, space.group);
-      game.announcement = `${player.name} bought ${space.name} for ${monopolyMoney(game, space.price)}.${completeGroup ? ` ${player.name} completed the ${space.group} group!` : ''}`;
+      game.announcement = `${player.name} bought ${space.name} for ${monopolyMoney(game, space.price)}. It is in the ${space.group.replace('-', ' ')} group.${completeGroup ? ` ${player.name} completed the ${space.group.replace('-', ' ')} group!` : ` ${player.name} can press P to hear their properties and color-set progress.`}`;
       cue = { type: 'purchase', completeGroup, electronic: game.edition === 'Electronic Banking' };
     } else game.announcement = `${player.name} declined ${space.name}.`;
     const next = advanceMonopolyTurn(game);

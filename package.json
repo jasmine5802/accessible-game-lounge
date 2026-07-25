@@ -1,6 +1,6 @@
 {
   "name": "accessible-game-lounge",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "Playroom style accessible multiplayer game lounge",
   "main": "main.js",
   "scripts": {
@@ -9,6 +9,8 @@
     "test:uno": "node uno-rules.test.js",
     "test:lobby": "node lobby-flow.test.js",
     "test:computer": "node computer-player.test.js",
+    "test:monopoly": "node monopoly-boards.test.js",
+    "test:multiplayer": "node multiplayer-counts.test.js",
     "dev": "node server.js",
     "package-win": "electron-packager . AccessibleGameLounge --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/node_modules\\.pre-npm-install($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/users\\.json(?:\\.tmp)?$\"",
     "build-installer": "electron-builder --win"

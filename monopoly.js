@@ -4,7 +4,7 @@ const socket = io();
 const gameId = new URLSearchParams(location.search).get('game') || sessionStorage.getItem('loungeGameId');
 const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
-const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','buy','decline','turn-status','players','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','buy','decline','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null;
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
@@ -22,6 +22,13 @@ function spaceDetails(space) {
   return `Type: ${space.type}. ${space.description} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
 }
 function spaceLabel(space) { return `${space.name}. ${spaceDetails(space)}`; }
+function groupLabel(group) { return group.replace('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
+function myOwnershipProgress() { return game ? MonopolyBoards.ownershipProgress(game.board, game.owners, playerId) : []; }
+function ownershipReport() {
+  const progress = myOwnershipProgress();
+  if (!progress.length) return 'You do not own any properties.';
+  return `You own ${progress.flatMap(group => group.properties).length} properties. ${progress.map(group => `${groupLabel(group.group)}: ${group.properties.join(', ')}. ${group.owned} of ${group.total}; ${group.complete ? 'color set complete' : `need ${group.needed} more to complete this set`}.`).join(' ')}`;
+}
 
 function applyEditionTheme(edition) {
   if (!edition || themedEdition === edition) return;
@@ -74,6 +81,15 @@ function render() {
   elements.tradePlayer.replaceChildren(...game.players.filter(player=>player.id!==playerId).map(player=>new Option(player.name,player.id)));
   elements.tradeProperty.replaceChildren(...game.board.filter(space=>game.owners[space.index]===playerId).map(space=>new Option(space.name,String(space.index))));
   elements.trade.disabled = game.status !== 'playing' || elements.tradeProperty.options.length === 0 || Boolean(game.pendingTrade);
+  const ownership = myOwnershipProgress();
+  elements.ownedSummary.textContent = ownership.length ? `You own ${ownership.flatMap(group => group.properties).length} properties in ${ownership.length} color groups.` : 'You do not own any properties yet.';
+  elements.ownedProperties.replaceChildren(...ownership.map(group => {
+    const item=document.createElement('li'),heading=document.createElement('strong'),properties=document.createElement('span'),progress=document.createElement('span');
+    heading.textContent=`${groupLabel(group.group)} group`;
+    properties.textContent=`Properties: ${group.properties.join(', ')}. `;
+    progress.textContent=`${group.owned} of ${group.total}. ${group.complete ? 'Set complete.' : `Need ${group.needed} more to complete this set.`}`;
+    item.append(heading,properties,progress); return item;
+  }));
   renderBoard(); if (mine && game.sequence !== lastSequence) lastSequence = game.sequence;
 }
 function renderTokenChoices(openWhenMissing=false) {
@@ -115,7 +131,7 @@ elements.buy.addEventListener('click', () => answerOffer(true)); elements.declin
 elements.trade.addEventListener('click',()=>{elements.tradeForm.hidden=!elements.tradeForm.hidden;if(!elements.tradeForm.hidden)elements.tradePlayer.focus();});
 elements.tradeForm.addEventListener('submit',event=>{event.preventDefault();socket.emit('monopoly-trade-offer',{toId:elements.tradePlayer.value,propertyIndex:Number(elements.tradeProperty.value),amount:Number(elements.tradeAmount.value)},result=>{if(result.ok)elements.tradeForm.hidden=true;else announcePolite(result.error);});});
 elements.balance.addEventListener('click', () => announcePolite(`Your ${game?.edition === 'Electronic Banking' ? 'banking balance' : 'balance'} is ${money(me()?.balance ?? 0)}.`));
-elements.properties.addEventListener('click', () => { const owned=game?.board.filter(space => game.owners[space.index]===playerId).map(space=>space.name)||[]; announcePolite(owned.length ? `You own: ${owned.join(', ')}.` : 'You do not own any properties.'); });
+elements.properties.addEventListener('click', () => announcePolite(ownershipReport()));
 elements.roomState.addEventListener('click',()=>announcePolite(`Current room state. ${game?.players.map(player=>`${player.name} is using ${playerToken(player)?.name||'no token'}, has ${money(player.balance)}, and is on space ${player.position+1}${player.id===game.turnPlayerId?', with the current turn':''}`).join('. ')}.`));
 elements.tokenPicker.addEventListener('click',()=>{renderTokenChoices();elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())});
 elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOptions.value;if(!tokenId)return announcePolite('No token is available.');socket.emit('monopoly-select-token',{tokenId},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()})});
