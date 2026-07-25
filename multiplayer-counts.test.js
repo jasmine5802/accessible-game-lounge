@@ -77,6 +77,11 @@ async function takeFirstAction(host, definition, game) {
       const started = await call(active[0], definition.start);
       if (!started.ok) throw new Error(`${definition.name}, ${count} players: game start failed: ${started.error}`);
       if (playerCount(started.game) !== count) throw new Error(`${definition.name}, ${count} players: game state contains ${playerCount(started.game)} players.`);
+      if (definition.name === 'Skip-Bo') {
+        const stockCounts = started.game.players.map(player => player.stockCount);
+        const totalStockCards = stockCounts.reduce((sum, amount) => sum + amount, 0);
+        if (stockCounts.some(amount => amount !== 20) || totalStockCards !== 20 * count) throw new Error(`Skip-Bo, ${count} players: stock piles did not scale to ${20 * count} total cards.`);
+      }
       const action = await takeFirstAction(active[0], definition, started.game);
       if (!action?.ok) throw new Error(`${definition.name}, ${count} players: first action failed: ${action?.error}`);
       console.log(`${definition.name}: ${count} human players started and completed a gameplay action.`);

@@ -32,7 +32,7 @@ async function set(socket, data, label) {
 (async () => {
   await startServer(0, '127.0.0.1');
   const url = `http://127.0.0.1:${server.address().port}`;
-  sockets = [io(url, { transports:['websocket'] }), io(url, { transports:['websocket'] })];
+  sockets = Array.from({ length:4 }, () => io(url, { transports:['websocket'] }));
   await Promise.all(sockets.map(connected));
   const suffix = `${process.pid}${Date.now()}`.slice(-9);
   const registrations = await Promise.all(sockets.map((socket, index) => call(socket, 'register', {
@@ -106,9 +106,17 @@ async function set(socket, data, label) {
     await set(sockets[0], { type:pace, secondary:'Standard rules' }, `Skip-Bo ${pace}`);
     const started = await call(sockets[0], 'start-skipbo');
     const expected = pace === 'Quick game' ? 10 : 20;
-    if (!started.ok || started.game.players.length !== 2 || started.game.players.some(player => player.stockCount !== expected)) throw new Error(`Skip-Bo ${pace} did not save/start correctly.`);
+    const total = started.game?.players.reduce((sum, player) => sum + player.stockCount, 0);
+    if (!started.ok || started.game.players.length !== 2 || started.game.players.some(player => player.stockCount !== expected) || total !== expected * 2) throw new Error(`Skip-Bo ${pace} did not save/start correctly.`);
   }
-  console.log('Skip-Bo: standard and quick game options saved and started with 2 players.');
+  const fourPlayerSkipBo = await call(sockets[0], 'create-game', { category:'skip-bo' });
+  const fourPlayerJoins = await Promise.all(sockets.slice(1).map(socket => call(socket, 'join-game', { gameId:fourPlayerSkipBo.room.code })));
+  if (!fourPlayerSkipBo.ok || fourPlayerJoins.some(result => !result.ok)) throw new Error('Skip-Bo 4-player option room failed.');
+  await set(sockets[0], { type:'Quick game', secondary:'Standard rules' }, 'Skip-Bo Quick game with 4 players');
+  const quickFour = await call(sockets[0], 'start-skipbo');
+  const quickFourTotal = quickFour.game?.players.reduce((sum, player) => sum + player.stockCount, 0);
+  if (!quickFour.ok || quickFour.game.players.length !== 4 || quickFour.game.players.some(player => player.stockCount !== 10) || quickFourTotal !== 40) throw new Error('Skip-Bo Quick game stock piles did not scale to 40 cards for 4 players.');
+  console.log('Skip-Bo: standard and quick options saved; stock piles scale from 2 to 4 players without changing the per-player amount.');
 
   for (const challenge of ['Standard shopping list','Quick shopping list']) {
     await roomWithTwo('mall-madness');
