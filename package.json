@@ -12,9 +12,13 @@
     "test:monopoly": "node monopoly-boards.test.js",
     "test:multiplayer": "node multiplayer-counts.test.js",
     "test:options": "node game-options.test.js",
+    "test:yesno": "node yes-no-flow.test.js",
+    "verify:render-version": "node verify-render-version.js",
+    "release:check": "npm run test:yesno && npm run test:lobby && npm run test:options && npm run verify:render-version",
+    "release:win": "npm run release:check && npm run build-installer",
     "dev": "node server.js",
     "package-win": "electron-packager . AccessibleGameLounge --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/node_modules\\.pre-npm-install($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/users\\.json(?:\\.tmp)?$\"",
-    "build-installer": "electron-builder --win"
+    "build-installer": "npm run verify:render-version && electron-builder --win"
   },
   "keywords": [
     "accessibility",

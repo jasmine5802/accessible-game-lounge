@@ -63,43 +63,87 @@
     document.documentElement.classList.add('lounge-desktop-client');
     const style = document.createElement('style');
     style.textContent = `
-      html.lounge-desktop-client { color-scheme:dark; background:#07101b; }
+      html.lounge-desktop-client { color-scheme:dark; background:#1f2732; }
       html.lounge-desktop-client body {
         margin:0!important;
         min-height:100vh;
-        background:#07101b!important;
+        background:#1f2732!important;
         background-image:none!important;
         color:#fff;
         font:1rem/1.45 "Segoe UI",system-ui,sans-serif!important;
       }
+      html.lounge-desktop-client .lounge-client-shell {
+        width:min(98rem,100%);
+        min-height:100vh;
+        margin:0 auto;
+        background:#2a3442;
+        border-left:1px solid #8fa0b5;
+        border-right:1px solid #8fa0b5;
+        box-shadow:0 0 0 1px #111a22;
+      }
+      html.lounge-desktop-client .lounge-client-titlebar {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:.6rem;
+        padding:.4rem .75rem;
+        color:#fff;
+        background:linear-gradient(180deg,#305681 0%,#20415f 100%);
+        border-bottom:1px solid #a7bad2;
+      }
+      html.lounge-desktop-client .lounge-client-titlebar strong {
+        font-size:1.02rem;
+        letter-spacing:.01em;
+      }
+      html.lounge-desktop-client .lounge-client-titlebar span {
+        color:#deebfb;
+        font-size:.92rem;
+      }
+      html.lounge-desktop-client .lounge-client-menubar {
+        display:flex;
+        gap:1rem;
+        padding:.28rem .75rem;
+        color:#111;
+        background:#e6eaef;
+        border-top:1px solid #ffffff;
+        border-bottom:1px solid #9aaaba;
+        font-size:.9rem;
+      }
+      html.lounge-desktop-client .lounge-client-menubar span::first-letter { text-decoration:underline; }
+      html.lounge-desktop-client .lounge-client-workspace { padding:.7rem .85rem 1rem; }
+      html.lounge-desktop-client .lounge-client-workspace > header,
       html.lounge-desktop-client body > header {
         box-sizing:border-box;
         width:100%!important;
         max-width:none!important;
         margin:0!important;
-        padding:.65rem 1rem!important;
+        padding:.55rem .8rem!important;
         background:#101c2a!important;
         border-bottom:1px solid #8298b9;
         box-shadow:none!important;
       }
+      html.lounge-desktop-client .lounge-client-workspace > header h1,
       html.lounge-desktop-client body > header h1 {
         margin:0!important;
         color:#ffe45c!important;
-        font:700 1.4rem/1.25 "Segoe UI",system-ui,sans-serif!important;
+        font:700 1.26rem/1.25 "Segoe UI",system-ui,sans-serif!important;
         letter-spacing:0!important;
         text-shadow:none!important;
       }
-      html.lounge-desktop-client body > header p { margin:.25rem 0 0!important; color:#d6dfec; }
+      html.lounge-desktop-client .lounge-client-workspace > header p,
+      html.lounge-desktop-client body > header p { margin:.2rem 0 0!important; color:#d6dfec; }
+      html.lounge-desktop-client .lounge-client-workspace > main,
       html.lounge-desktop-client body > main {
         box-sizing:border-box;
-        width:min(96rem,calc(100% - 2rem))!important;
-        max-width:96rem!important;
-        margin:0 auto!important;
-        padding:.75rem 0 1.5rem!important;
+        width:100%!important;
+        max-width:none!important;
+        margin:0!important;
+        padding:.55rem 0 1rem!important;
       }
+      html.lounge-desktop-client .lounge-client-workspace > footer,
       html.lounge-desktop-client body > footer {
-        width:min(96rem,calc(100% - 2rem))!important;
-        margin:0 auto!important;
+        width:100%!important;
+        margin:0!important;
         padding:.5rem 0 1rem!important;
         color:#c8d4e7;
         border-top:1px solid #445b74;
@@ -109,11 +153,11 @@
       html.lounge-desktop-client .panel,
       html.lounge-desktop-client section.panel {
         margin:.75rem 0!important;
-        padding:.85rem!important;
+        padding:.7rem!important;
         background:#111f33!important;
         background-image:none!important;
         border:1px solid #8298b9!important;
-        border-radius:2px!important;
+        border-radius:0!important;
         box-shadow:none!important;
       }
       html.lounge-desktop-client .toolbar,
@@ -128,14 +172,50 @@
       html.lounge-desktop-client button,
       html.lounge-desktop-client select,
       html.lounge-desktop-client input {
-        min-height:2.55rem!important;
-        border:2px solid #dbe8f7!important;
-        border-radius:2px!important;
+        min-height:2.35rem!important;
+        border:1px solid #dbe8f7!important;
+        border-radius:1px!important;
         box-shadow:none!important;
-        font:600 1rem/1.25 "Segoe UI",system-ui,sans-serif!important;
+        font:600 .98rem/1.25 "Segoe UI",system-ui,sans-serif!important;
         text-shadow:none!important;
       }
-      html.lounge-desktop-client button { padding:.45rem .75rem!important; }
+      html.lounge-desktop-client button {
+        padding:.35rem .65rem!important;
+        background:linear-gradient(180deg,#f5f8fc 0%,#cad8e8 100%)!important;
+        color:#0d1a29!important;
+      }
+      html.lounge-desktop-client button.secondary {
+        background:linear-gradient(180deg,#d9e2ec 0%,#b8c6d6 100%)!important;
+        color:#0d1a29!important;
+      }
+      html.lounge-desktop-client p[role="status"],
+      html.lounge-desktop-client #status,
+      html.lounge-desktop-client #announcement,
+      html.lounge-desktop-client #turn,
+      html.lounge-desktop-client #turn-status {
+        margin:.4rem 0!important;
+        padding:.4rem .5rem!important;
+        border:1px inset #93a5bb!important;
+        background:#f6f9fd!important;
+        color:#111!important;
+      }
+      html.lounge-desktop-client ul[role="listbox"],
+      html.lounge-desktop-client .menu {
+        border:1px solid #5f7388!important;
+        background:#ffffff!important;
+        color:#111!important;
+        box-shadow:inset 1px 1px #d9e0e7!important;
+      }
+      html.lounge-desktop-client ul[role="listbox"] li,
+      html.lounge-desktop-client .menu li {
+        border-bottom:1px solid #e3e8ee!important;
+        color:#111!important;
+      }
+      html.lounge-desktop-client ul[role="listbox"] li[aria-selected="true"],
+      html.lounge-desktop-client .menu li[aria-selected="true"] {
+        background:#0a64ad!important;
+        color:#fff!important;
+      }
       html.lounge-desktop-client a[href="/"] {
         display:inline-block;
         padding:.35rem .65rem;
@@ -173,6 +253,29 @@
       .lounge-key-prompt:focus-visible, .lounge-key-prompt > div:focus-visible { outline:6px solid #56dcff; outline-offset:-10px; }
     `;
     document.head.append(style);
+  }
+
+  function installDesktopFrame() {
+    if (!document.body || document.querySelector('.lounge-client-shell') || document.querySelector('.app-shell')) return;
+    const shell = document.createElement('div');
+    shell.className = 'lounge-client-shell';
+    const titlebar = document.createElement('div');
+    titlebar.className = 'lounge-client-titlebar';
+    const title = document.createElement('strong');
+    title.textContent = "Jazzy Jay's Accessible Game Lounge";
+    const view = document.createElement('span');
+    view.textContent = document.title || 'Game Window';
+    titlebar.append(title, view);
+    const menubar = document.createElement('nav');
+    menubar.className = 'lounge-client-menubar';
+    menubar.setAttribute('aria-label', 'Desktop menu');
+    menubar.innerHTML = '<span>Game</span><span>Table</span><span>Player</span><span>Audio</span><span>Help</span>';
+    const workspace = document.createElement('div');
+    workspace.className = 'lounge-client-workspace';
+    shell.append(titlebar, menubar, workspace);
+    document.body.prepend(shell);
+    const movable = [...document.body.children].filter(node => node !== shell && node.tagName !== 'SCRIPT');
+    movable.forEach(node => workspace.appendChild(node));
   }
 
   function announceValue(name, value, output) {
@@ -302,7 +405,7 @@
     askToQuit
   };
 
-  document.addEventListener('DOMContentLoaded', () => { addStyles(); replaceLobbyLinksWithDesktopControl(); addSettings(); });
+  document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); addSettings(); });
   document.addEventListener('keydown', event => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'F2') {

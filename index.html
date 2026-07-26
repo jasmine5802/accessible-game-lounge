@@ -5,44 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accessible Game Lounge</title>
   <style>
-    :root { color-scheme: dark; --bg: #070b12; --panel: #151d2b; --text: #fff; --accent: #ffe14d; --focus: #5cdbff; --muted: #b9c5d8; --danger: #ff8295; }
+    :root { color-scheme: dark; --bg: #071827; --shell:#101c2f; --panel:#17263f; --panel-border:#30436a; --text:#eef2fa; --accent:#7cd8ff; --accent-strong:#d0fbff; --focus:#76f2ff; --muted:#a8b8cf; --danger:#ff8b8b; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #182941, var(--bg) 45rem); color: var(--text); font: 1.1rem/1.55 system-ui, sans-serif; }
-    header, main, footer { width: min(72rem, 92%); margin-inline: auto; }
-    header { padding: 2rem 0 1rem; }
-    h1 { margin: 0; color: var(--accent); font-size: clamp(2.2rem, 6vw, 4rem); letter-spacing: -.03em; }
-    h2 { margin-top: 0; }
-    .tagline { color: var(--muted); }
-    .panel { margin: 1.25rem 0; padding: clamp(1rem, 3vw, 1.6rem); border: 2px solid #768aa7; border-radius: .9rem; background: color-mix(in srgb, var(--panel) 94%, transparent); box-shadow: 0 .8rem 2rem #0005; }
-    #auth-screen { width: min(34rem, 100%); margin: 2rem auto; border-color: var(--accent); }
-    label { display: block; margin-top: 1rem; font-weight: 800; }
-    input, select, button { min-height: 3.2rem; border: 3px solid #fff; border-radius: .5rem; font: inherit; }
-    input, select { width: 100%; margin-top: .35rem; padding: .55rem; background: #fff; color: #000; }
-    button { padding: .6rem 1rem; background: var(--accent); color: #07101b; font-weight: 900; cursor: pointer; }
-    button.secondary { background: #263a55; color: #fff; }
-    button:hover { background: var(--focus); color: #000; }
-    :focus-visible { outline: 6px solid var(--focus) !important; outline-offset: 4px; }
-    .actions, nav ul { display: flex; flex-wrap: wrap; gap: .75rem; padding: 0; list-style: none; }
-    .actions { margin-top: 1.25rem; }
-    #auth-status, #status { min-height: 3rem; padding: .65rem; border-left: 7px solid var(--accent); }
-    #auth-status.error { border-color: var(--danger); }
-    #available-games { padding: 0; list-style: none; }
-    #available-games li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; margin: .7rem 0; padding: .8rem; border: 2px solid #768aa7; border-radius: .6rem; }
-    #messages { max-height: 16rem; overflow-y: auto; border: 1px solid #768aa7; padding: .7rem; }
+    body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, #071827 0%, #071a2b 45%, #081d30 100%); color: var(--text); font: 1rem/1.5 "Segoe UI", system-ui, sans-serif; }
+    .app-shell { width: min(72rem, 96%); min-height: 100vh; margin: 0 auto; display: flex; flex-direction: column; background: #0c1630; border: 1px solid #213551; box-shadow: 0 0 3rem #000a; }
+    header { padding: 1rem 1.2rem; background: linear-gradient(180deg, #102242 0%, #0b1732 100%); border-bottom: 1px solid #182f52; }
+    h1 { margin: 0; color: var(--accent); font-size: clamp(1.8rem, 3vw, 2.4rem); letter-spacing: -.02em; }
+    .tagline { margin: .45rem 0 0; color: var(--muted); font-size: .95rem; }
+    .menu-bar { display: flex; gap: 1rem; padding: .75rem 1rem; background: #111d33; border-top: 1px solid #18305c; border-bottom: 1px solid #18305c; color: var(--muted); font-size: .94rem; }
+    .menu-bar span { opacity: .85; }
+    .menu-bar span::first-letter { text-decoration: underline; }
+    main { width: calc(100% - 2rem); max-width: 58rem; margin: 1rem auto; flex: 1; }
+    .panel { margin: 0 0 1rem; padding: 1rem 1.1rem; background: var(--panel); border: 1px solid var(--panel-border); border-radius: .75rem; box-shadow: inset 0 1px 0 #1d314f; }
+    h2 { margin: 0 0 .75rem; color: var(--accent-strong); font-size: 1.1rem; }
+    p, label, li { color: var(--text); }
+    label { display: block; margin-top: 1rem; font-weight: 700; }
+    input, select, button { width: 100%; min-height: 2.4rem; margin-top: .4rem; padding: .55rem .65rem; border: 1px solid #436286; border-radius: .4rem; font: inherit; }
+    input, select { background: #15263f; color: #eef2fa; }
+    input::placeholder { color: var(--muted); }
+    button { background: linear-gradient(180deg, #1c4f7c 0%, #0f2d4f 100%); color: #eef2fa; font-weight: 700; cursor: pointer; border: 1px solid #4a7db7; }
+    button:hover { background: linear-gradient(180deg, #27a3ff 0%, #1571b5 100%); }
+    button.secondary { background: #1b2a44; color: #c4d4e8; border-color: #33639a; }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: 1rem; }
+    #auth-screen { width: min(36rem, 100%); margin: 1.5rem auto; }
+    #auth-status, #status { min-height: 2.6rem; margin-top: 1rem; padding: .7rem .85rem; background: rgba(255,255,255,.06); border: 1px solid #2f4d71; border-radius: .5rem; color: var(--text); }
+    #auth-status.error { border-color: var(--danger); color: var(--danger); }
+    .hint { color: var(--muted); margin-top: .55rem; font-size: .95rem; }
+    #available-games { padding: 0; list-style: none; margin: 0; }
+    #available-games li { display: flex; align-items: center; justify-content: space-between; gap: .8rem; margin: .7rem 0; padding: .85rem; border: 1px solid #22456d; border-radius: .55rem; background: rgba(255,255,255,.04); }
+    #messages { max-height: 16rem; overflow-y: auto; border: 1px solid #22456d; padding: .85rem; background: rgba(255,255,255,.04); }
     [hidden] { display: none !important; }
     .skip-link { position: absolute; left: -9999px; top: .5rem; padding: .7rem; background: #fff; color: #000; z-index: 20; }
     .skip-link:focus { left: .5rem; }
-    footer { padding: 2rem 0; color: var(--muted); }
+    footer { padding: 1rem 1.2rem; color: var(--muted); background: #0b1729; border-top: 1px solid #182f52; }
+    footer p { margin: 0; }
+    @media (max-width: 40rem) { .actions { grid-template-columns: 1fr; } .menu-bar { flex-wrap: wrap; } .app-shell { width: 100%; } }
   </style>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
-  <header>
-    <h1>Accessible Game Lounge</h1>
-    <p class="tagline">Play together—by sight, sound, keyboard, or screen reader.</p>
-  </header>
+  <div class="app-shell">
+    <header>
+      <h1>Accessible Game Lounge</h1>
+      <p class="tagline">Play together—by sight, sound, keyboard, or screen reader.</p>
+    </header>
+    <nav class="menu-bar" aria-label="Application menu"><span>Game</span><span>Account</span><span>Sound</span><span>Help</span></nav>
 
-  <main id="main-content" tabindex="-1">
+    <main id="main-content" tabindex="-1">
     <section id="auth-screen" class="panel" aria-labelledby="auth-title">
       <h2 id="auth-title">Login or Register</h2>
       <p>Sign in to enter the lounge. New players can create an account here.</p>
@@ -169,7 +179,8 @@
       </section>
     </div>
   </main>
-  <footer><p>Your password is never stored in the browser or saved as readable text.</p></footer>
+    <footer><p>Your password is never stored in the browser or saved as readable text.</p></footer>
+  </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="lounge-accessibility.js"></script>
   <script src="audio.js"></script>

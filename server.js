@@ -5,6 +5,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs/promises');
 const { promisify } = require('util');
+const { version: appVersion, name: packageName } = require('./package.json');
 const express = require('express');
 const { Server } = require('socket.io');
 const MonopolyBoards = require('./monopoly-boards');
@@ -78,6 +79,14 @@ app.use((request, response, next) => {
   try { requestedPath = decodeURIComponent(requestedPath); } catch {}
   if (/^\/users\.json(?:\.tmp)?$/i.test(requestedPath)) return response.sendStatus(404);
   next();
+});
+app.get('/version.json', (_request, response) => {
+  response.set('Cache-Control', 'no-store');
+  response.json({
+    name: packageName,
+    version: appVersion,
+    environment: process.env.RENDER ? 'render' : 'local'
+  });
 });
 app.use(express.static(__dirname, { index: false }));
 app.get('/', (_request, response) => response.sendFile(path.join(__dirname, 'lobby.html')));

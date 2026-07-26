@@ -23,15 +23,8 @@ function configuredServerUrl() {
 
 async function createWindow() {
   let loungeUrl = configuredServerUrl();
-  if (!loungeUrl && app.isPackaged) {
-    loungeUrl = PRODUCTION_SERVER_URL;
-  }
-
   if (!loungeUrl) {
-    process.env.LOUNGE_DATA_DIR = app.getPath('userData');
-    const { startServer } = require('./server');
-    const loungeServer = await startServer(0, '127.0.0.1');
-    loungeUrl = `http://127.0.0.1:${loungeServer.address().port}/`;
+    loungeUrl = PRODUCTION_SERVER_URL;
   }
 
   mainWindow = new BrowserWindow({
@@ -48,7 +41,17 @@ async function createWindow() {
     }
   });
   mainWindow.setMenuBarVisibility(false);
-  await mainWindow.loadURL(loungeUrl);
+
+  try {
+    await mainWindow.loadURL(loungeUrl);
+  } catch (_error) {
+    process.env.LOUNGE_DATA_DIR = app.getPath('userData');
+    const { startServer } = require('./server');
+    const loungeServer = await startServer(0, '127.0.0.1');
+    const localUrl = `http://127.0.0.1:${loungeServer.address().port}/`;
+    await mainWindow.loadURL(localUrl);
+  }
+
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
