@@ -14,6 +14,8 @@ assert(source.includes("if(isKeyup&&lastPromptKey===yesNo&&(event.timeStamp-last
 assert(source.includes("const keyCode=Number(event.keyCode||event.which||0);if(keyCode===89)return'y';if(keyCode===78)return'n';"), 'Missing legacy keyCode fallback for Y/N prompts.');
 assert(source.includes("document.addEventListener('keypress',event=>{if(!['how','keys','options','computer'].includes(startStage))return;if(parseYesNoKey(event))handlePromptKeys(event,false);},true);"), 'Missing keypress fallback listener for Y/N prompts.');
 assert(source.includes("document.addEventListener('keyup',event=>{if(['y','n','Y','N'].includes(event.key))handlePromptKeys(event,true);},true);"), 'Missing keyup fallback listener for Y/N prompts.');
+assert(source.includes('function visibleOptionControls()') && source.includes('function nextVisibleOption(currentControl)') && source.includes('function submitOptionSelection(advance=false,currentControl=null)'), 'Missing RS-style option advance flow.');
+assert(source.includes("optionsForm.addEventListener('keydown',event=>{if(event.key!=='Enter')return;const control=event.target;if(!['SELECT','INPUT'].includes(control.tagName))return;event.preventDefault();submitOptionSelection(true,control)});"), 'Missing Enter-to-save-and-advance option handling.');
 assert(source.includes("if(startStage==='how'){if(answerYes)"), 'Missing instructions stage decision branch.');
 assert(source.includes("else ask('keys')"), 'Missing N->bypass behavior from instructions to keyboard commands.');
 assert(source.includes("else if(startStage==='keys'){if(answerYes)"), 'Missing keyboard commands stage decision branch.');

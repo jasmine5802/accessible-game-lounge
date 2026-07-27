@@ -1,0 +1,1532 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "test-yesno",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-lobby",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:lobby"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-options",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:options"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-yesno-rerun",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-lobby-rerun",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:lobby"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-options-rerun",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:options"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-render-version",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-render-version-rerun",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-deploy-readiness",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git status --short; git branch --show-current; git remote -v"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-version-endpoint-check",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"fetch('https://accessible-game-lounge.onrender.com/version.json').then(async r=>{console.log(r.status);console.log(await r.text());}).catch(e=>{console.error(e.message);process.exit(1);});"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-endpoint-check-fixed",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$u='https://accessible-game-lounge.onrender.com/version.json'; node -e \"fetch(process.argv[1]).then(async r=>{console.log(r.status);console.log(await r.text());}).catch(e=>{console.error(e.message);process.exit(1);});\" $u"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "commit-and-push-render-update",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git add dominoes.html game-help.js index.html lobby.html lounge-accessibility.js main.js package.json server.js verify-render-version.js yes-no-flow.test.js; git commit -m \"Align desktop client UX, enforce Y/N flow, and add Render version-gated installer checks\"; git push origin main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-add-render-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"dominoes.html",
+				"game-help.js",
+				"index.html",
+				"lobby.html",
+				"lounge-accessibility.js",
+				"main.js",
+				"package.json",
+				"server.js",
+				"verify-render-version.js",
+				"yes-no-flow.test.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-render-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Render sync update: desktop shell, YN flow, installer version gate"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-render-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-render-live-endpoint",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-render-package-new-scripts",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/package.json' -UseBasicParsing; if ($r.Content -match 'release:check' -and $r.Content -match 'test:yesno') { 'new-build-live' } else { 'old-build-still-live' }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-render-version-endpoint-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set RENDER_VERSION_URL=https://accessible-game-lounge.onrender.com/version.json&& node verify-render-version.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "release-win-final",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:win"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-smoke-install-uninstall",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$ErrorActionPreference='Stop'; $installer = Join-Path (Resolve-Path '.\\dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'; if (!(Test-Path $installer)) { throw \"Installer not found: $installer\" }; $installDir = 'C:\\Temp\\AGLInstallSmoke'; if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }; New-Item -ItemType Directory -Force -Path $installDir | Out-Null; & $installer /S /D=$installDir; Start-Sleep -Seconds 2; if (!(Test-Path $installDir)) { throw 'Install directory missing after install.' }; $exe = Get-ChildItem -Path $installDir -Filter '*.exe' | Where-Object { $_.Name -notlike '*Uninstall*' } | Select-Object -First 1; if (-not $exe) { throw 'Installed app executable not found.' }; $uninstaller = Get-ChildItem -Path $installDir -Filter '*Uninstall*.exe' | Select-Object -First 1; if (-not $uninstaller) { throw 'Uninstaller executable not found.' }; Write-Output \"Installed executable: $($exe.FullName)\"; Write-Output \"Uninstaller: $($uninstaller.FullName)\"; & $uninstaller.FullName /S; Start-Sleep -Seconds 2; if (Test-Path $installDir) { Write-Output 'Install folder still exists after uninstall (may contain leftovers/settings).'; Get-ChildItem -Path $installDir -Force | Select-Object Name,Length,LastWriteTime | Format-Table -AutoSize } else { Write-Output 'Install folder removed after uninstall.' }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-smoke-script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"installer-smoke-test.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-smoke-install-dir",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"if (Test-Path 'C:\\Temp\\AGLInstallSmoke') { Get-ChildItem -Path 'C:\\Temp\\AGLInstallSmoke' -Recurse -Force | Select-Object FullName, Length | Format-Table -AutoSize } else { Write-Output 'Install directory does not exist.' }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "find-installed-app-location",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$roots = @($env:LOCALAPPDATA+'\\Programs', 'C:\\Program Files', 'C:\\Program Files (x86)'); foreach ($root in $roots) { if (Test-Path $root) { Get-ChildItem -Path $root -Recurse -Filter \"Jazzy Jay's Accessible Game Lounge.exe\" -ErrorAction SilentlyContinue | Select-Object FullName, LastWriteTime | Format-Table -AutoSize } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "run-find-installed-app",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"find-installed-app.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "full-feature-tests",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:uno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-computer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-monopoly",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:monopoly"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-multiplayer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "list-dist-artifacts",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem -Path .\\dist -File | Select-Object Name,Length,LastWriteTime | Sort-Object LastWriteTime -Descending | Format-Table -AutoSize"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "launch-installer",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Start-Process -FilePath (Resolve-Path '.\\dist\\AccessibleGameLounge Setup 1.0.21.exe')"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "launch-installer-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"start",
+				"",
+				"\"dist\\AccessibleGameLounge Setup 1.0.21.exe\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "launch-installer-explorer",
+			"type": "shell",
+			"command": "explorer",
+			"args": [
+				"C:\\Users\\jasmi\\OneDrive\\Documents\\accessible game lounge\\dist\\AccessibleGameLounge Setup 1.0.21.exe"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-test-yesno-after-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-test-lobby-after-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:lobby"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-test-yesno-updated",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-all-game-prompts",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-options-after-skipbo-change",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:options"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "release-check-after-skipbo-change",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "full-games-validation",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "multiplayer-validation",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "computer-validation",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "multiplayer-validation-rerun",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "release-check-rerun",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-registry-smoke",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-registry-smoke-rerun",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-uninstall-entries",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$product='Jazzy Jay''s Accessible Game Lounge'; $paths=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); foreach($p in $paths){ Get-ItemProperty -Path $p -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq $product } | Select-Object PSPath,DisplayVersion,InstallLocation,UninstallString,QuietUninstallString | Format-List }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-uninstall-entries-script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\inspect-uninstall-entries.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-uninstall-file-exists",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$p='C:\\Users\\jasmi\\AGL_test_install\\accessible-game-lounge\\Uninstall Jazzy Jay''s Accessible Game Lounge.exe'; Write-Output \"Exists: $([bool](Test-Path $p))\"; if(Test-Path $p){ Get-Item $p | Select-Object FullName,Length,LastWriteTime | Format-List }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-registry-smoke-rerun-2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-uninstall-entries-script-2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\inspect-uninstall-entries.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-registry-smoke-rerun-3",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-render-version-now",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-render-live-endpoint-now",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "list-installer-artifacts-now",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem -Path .\\dist -File | Select-Object Name,Length,LastWriteTime | Sort-Object LastWriteTime -Descending | Format-Table -AutoSize"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-pre-share-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-pre-share-installer-smoke",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-pre-share-render-endpoint",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "locate-shareable-exe",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem -Path .\\dist -File -Filter '*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 3 FullName,Name,LastWriteTime | Format-Table -AutoSize"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "locate-shareable-exe-fullpath",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem -Path .\\dist -File -Filter '*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 3 -ExpandProperty FullName"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "open-dist-folder-explorer",
+			"type": "shell",
+			"command": "explorer",
+			"args": [
+				"c:\\Users\\jasmi\\OneDrive\\Documents\\accessible game lounge\\dist"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-yesno-after-keycompat-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-release-check-after-keycompat-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-live-game-help-signature",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$url='https://accessible-game-lounge.onrender.com/game-help.js'; $src=(Invoke-WebRequest -Uri $url -UseBasicParsing).Content; if($src -match 'keyCode===89' -and $src -match \"addEventListener\\('keypress'\"){ 'LIVE_HAS_KEYCOMPAT_FIX' } else { 'LIVE_MISSING_KEYCOMPAT_FIX' }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-live-game-help-signature-script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-short",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-remote",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git branch --show-current; git remote -v"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "commit-keycompat-fix",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git add game-help.js yes-no-flow.test.js; git commit -m \"Fix Y/N prompt compatibility for Windows keyboard events\"; git push origin main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-add-keycompat-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"game-help.js",
+				"yes-no-flow.test.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-keycompat-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Fix YN prompt compatibility for Windows keyboard events"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-keycompat-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "recheck-live-keycompat-signature",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "recheck-live-keycompat-signature-nocache",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "show-latest-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"show",
+				"--name-only",
+				"--oneline",
+				"-1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "live-version-check-latest",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "live-keycompat-signature-latest",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "local-render-parity-check-latest",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-running-desktop-source",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$proc = Get-Process | Where-Object { $_.ProcessName -like '*Accessible*Game*Lounge*' -or $_.Path -like '*accessible-game-lounge*' } | Select-Object -First 1; if(-not $proc){ Write-Output 'APP_PROCESS_NOT_FOUND'; exit 0 }; Write-Output ('PROC_NAME=' + $proc.ProcessName); Write-Output ('PROC_ID=' + $proc.Id); if($proc.Path){ Write-Output ('PROC_PATH=' + $proc.Path) }; $conns = Get-NetTCPConnection -State Established -OwningProcess $proc.Id -ErrorAction SilentlyContinue; if(-not $conns){ Write-Output 'NO_ESTABLISHED_CONNECTIONS'; exit 0 }; foreach($c in $conns){ Write-Output ('CONN=' + $c.LocalAddress + ':' + $c.LocalPort + ' -> ' + $c.RemoteAddress + ':' + $c.RemotePort) }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-running-desktop-source-script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\inspect-running-desktop-source.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-desktop-listen-ports",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$p = Get-Process | Where-Object { $_.ProcessName -eq \"Jazzy Jay's Accessible Game Lounge\" } | Select-Object -First 1; if(-not $p){ 'APP_PROCESS_NOT_FOUND'; exit 0 }; Get-NetTCPConnection -State Listen -OwningProcess $p.Id -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,State,OwningProcess | Format-Table -AutoSize"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-running-desktop-source-script-2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\inspect-running-desktop-source.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "inspect-running-desktop-source-script-3",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\inspect-running-desktop-source.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "test-yesno-after-button-fallback",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "release-check-after-button-fallback",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-add-prompt-button-fallback",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"game-help.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-prompt-button-fallback",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Add Yes/No button and Enter/Escape fallback for setup prompts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-prompt-button-fallback",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check-live-full-prompt-fallback-fix",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-version-now",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-prompt-fix-signature-now",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-render-parity-now",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "latest-installer-artifact-now",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem -Path .\\dist -File -Filter 'AccessibleGameLounge Setup *.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 FullName,Name,LastWriteTime,Length | Format-List"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "latest-installer-artifact-script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\latest-installer-artifact.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-yesno-after-rs-ui-tweak",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-options-after-monopoly-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:options"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "full-release-check-after-rs-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-add-rs-monopoly-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"game-help.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-rs-monopoly-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Refine setup prompt style and fix Monopoly options timing"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-rs-monopoly-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-live-version-confirm",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-live-prompt-signature-confirm",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-game-help.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-local-parity-confirm",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "render-rs-fix-signature-confirm",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-rs-prompt-fix.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-rs-prompt-coverage-all-games",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:prompt-coverage"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-full-release-after-rs-coverage",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-after-sighted-style-update",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-add-sighted-style-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"lounge-accessibility.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-sighted-style-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Improve shared game visuals for sighted desktop play"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-sighted-style-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-render-version-check",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-installer-render-parity-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-live-rs-prompt-signature",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-rs-prompt-fix.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-live-rs-desktop-style-signature",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-desktop-style.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-release-check-all-prompts-options",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-multiplayer-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-computer-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-rs-prompt-copy",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-full-release-rs-prompt-copy",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-live-rs-prompt-copy",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-rs-prompt-fix.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-yesno-simplified-copy",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-prompt-coverage-simplified-copy",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:prompt-coverage"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-release-check-simplified-copy",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-rs-skin-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-rs-skin-multiplayer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-rs-skin-computer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-add-rs-skin-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"lounge-accessibility.js",
+				"game-help.js",
+				"yes-no-flow.test.js",
+				"prompt-coverage.test.js",
+				"check-live-rs-prompt-fix.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-rs-skin-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Refine shared RS-style skin for all games"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-rs-skin-update",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-accessibility-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-accessibility-multiplayer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-accessibility-computer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-live-rs-prompt-style-check",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-rs-prompt-fix.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-live-rs-desktop-style-check",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-desktop-style.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-enter-advance-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-enter-advance-multiplayer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "validate-enter-advance-computer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-before-deploy",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "stage-deployable-changes",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"game-help.js",
+				"game-options.test.js",
+				"multiplayer-counts.test.js",
+				"package.json",
+				"server.js",
+				"yes-no-flow.test.js",
+				".vscode",
+				"check-live-desktop-style.ps1",
+				"check-live-game-help.ps1",
+				"find-installed-app.ps1",
+				"inspect-running-desktop-source.ps1",
+				"inspect-uninstall-entries.ps1",
+				"installer-registry-smoke.ps1",
+				"installer-smoke-test.ps1",
+				"latest-installer-artifact.ps1"
+			],
+			"isBackground": false
+		}
+	]
+}
