@@ -6,9 +6,8 @@ const assert = require('assert');
 
 const source = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
 
-assert(source.includes('Would you like instructions? Press Y for yes or N for no.'), 'Missing instructions Y/N prompt text.');
-assert(source.includes('Would you like the keyboard commands? Press Y for yes or N for no.'), 'Missing keyboard commands Y/N prompt text.');
-assert(source.includes('Would you like to set up game options? Press Y for yes or N for no.'), 'Missing options Y/N prompt text.');
+assert(source.includes("startContent.textContent=stage==='how'?'Instructions?':stage==='keys'?'Keyboard commands?':stage==='computer'?'Add one computer opponent?':'Game options?'"), 'Missing RS-style short prompt text.');
+assert(source.includes("remindYesNo(){if(startStage==='how')startContent.textContent='Instructions?';else if(startStage==='keys')startContent.textContent='Keyboard commands?';else if(startStage==='options')startContent.textContent='Game options?';else if(startStage==='computer')startContent.textContent='Add one computer opponent?';startContent.focus()}"), 'Missing RS-style prompt reminder text.');
 assert(source.includes('function parseYesNoKey(event)'), 'Missing normalized Y/N key parser.');
 assert(source.includes('function handlePromptKeys(event,isKeyup=false)'), 'Missing unified prompt key handler.');
 assert(source.includes("if(isKeyup&&lastPromptKey===yesNo&&(event.timeStamp-lastPromptKeyTime)<700)return;"), 'Missing keyup dedupe to prevent accidental double-advance.');

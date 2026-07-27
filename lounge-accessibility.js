@@ -63,23 +63,23 @@
     document.documentElement.classList.add('lounge-desktop-client');
     const style = document.createElement('style');
     style.textContent = `
-      html.lounge-desktop-client { color-scheme:dark; background:#1f2732; }
+      html.lounge-desktop-client { color-scheme:light; background:#b9b4a4; }
       html.lounge-desktop-client body {
         margin:0!important;
         min-height:100vh;
-        background:#1f2732!important;
+        background:#b9b4a4!important;
         background-image:none!important;
-        color:#fff;
+        color:#141414;
         font:1rem/1.45 "Segoe UI",system-ui,sans-serif!important;
       }
       html.lounge-desktop-client .lounge-client-shell {
         width:min(98rem,100%);
         min-height:100vh;
         margin:0 auto;
-        background:#2a3442;
-        border-left:1px solid #8fa0b5;
-        border-right:1px solid #8fa0b5;
-        box-shadow:0 0 0 1px #111a22;
+        background:#d9d4c7;
+        border-left:1px solid #fff;
+        border-right:1px solid #5f5a4f;
+        box-shadow:0 0 0 1px #867f71;
       }
       html.lounge-desktop-client .lounge-client-titlebar {
         display:flex;
@@ -88,25 +88,25 @@
         gap:.6rem;
         padding:.4rem .75rem;
         color:#fff;
-        background:linear-gradient(180deg,#305681 0%,#20415f 100%);
-        border-bottom:1px solid #a7bad2;
+        background:linear-gradient(180deg,#3f6aa2 0%,#22477a 100%);
+        border-bottom:1px solid #112a4a;
       }
       html.lounge-desktop-client .lounge-client-titlebar strong {
         font-size:1.02rem;
         letter-spacing:.01em;
       }
       html.lounge-desktop-client .lounge-client-titlebar span {
-        color:#deebfb;
+        color:#edf4ff;
         font-size:.92rem;
       }
       html.lounge-desktop-client .lounge-client-menubar {
         display:flex;
         gap:1rem;
         padding:.28rem .75rem;
-        color:#111;
-        background:#e6eaef;
-        border-top:1px solid #ffffff;
-        border-bottom:1px solid #9aaaba;
+        color:#1a1a1a;
+        background:#e8e4d7;
+        border-top:1px solid #fffdf5;
+        border-bottom:1px solid #8b8578;
         font-size:.9rem;
       }
       html.lounge-desktop-client .lounge-client-menubar span::first-letter { text-decoration:underline; }
@@ -118,20 +118,20 @@
         max-width:none!important;
         margin:0!important;
         padding:.55rem .8rem!important;
-        background:#101c2a!important;
-        border-bottom:1px solid #8298b9;
+        background:#e8e4d7!important;
+        border-bottom:1px solid #8b8578;
         box-shadow:none!important;
       }
       html.lounge-desktop-client .lounge-client-workspace > header h1,
       html.lounge-desktop-client body > header h1 {
         margin:0!important;
-        color:#ffe45c!important;
+        color:#1b1b1b!important;
         font:700 1.26rem/1.25 "Segoe UI",system-ui,sans-serif!important;
         letter-spacing:0!important;
         text-shadow:none!important;
       }
       html.lounge-desktop-client .lounge-client-workspace > header p,
-      html.lounge-desktop-client body > header p { margin:.2rem 0 0!important; color:#d6dfec; }
+      html.lounge-desktop-client body > header p { margin:.2rem 0 0!important; color:#232323; }
       html.lounge-desktop-client .lounge-client-workspace > main,
       html.lounge-desktop-client body > main {
         box-sizing:border-box;
@@ -145,8 +145,8 @@
         width:100%!important;
         margin:0!important;
         padding:.5rem 0 1rem!important;
-        color:#c8d4e7;
-        border-top:1px solid #445b74;
+        color:#333;
+        border-top:1px solid #8b8578;
       }
       html.lounge-desktop-client h2 { font-size:1.15rem!important; margin:.15rem 0 .65rem!important; }
       html.lounge-desktop-client h3 { font-size:1rem!important; }
@@ -154,16 +154,16 @@
       html.lounge-desktop-client section.panel {
         margin:.75rem 0!important;
         padding:.7rem!important;
-        background:#111f33!important;
+        background:#ece6d9!important;
         background-image:none!important;
-        border:1px solid #8298b9!important;
+        border:1px solid #8b8578!important;
         border-radius:0!important;
-        box-shadow:none!important;
+        box-shadow:inset 1px 1px 0 #fffdf5,inset -1px -1px 0 #b7b0a3!important;
       }
       html.lounge-desktop-client .panel h2,
       html.lounge-desktop-client section.panel h2 {
-        color:#ffe45c!important;
-        border-bottom:1px solid #4f6782;
+        color:#1b1b1b!important;
+        border-bottom:1px solid #b7b0a3;
         padding-bottom:.28rem;
       }
       html.lounge-desktop-client .toolbar,
@@ -171,8 +171,8 @@
       html.lounge-desktop-client .actions {
         gap:.4rem!important;
         padding:.45rem!important;
-        background:#0b1726;
-        border:1px solid #445b74;
+        background:#d7d0c0;
+        border:1px solid #8b8578;
         border-radius:0!important;
       }
       html.lounge-desktop-client button,
@@ -187,34 +187,34 @@
       }
       html.lounge-desktop-client button {
         padding:.35rem .65rem!important;
-        background:linear-gradient(180deg,#f5f8fc 0%,#cad8e8 100%)!important;
-        color:#0d1a29!important;
+        background:linear-gradient(180deg,#f9f6ed 0%,#d7d0c0 100%)!important;
+        color:#1a1a1a!important;
       }
       html.lounge-desktop-client button:hover {
-        background:linear-gradient(180deg,#ffffff 0%,#d6e3f2 100%)!important;
+        background:linear-gradient(180deg,#fffdf5 0%,#e2dccf 100%)!important;
       }
       html.lounge-desktop-client button:active {
-        background:linear-gradient(180deg,#c7d6e7 0%,#eaf1f9 100%)!important;
+        background:linear-gradient(180deg,#c8c1b4 0%,#f2ecdf 100%)!important;
         transform:translateY(1px);
       }
       html.lounge-desktop-client button:disabled {
-        background:#8d9aab!important;
-        color:#344355!important;
-        border-color:#a9b5c3!important;
+        background:#b8b2a6!important;
+        color:#5c5c5c!important;
+        border-color:#a49d8e!important;
         cursor:not-allowed!important;
         transform:none!important;
       }
       html.lounge-desktop-client button.secondary {
-        background:linear-gradient(180deg,#d9e2ec 0%,#b8c6d6 100%)!important;
-        color:#0d1a29!important;
+        background:linear-gradient(180deg,#efeadb 0%,#d0cabd 100%)!important;
+        color:#1a1a1a!important;
       }
       html.lounge-desktop-client select,
       html.lounge-desktop-client input {
-        background:#fff!important;
-        color:#0f1d2c!important;
+        background:#fffdf6!important;
+        color:#111!important;
       }
       html.lounge-desktop-client input::placeholder {
-        color:#4e6076!important;
+        color:#6d6455!important;
       }
       html.lounge-desktop-client p[role="status"],
       html.lounge-desktop-client #status,
@@ -223,50 +223,50 @@
       html.lounge-desktop-client #turn-status {
         margin:.4rem 0!important;
         padding:.4rem .5rem!important;
-        border:1px inset #93a5bb!important;
-        background:#f6f9fd!important;
+        border:1px inset #b6aea0!important;
+        background:#fffdf5!important;
         color:#111!important;
       }
       html.lounge-desktop-client #announcement,
       html.lounge-desktop-client #turn,
       html.lounge-desktop-client #turn-status {
-        border-left:6px solid #2b5f92!important;
+        border-left:6px solid #8a6b2e!important;
       }
       html.lounge-desktop-client ul[role="listbox"],
       html.lounge-desktop-client .menu {
-        border:1px solid #5f7388!important;
+        border:1px solid #8b8578!important;
         background:#ffffff!important;
         color:#111!important;
-        box-shadow:inset 1px 1px #d9e0e7!important;
+        box-shadow:inset 1px 1px #f7f2e8!important;
       }
       html.lounge-desktop-client ul[role="listbox"] li,
       html.lounge-desktop-client .menu li {
-        border-bottom:1px solid #e3e8ee!important;
+        border-bottom:1px solid #e7dfd0!important;
         color:#111!important;
       }
       html.lounge-desktop-client ul[role="listbox"] li[aria-selected="true"],
       html.lounge-desktop-client .menu li[aria-selected="true"] {
-        background:#0a64ad!important;
+        background:#24558f!important;
         color:#fff!important;
       }
       html.lounge-desktop-client a[href="/"] {
         display:inline-block;
         padding:.35rem .65rem;
-        color:#fff!important;
-        background:#294462;
-        border:1px solid #dbe8f7;
+        color:#1a1a1a!important;
+        background:linear-gradient(180deg,#f9f6ed 0%,#d7d0c0 100%);
+        border:1px solid #8b8578;
         border-radius:2px;
         text-decoration:none;
         font-weight:700;
       }
       html.lounge-desktop-client :focus-visible {
-        outline:4px solid #56dcff!important;
+        outline:4px solid #24558f!important;
         outline-offset:2px!important;
       }
       html.lounge-desktop-client li:focus-visible,
       html.lounge-desktop-client .space:focus-visible,
       html.lounge-desktop-client .card:focus-visible {
-        box-shadow:0 0 0 2px #0f1d2c,0 0 0 6px #56dcff!important;
+        box-shadow:0 0 0 2px #fffdf5,0 0 0 6px #24558f!important;
       }
       html.lounge-desktop-client dialog {
         border-radius:2px!important;
@@ -281,14 +281,14 @@
         text-shadow:none!important;
       }
       .lounge-settings-button { position:fixed; right:1rem; top:1rem; z-index:900; width:auto!important; }
-      .lounge-dialog { color:#fff; background:#10233a; border:2px solid #ffe45c; border-radius:2px; width:min(34rem,92vw); }
-      .lounge-dialog::backdrop { background:#000b; }
+      .lounge-dialog { color:#111; background:#ece6d9; border:2px solid #8b8578; border-radius:2px; width:min(34rem,92vw); }
+      .lounge-dialog::backdrop { background:#0008; }
       .lounge-dialog label { display:block; margin-top:1rem; font-weight:800; }
       .lounge-dialog input[type="range"] { width:100%; min-height:2.8rem; }
       .lounge-dialog-output { font-weight:900; }
-      .lounge-key-prompt { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:1rem; background:#000c; }
-      .lounge-key-prompt > div { width:min(38rem,96vw); padding:1.25rem; color:#fff; background:#10233a; border:2px solid #ffe45c; border-radius:2px; }
-      .lounge-key-prompt:focus-visible, .lounge-key-prompt > div:focus-visible { outline:6px solid #56dcff; outline-offset:-10px; }
+      .lounge-key-prompt { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:1rem; background:#0008; }
+      .lounge-key-prompt > div { width:min(38rem,96vw); padding:1.25rem; color:#111; background:#ece6d9; border:2px solid #8b8578; border-radius:2px; }
+      .lounge-key-prompt:focus-visible, .lounge-key-prompt > div:focus-visible { outline:6px solid #24558f; outline-offset:-10px; }
       @media (max-width: 860px) {
         html.lounge-desktop-client .lounge-client-workspace { padding:.5rem .5rem .8rem; }
         html.lounge-desktop-client .toolbar,
