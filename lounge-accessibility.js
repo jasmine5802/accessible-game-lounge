@@ -160,6 +160,12 @@
         border-radius:0!important;
         box-shadow:none!important;
       }
+      html.lounge-desktop-client .panel h2,
+      html.lounge-desktop-client section.panel h2 {
+        color:#ffe45c!important;
+        border-bottom:1px solid #4f6782;
+        padding-bottom:.28rem;
+      }
       html.lounge-desktop-client .toolbar,
       html.lounge-desktop-client .controls,
       html.lounge-desktop-client .actions {
@@ -184,9 +190,31 @@
         background:linear-gradient(180deg,#f5f8fc 0%,#cad8e8 100%)!important;
         color:#0d1a29!important;
       }
+      html.lounge-desktop-client button:hover {
+        background:linear-gradient(180deg,#ffffff 0%,#d6e3f2 100%)!important;
+      }
+      html.lounge-desktop-client button:active {
+        background:linear-gradient(180deg,#c7d6e7 0%,#eaf1f9 100%)!important;
+        transform:translateY(1px);
+      }
+      html.lounge-desktop-client button:disabled {
+        background:#8d9aab!important;
+        color:#344355!important;
+        border-color:#a9b5c3!important;
+        cursor:not-allowed!important;
+        transform:none!important;
+      }
       html.lounge-desktop-client button.secondary {
         background:linear-gradient(180deg,#d9e2ec 0%,#b8c6d6 100%)!important;
         color:#0d1a29!important;
+      }
+      html.lounge-desktop-client select,
+      html.lounge-desktop-client input {
+        background:#fff!important;
+        color:#0f1d2c!important;
+      }
+      html.lounge-desktop-client input::placeholder {
+        color:#4e6076!important;
       }
       html.lounge-desktop-client p[role="status"],
       html.lounge-desktop-client #status,
@@ -198,6 +226,11 @@
         border:1px inset #93a5bb!important;
         background:#f6f9fd!important;
         color:#111!important;
+      }
+      html.lounge-desktop-client #announcement,
+      html.lounge-desktop-client #turn,
+      html.lounge-desktop-client #turn-status {
+        border-left:6px solid #2b5f92!important;
       }
       html.lounge-desktop-client ul[role="listbox"],
       html.lounge-desktop-client .menu {
@@ -230,6 +263,11 @@
         outline:4px solid #56dcff!important;
         outline-offset:2px!important;
       }
+      html.lounge-desktop-client li:focus-visible,
+      html.lounge-desktop-client .space:focus-visible,
+      html.lounge-desktop-client .card:focus-visible {
+        box-shadow:0 0 0 2px #0f1d2c,0 0 0 6px #56dcff!important;
+      }
       html.lounge-desktop-client dialog {
         border-radius:2px!important;
         box-shadow:0 6px 18px #000a!important;
@@ -251,6 +289,15 @@
       .lounge-key-prompt { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:1rem; background:#000c; }
       .lounge-key-prompt > div { width:min(38rem,96vw); padding:1.25rem; color:#fff; background:#10233a; border:2px solid #ffe45c; border-radius:2px; }
       .lounge-key-prompt:focus-visible, .lounge-key-prompt > div:focus-visible { outline:6px solid #56dcff; outline-offset:-10px; }
+      @media (max-width: 860px) {
+        html.lounge-desktop-client .lounge-client-workspace { padding:.5rem .5rem .8rem; }
+        html.lounge-desktop-client .toolbar,
+        html.lounge-desktop-client .controls,
+        html.lounge-desktop-client .actions { padding:.35rem!important; }
+        html.lounge-desktop-client button,
+        html.lounge-desktop-client select,
+        html.lounge-desktop-client input { min-height:2.7rem!important; }
+      }
     `;
     document.head.append(style);
   }
