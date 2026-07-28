@@ -26,8 +26,9 @@ for (const page of gamePages) {
 
 const helpSource = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
 assert(helpSource.includes("startContent.textContent=stage==='how'?'Instructions?':stage==='keys'?'Keyboard commands?':stage==='computer'?'Add one computer opponent?':'Game options?'"), 'RS-style setup question text is missing.');
-assert(helpSource.includes("remindYesNo(){if(startStage==='how')startContent.textContent='Instructions?';else if(startStage==='keys')startContent.textContent='Keyboard commands?';else if(startStage==='options')startContent.textContent='Game options?';else if(startStage==='computer')startContent.textContent='Add one computer opponent?';startContent.focus()}"), 'RS-style reminder question text is missing.');
+assert(helpSource.includes('function remindYesNo(){') && helpSource.includes("if(startStage==='how')startContent.textContent='Instructions?'") && helpSource.includes("else if(startStage==='keys')startContent.textContent='Keyboard commands?'") && helpSource.includes("else if(startStage==='options')startContent.textContent='Game options?'") && helpSource.includes("else if(startStage==='computer')startContent.textContent='Add one computer opponent?'") && helpSource.includes('announcePrompt(startContent.textContent)'), 'RS-style reminder question text is missing.');
 assert(helpSource.includes("yesButton.textContent='Yes'") && helpSource.includes("noButton.textContent='No'"), 'RS-style Yes/No setup labels are missing.');
 assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'Shared Y/N prompt handler is missing.');
+assert(helpSource.includes('/^[a-z]$/.test(key)') && helpSource.includes('if(applyOptionShortcut(key))'), 'Keyboard shortcut option selection support is missing.');
 
 console.log('Prompt coverage checks passed for all game pages.');

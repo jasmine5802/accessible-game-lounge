@@ -716,6 +716,90 @@ io.on('connection', (socket) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,playerId=socket.data.playerId,validationError=turnError(game,playerId,game?.turnOrder[game.turnIndex],'Horse Race');if(validationError)return acknowledge(callback,{ok:false,error:validationError});if(game.sabotagePlays>0)return acknowledge(callback,{ok:false,error:'Play one more Sabotage card or end the Sabotage turn.'});const player=game.players.get(playerId);if(player.hand.length>=DerbyEngine.HAND_LIMIT)return acknowledge(callback,{ok:false,error:'Your hand is full. Play a card before drawing.'});player.hand.push(dealDerbyCard(game));const next=advanceDerbyTurn(game);game.announcement=`${player.name} drew an Action Card. ${next.name} now has the turn.`;game.sequence+=1;emitDerbyState(room,{type:'draw',activeLap:game.activeLap});acknowledge(callback,{ok:true});
   });
 
+  socket.on('derby-roll', (_data, callback) => {
+    const room = roomForPlayer(socket, callback);
+    if (!room) return;
+    const game = room.derby;
+    const playerId = socket.data.playerId;
+    const validationError = turnError(game, playerId, game?.turnOrder[game.turnIndex], 'Horse Race');
+    if (validationError) return acknowledge(callback, { ok: false, error: validationError });
+    if (game.sabotagePlays > 0) return acknowledge(callback, { ok: false, error: 'Play one more Sabotage card or end the Sabotage turn.' });
+
+    const player = game.players.get(playerId);
+    const roll = Math.floor(Math.random() * 6) + 1;
+    let position = player.position;
+    let crossedFinish = false;
+    const effects = [];
+
+    const moveForward = steps => {
+      for (let step = 0; step < steps; step += 1) {
+        position += 1;
+        if (position >= DerbyEngine.TRACK.length) {
+          position = 0;
+          player.completedLaps += 1;
+          crossedFinish = true;
+        }
+      }
+    };
+
+    moveForward(roll);
+
+    const mudHazards = [...player.mudHazards];
+    const leaderPosition = Math.max(...game.turnOrder.filter(id => game.players.has(id)).map(id => game.players.get(id).position));
+    let terrain = DerbyEngine.terrainAt(position, mudHazards, game.activeLap, game.lapHazards);
+
+    if (terrain === 'Deep Turf') {
+      effects.push('Deep Turf knocked the horse back 1 space.');
+      const mudSpace = position + 1;
+      if (player.mudHazards.has(mudSpace)) player.mudHazards.delete(mudSpace);
+      position = Math.max(0, position - 1);
+      terrain = DerbyEngine.terrainAt(position, [...player.mudHazards], game.activeLap, game.lapHazards);
+    }
+    if (terrain === 'Hurdle' && game.activeLap === 3) {
+      effects.push('Towering Hurdles knocked the horse back 2 spaces.');
+      position = Math.max(0, position - 2);
+      terrain = DerbyEngine.terrainAt(position, [...player.mudHazards], game.activeLap, game.lapHazards);
+    }
+    if (terrain === 'Sugar Boost') {
+      effects.push('Sugar Boost pushed the horse forward 2 additional spaces.');
+      moveForward(2);
+      terrain = DerbyEngine.terrainAt(position, [...player.mudHazards], game.activeLap, game.lapHazards);
+    }
+    if (terrain === 'Wind Pocket') {
+      const drafted = Math.max(position, leaderPosition);
+      if (drafted !== position) effects.push(`Wind Pocket drafted the horse to space ${drafted + 1}.`);
+      position = drafted;
+      terrain = DerbyEngine.terrainAt(position, [...player.mudHazards], game.activeLap, game.lapHazards);
+    }
+
+    player.position = position;
+
+    let story = `${player.name} rolled ${roll} and reached space ${player.position + 1}, ${terrain}.`;
+    if (effects.length) story += ` ${effects.join(' ')}`;
+    if (crossedFinish) story += ` Completed lap ${player.completedLaps} of ${DerbyEngine.TOTAL_LAPS}.`;
+
+    if (player.completedLaps >= DerbyEngine.TOTAL_LAPS) {
+      game.status = 'finished';
+      game.winnerId = playerId;
+      game.announcement = `${story} ${player.name} wins the six-lap Horse Race!`;
+      game.sequence += 1;
+      emitDerbyState(room, { type: 'finish', terrain, lapComplete: true, activeLap: game.activeLap });
+      broadcastGames();
+      return acknowledge(callback, { ok: true, roll });
+    }
+
+    const newEvent = advanceDerbyLap(game, player);
+    if (newEvent) {
+      story += ` ${player.name} is first across the line! Lap ${game.activeLap} of 6 begins: ${newEvent.name}. ${newEvent.description}`;
+    }
+
+    const next = advanceDerbyTurn(game);
+    game.announcement = `${story} ${next.name} now has the turn.`;
+    game.sequence += 1;
+    emitDerbyState(room, { type: 'dice', terrain, lapComplete: Boolean(newEvent), activeLap: game.activeLap });
+    acknowledge(callback, { ok: true, roll });
+  });
+
   socket.on('derby-play', (data={}, callback) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,playerId=socket.data.playerId,validationError=turnError(game,playerId,game?.turnOrder[game.turnIndex],'Horse Race');if(validationError)return acknowledge(callback,{ok:false,error:validationError});const player=game.players.get(playerId),cardIndex=Number(data.cardIndex);if(!Number.isInteger(cardIndex)||cardIndex<0||cardIndex>=player.hand.length)return acknowledge(callback,{ok:false,error:'Choose a card from your private hand.'});const cardName=player.hand[cardIndex],card=DerbyEngine.CARDS[cardName];if(game.sabotagePlays>0&&!card.sabotage)return acknowledge(callback,{ok:false,error:'The optional second play must be another Sabotage card. Otherwise, end the turn.'});let story='',cue={type:'move',terrain:'Normal Turf'};
     try{
