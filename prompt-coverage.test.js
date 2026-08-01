@@ -39,6 +39,7 @@ assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'S
 assert(helpSource.includes('/^[a-z]$/.test(key)') && helpSource.includes('&&applyOptionShortcut(key)'), 'Keyboard shortcut option selection support is missing.');
 assert(helpSource.includes('function moveOptionSelection(control,event)') && helpSource.includes('if(!isKeyup&&moveOptionSelection(target,event))'), 'Arrow-key option selection support is missing.');
 assert(helpSource.includes("function afterKeys(){ask('options')}"), 'Monopoly must use the same options Y/N question as every other game.');
+assert(helpSource.includes("startStage='ready'") && helpSource.includes("if(startStage==='ready')"), 'Every host must stay in the RS-style setup flow until Enter starts the game.');
 assert(monopolySource.includes('<main id="game" tabindex="-1" role="application" aria-label="Monopoly game">'), 'Monopoly gameplay must remain in screen-reader application mode after setup.');
 assert(accessibilitySource.includes('function installGameplayApplicationMode()') && accessibilitySource.includes("document.body.setAttribute('role', 'application')") && accessibilitySource.includes("game.setAttribute('role', 'application')"), 'Every complete game window must enter screen-reader application mode during gameplay.');
 

@@ -29,7 +29,8 @@ assert(source.includes('function moveOptionSelection(control,event)') && source.
 assert(source.includes('control.dispatchEvent(new Event(\'change\',{bubbles:true}))') && source.includes('if(!isKeyup&&moveOptionSelection(target,event))'), 'Arrow-key option changes must update dependent choices and be handled during setup.');
 assert(source.includes('currentControl.focus();announcePrompt'), 'Letter shortcuts must keep focus on the option selector.');
 assert(source.includes("if(!isKeyup&&event.key==='Enter'&&startStage===null"), 'Missing Enter-to-start behavior after setup is complete.');
-assert(source.includes('function announceSetupComplete(message)') && source.includes('Setup complete. ${start.textContent}. Press Enter to start the game.'), 'Setup completion must be announced outside the closed setup dialog.');
+assert(source.includes("startStage='ready'") && source.includes('Setup complete. Press Enter to start the game.'), 'Hosts must remain in the setup prompt until Enter starts the game.');
+assert(source.includes("if(startStage==='ready')") && source.includes('startGameFromPrompt()'), 'The ready prompt must start the game with Enter.');
 assert(source.includes("if(startStage==='how'){if(answerYes)"), 'Missing instructions stage decision branch.');
 assert(source.includes("else ask('keys')"), 'Missing N->bypass behavior from instructions to keyboard commands.');
 assert(source.includes("else if(startStage==='keys'){if(answerYes)"), 'Missing keyboard commands stage decision branch.');
