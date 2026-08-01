@@ -25,6 +25,7 @@ for (const page of gamePages) {
 }
 
 const helpSource = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
+const monopolySource = fs.readFileSync(path.join(__dirname, 'monopoly.html'), 'utf8');
 assert(helpSource.includes("Would you like to hear the instructions for Duck Race?")
   && helpSource.includes("Would you like to hear the keyboard commands for Duck Race?")
   && helpSource.includes("Would you like to configure Duck Race game options?")
@@ -35,5 +36,6 @@ assert(helpSource.includes("yesButton.textContent='Yes'") && helpSource.includes
 assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'Shared Y/N prompt handler is missing.');
 assert(helpSource.includes('/^[a-z]$/.test(key)') && helpSource.includes('&&applyOptionShortcut(key)'), 'Keyboard shortcut option selection support is missing.');
 assert(helpSource.includes("function afterKeys(){ask('options')}"), 'Monopoly must use the same options Y/N question as every other game.');
+assert(monopolySource.includes('<main id="game" tabindex="-1" role="application" aria-label="Monopoly game">'), 'Monopoly gameplay must remain in screen-reader application mode after setup.');
 
 console.log('Prompt coverage checks passed for all game pages.');

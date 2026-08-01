@@ -28,6 +28,7 @@ assert(source.includes("optionsForm.addEventListener('keydown',event=>{if(event.
 assert(source.includes("target?.tagName==='SELECT'") && source.includes("['ArrowUp','ArrowDown','Home','End','PageUp','PageDown']"), 'Native arrow-key navigation must remain available in option selectors.');
 assert(source.includes('currentControl.focus();announcePrompt'), 'Letter shortcuts must keep focus on the option selector.');
 assert(source.includes("if(!isKeyup&&event.key==='Enter'&&startStage===null"), 'Missing Enter-to-start behavior after setup is complete.');
+assert(source.includes('function announceSetupComplete(message)') && source.includes('Setup complete. ${start.textContent}. Press Enter to start the game.'), 'Setup completion must be announced outside the closed setup dialog.');
 assert(source.includes("if(startStage==='how'){if(answerYes)"), 'Missing instructions stage decision branch.');
 assert(source.includes("else ask('keys')"), 'Missing N->bypass behavior from instructions to keyboard commands.');
 assert(source.includes("else if(startStage==='keys'){if(answerYes)"), 'Missing keyboard commands stage decision branch.');
