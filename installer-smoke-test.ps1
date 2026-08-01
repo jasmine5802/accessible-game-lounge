@@ -1,13 +1,19 @@
 $ErrorActionPreference = 'Stop'
 
-$installer = Join-Path (Resolve-Path '.\dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'
+$package = Get-Content -Raw '.\package.json' | ConvertFrom-Json
+$installer = Join-Path (Resolve-Path '.\dist').Path "AccessibleGameLounge Setup $($package.version).exe"
 if (!(Test-Path $installer)) { throw "Installer not found: $installer" }
 
-$installDir = 'C:\Temp\AGLInstallSmoke'
+$installDir = Join-Path ([IO.Path]::GetTempPath()) 'AGLInstallSmoke'
+$resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$resolvedInstallDir = [IO.Path]::GetFullPath($installDir)
+if (!$resolvedInstallDir.StartsWith($resolvedTemp, [StringComparison]::OrdinalIgnoreCase)) {
+  throw "Smoke-test path must stay inside the temporary directory: $resolvedInstallDir"
+}
 if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
-& $installer /S /D=$installDir
+Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installDir" -WindowStyle Hidden -Wait
 Start-Sleep -Seconds 2
 
 if (!(Test-Path $installDir)) { throw 'Install directory missing after install.' }
@@ -21,7 +27,7 @@ if (-not $uninstaller) { throw 'Uninstaller executable not found.' }
 Write-Output "Installed executable: $($exe.FullName)"
 Write-Output "Uninstaller: $($uninstaller.FullName)"
 
-& $uninstaller.FullName /S
+Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -WindowStyle Hidden -Wait
 Start-Sleep -Seconds 2
 
 if (Test-Path $installDir) {
