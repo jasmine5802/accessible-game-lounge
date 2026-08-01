@@ -35,6 +35,7 @@ assert(helpSource.includes('function remindYesNo(){') && helpSource.includes("if
 assert(helpSource.includes("yesButton.textContent='Yes'") && helpSource.includes("noButton.textContent='No'"), 'RS-style Yes/No setup labels are missing.');
 assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'Shared Y/N prompt handler is missing.');
 assert(helpSource.includes('/^[a-z]$/.test(key)') && helpSource.includes('&&applyOptionShortcut(key)'), 'Keyboard shortcut option selection support is missing.');
+assert(helpSource.includes('function moveOptionSelection(control,event)') && helpSource.includes('if(!isKeyup&&moveOptionSelection(target,event))'), 'Arrow-key option selection support is missing.');
 assert(helpSource.includes("function afterKeys(){ask('options')}"), 'Monopoly must use the same options Y/N question as every other game.');
 assert(monopolySource.includes('<main id="game" tabindex="-1" role="application" aria-label="Monopoly game">'), 'Monopoly gameplay must remain in screen-reader application mode after setup.');
 

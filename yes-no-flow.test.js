@@ -25,7 +25,8 @@ assert(source.includes('function visibleOptionControls()') && source.includes('f
 assert(source.includes('function selectByShortcut(control,key)') && source.includes('function applyOptionShortcut(key)'), 'Missing shortcut-driven option selection helpers.');
 assert(source.includes("/^[a-z]$/.test(key)") && source.includes('&&applyOptionShortcut(key)'), 'Missing letter-key shortcut handling for options.');
 assert(source.includes("optionsForm.addEventListener('keydown',event=>{if(event.key!=='Enter')return;const control=event.target;if(!['SELECT','INPUT'].includes(control.tagName))return;event.preventDefault();submitOptionSelection(true,control)});"), 'Missing Enter-to-save-and-advance option handling.');
-assert(source.includes("target?.tagName==='SELECT'") && source.includes("['ArrowUp','ArrowDown','Home','End','PageUp','PageDown']"), 'Native arrow-key navigation must remain available in option selectors.');
+assert(source.includes('function moveOptionSelection(control,event)') && source.includes("keyCode===40") && source.includes("keyCode===38"), 'Option selectors must explicitly support modern and legacy Up/Down keys.');
+assert(source.includes('control.dispatchEvent(new Event(\'change\',{bubbles:true}))') && source.includes('if(!isKeyup&&moveOptionSelection(target,event))'), 'Arrow-key option changes must update dependent choices and be handled during setup.');
 assert(source.includes('currentControl.focus();announcePrompt'), 'Letter shortcuts must keep focus on the option selector.');
 assert(source.includes("if(!isKeyup&&event.key==='Enter'&&startStage===null"), 'Missing Enter-to-start behavior after setup is complete.');
 assert(source.includes('function announceSetupComplete(message)') && source.includes('Setup complete. ${start.textContent}. Press Enter to start the game.'), 'Setup completion must be announced outside the closed setup dialog.');
