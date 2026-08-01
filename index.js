@@ -19,28 +19,49 @@ elements.createSubmit = document.querySelector('#create-submit');
 let currentRoom = null;
 let username = sessionStorage.getItem('loungeUsername') || '';
 
-const quickMenuItems = [
-  { label: 'Uno Flip', type: 'game', game: 'Accessible Uno & Dos Lounge', variant: 'Uno Flip!' },
-  { label: 'Skip-Bo', type: 'game', game: 'Accessible Skip-Bo Lounge' },
-  { label: 'Monopoly', type: 'game', game: 'Monopoly Multi-Edition' },
-  { label: 'Horse Race', type: 'game', game: 'Horse Race' },
-  { label: 'Help / Instructions', type: 'help' },
-  { label: 'Exit', type: 'exit' }
-];
+const loungeState = {
+  mode: 'MAIN_MENU',
+  menuIndex: 0,
+  menuItems: [
+    { label: 'Duck Race', id: 'duck_race', type: 'game', game: 'Duck Race' },
+    { label: 'Horse Race', id: 'horse_race', type: 'game', game: 'Horse Race' },
+    { label: 'Uno Flip', id: 'uno_flip', type: 'game', game: 'Accessible Uno & Dos Lounge', variant: 'Uno Flip!' },
+    { label: 'Skip-Bo', id: 'skip_bo', type: 'game', game: 'Accessible Skip-Bo Lounge' },
+    { label: 'Monopoly', id: 'monopoly', type: 'game', game: 'Monopoly Multi-Edition' },
+    { label: 'Help / Instructions', id: 'help', type: 'help' }
+  ],
+  selectedGame: null,
+  promptStep: 'INSTRUCTIONS',
+  gameCatalog: {
+    duck_race: { instructions: 'Race once around the 40-space pond. Collect feathers and use cards to protect yourself or slow opponents.', keyboard: 'Enter rolls. C opens cards. Up and Down choose cards and targets. F reports feathers.', options: 'Choose a duck type, color, starting cards, and starting feathers.' },
+    horse_race: { instructions: 'Race through six laps while terrain and lap events change the track.', keyboard: 'Enter, D, or Space rolls. C describes the space and lap. S reads standings.', options: 'Choose a horse type, color, and starting-card count.' },
+    uno_flip: { instructions: 'Match color, number, or symbol and use Flip cards to turn over the double-sided deck.', keyboard: 'Up and Down choose a card. Enter plays or draws. C reports the center and S reads scores.', options: 'UNO Flip uses its complete light-side and dark-side rules.' },
+    skip_bo: { instructions: 'Empty your stock pile by building shared piles from 1 through 12.', keyboard: 'Up and Down choose a hand card. S selects stock. 1 through 4 select discards. Enter plays.', options: 'Stock piles use 30 cards for two players and 20 for three or more players.' },
+    monopoly: { instructions: 'Buy properties, collect rent, trade, and remain solvent.', keyboard: 'Arrow keys explore the board. Enter rolls. F reports balance and P reports owned properties.', options: 'Choose from the available board editions and themed tokens.' }
+  },
+  players: [],
+  scores: {}
+};
+window.loungeState = loungeState;
 
 function currentPlayers() {
-  return currentRoom?.players?.map(player => `${player.name}${player.id === currentRoom.hostId ? ' (host)' : ''}`) || [];
+  loungeState.players = currentRoom?.players?.map(player => `${player.name}${player.id === currentRoom.hostId ? ' (host)' : ''}`) || [];
+  return loungeState.players;
 }
 
 function currentScores() {
-  if (!currentRoom) return {};
-  if (currentRoom.scores && typeof currentRoom.scores === 'object') return currentRoom.scores;
-  return Object.fromEntries((currentRoom.players || [])
+  if (!currentRoom) return loungeState.scores = {};
+  if (currentRoom.scores && typeof currentRoom.scores === 'object') return loungeState.scores = currentRoom.scores;
+  loungeState.scores = Object.fromEntries((currentRoom.players || [])
     .filter(player => Number.isFinite(player.score))
     .map(player => [player.name, player.score]));
+  return loungeState.scores;
 }
 
 function chooseQuickGame(item) {
+  loungeState.mode = 'SETUP_PROMPTS';
+  loungeState.selectedGame = item.id;
+  loungeState.promptStep = 'OPTIONS';
   elements.createPanel.hidden = false;
   elements.gameChoice.value = item.game;
   elements.gameChoice.dispatchEvent(new Event('change'));
@@ -50,8 +71,7 @@ function chooseQuickGame(item) {
 }
 
 function syncMenuVisuals(item, selectedIndex) {
-  const hudGame = document.querySelector('#hud-game');
-  if (hudGame) hudGame.textContent = item.label;
+  loungeState.menuIndex = selectedIndex;
   document.querySelectorAll('.visual-card').forEach((card, index) => {
     card.classList.toggle('selected', index === selectedIndex);
   });
@@ -59,9 +79,9 @@ function syncMenuVisuals(item, selectedIndex) {
 
 const gameMenu = window.LoungeAccessibility.createGameStateController({
   mode: 'GAME',
-  items: quickMenuItems,
+  items: loungeState.menuItems,
   menuListEl: document.querySelector('#menu-items'),
-  statusEl: document.querySelector('#status-message'),
+  statusEl: document.querySelector('#sr-announcer'),
   getPlayers: currentPlayers,
   getScores: currentScores,
   emptyScoresText: 'Join or create a game before checking scores.',
@@ -69,8 +89,7 @@ const gameMenu = window.LoungeAccessibility.createGameStateController({
   helpText: 'Game menu help. Press Up or Down Arrow to choose a menu item and Enter to select it. Press S for current scores, P for connected players, and H for help.',
   shouldIgnoreKeyEvent: () => elements.lounge.hidden || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt')),
   onCurrentItemChange: syncMenuVisuals,
-  onSelect: chooseQuickGame,
-  onExit: () => elements.logout.click()
+  onSelect: chooseQuickGame
 });
 
 document.addEventListener('keydown', event => gameMenu.handleKey(event));
@@ -95,6 +114,7 @@ function completeLogin(result, chime = true) {
   if (chime) window.playSuccessChime?.();
   socket.emit('list-games', {}, response => { if (response.ok) renderGames(response.games); });
   gameMenu.setMode('MENU');
+  loungeState.mode = 'MAIN_MENU';
   gameMenu.renderMenu();
   requestAnimationFrame(() => {
     document.querySelector('#menu-items').focus();
@@ -104,6 +124,7 @@ function completeLogin(result, chime = true) {
 
 function updateCurrentGame(room) {
   currentRoom = room;
+  loungeState.mode = 'IN_GAME';
   sessionStorage.setItem('loungeGameId', room.id);
   elements.currentGame.hidden = false;
   elements.currentSummary.textContent = `${room.game}${room.monopolyEdition ? `, ${room.monopolyEdition} edition` : ''}${room.unoVariant ? `, ${room.unoVariant}` : ''}${room.lifeTheme ? `, ${room.lifeTheme}` : ''}${room.dominoMode ? `, ${room.dominoSet}, ${room.dominoMode}` : ''}, hosted by ${room.players.find(player => player.id === room.hostId)?.name || 'a player'}.`;
@@ -113,7 +134,7 @@ function updateCurrentGame(room) {
     return item;
   }));
   document.querySelector('#hud-players').textContent = String(room.players.length);
-  document.querySelector('#hud-active-game').textContent = room.unoVariant || room.game;
+  document.querySelector('#hud-game').textContent = room.unoVariant || room.game;
   elements.enterGame.hidden = !["Duck Race", 'Horse Race', 'Accessible Dominoes Lounge', 'Accessible Skip-Bo Lounge', 'Accessible Mall Madness Lounge', 'Monopoly Multi-Edition', 'Accessible Uno & Dos Lounge', 'The Game of Life Lounge'].includes(room.game);
   elements.enterGame.textContent = room.game === 'Monopoly Multi-Edition' ? 'Enter Monopoly' : room.game === 'Accessible Uno & Dos Lounge' ? 'Enter UNO & DOS Lounge' : room.game === 'The Game of Life Lounge' ? 'Enter The Game of Life' : room.game === 'Horse Race' ? 'Enter Horse Race' : room.game === 'Accessible Dominoes Lounge' ? 'Enter Dominoes Lounge' : room.game === 'Accessible Skip-Bo Lounge' ? 'Enter Skip-Bo Lounge' : room.game === 'Accessible Mall Madness Lounge' ? 'Enter Mall Madness Lounge' : "Enter Duck Race";
   announce(`Joined ${room.game}. ${room.players.length} player${room.players.length === 1 ? '' : 's'} present.`);

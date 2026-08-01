@@ -25,7 +25,11 @@ for (const page of gamePages) {
 }
 
 const helpSource = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
-assert(helpSource.includes("startContent.textContent=stage==='how'?'Instructions?':stage==='keys'?'Keyboard commands?':stage==='computer'?'Add one computer opponent?':'Game options?'"), 'RS-style setup question text is missing.');
+assert(helpSource.includes("Would you like to hear the instructions for Duck Race?")
+  && helpSource.includes("Would you like to hear the keyboard commands for Duck Race?")
+  && helpSource.includes("Would you like to configure Duck Race game options?")
+  && helpSource.includes("'Instructions?'")
+  && helpSource.includes("'Keyboard commands?'"), 'Duck-specific or generic setup question text is missing.');
 assert(helpSource.includes('function remindYesNo(){') && helpSource.includes("if(startStage==='how')startContent.textContent='Instructions?'") && helpSource.includes("else if(startStage==='keys')startContent.textContent='Keyboard commands?'") && helpSource.includes("else if(startStage==='options')startContent.textContent='Game options?'") && helpSource.includes("else if(startStage==='computer')startContent.textContent='Add one computer opponent?'") && helpSource.includes('announcePrompt(startContent.textContent)'), 'RS-style reminder question text is missing.');
 assert(helpSource.includes("yesButton.textContent='Yes'") && helpSource.includes("noButton.textContent='No'"), 'RS-style Yes/No setup labels are missing.');
 assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'Shared Y/N prompt handler is missing.');

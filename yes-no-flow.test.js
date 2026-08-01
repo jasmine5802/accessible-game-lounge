@@ -6,7 +6,11 @@ const assert = require('assert');
 
 const source = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
 
-assert(source.includes("stage==='how'?'Instructions?':stage==='keys'?'Keyboard commands?':stage==='computer'?'Add one computer opponent?':'Game options?'"), 'Missing RS-style short prompt text.');
+assert(source.includes("Would you like to hear the instructions for Duck Race?")
+  && source.includes("Would you like to hear the keyboard commands for Duck Race?")
+  && source.includes("Would you like to configure Duck Race game options?")
+  && source.includes("'Instructions?'")
+  && source.includes("'Keyboard commands?'"), 'Missing Duck-specific or generic Y/N prompt text.');
 assert(source.includes("if(startStage==='how')startContent.textContent='Instructions?'") && source.includes("else if(startStage==='keys')startContent.textContent='Keyboard commands?'") && source.includes("else if(startStage==='options')startContent.textContent='Game options?'") && source.includes("else if(startStage==='computer')startContent.textContent='Add one computer opponent?';"), 'Missing RS-style prompt reminder text.');
 assert(source.includes("function announcePrompt(text)"), 'Missing spoken prompt announcer for blind-player flow.');
 assert(source.includes("yesNoRow.hidden=true"), 'Prompt buttons are still visible; expected keyboard-only Y/N prompt mode.');
