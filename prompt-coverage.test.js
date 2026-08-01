@@ -18,6 +18,7 @@ const gamePages = [
 for (const page of gamePages) {
   const source = fs.readFileSync(path.join(__dirname, page), 'utf8');
   assert(source.includes('game-help.js'), `${page} is missing shared game-help.js prompt module.`);
+  assert(source.includes('lounge-accessibility.js'), `${page} is missing shared screen-reader application mode.`);
 
   const promptIndex = source.lastIndexOf('game-help.js');
   const bodyCloseIndex = source.lastIndexOf('</body>');
@@ -25,6 +26,7 @@ for (const page of gamePages) {
 }
 
 const helpSource = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
+const accessibilitySource = fs.readFileSync(path.join(__dirname, 'lounge-accessibility.js'), 'utf8');
 const monopolySource = fs.readFileSync(path.join(__dirname, 'monopoly.html'), 'utf8');
 assert(helpSource.includes("Would you like to hear the instructions for Duck Race?")
   && helpSource.includes("Would you like to hear the keyboard commands for Duck Race?")
@@ -38,5 +40,6 @@ assert(helpSource.includes('/^[a-z]$/.test(key)') && helpSource.includes('&&appl
 assert(helpSource.includes('function moveOptionSelection(control,event)') && helpSource.includes('if(!isKeyup&&moveOptionSelection(target,event))'), 'Arrow-key option selection support is missing.');
 assert(helpSource.includes("function afterKeys(){ask('options')}"), 'Monopoly must use the same options Y/N question as every other game.');
 assert(monopolySource.includes('<main id="game" tabindex="-1" role="application" aria-label="Monopoly game">'), 'Monopoly gameplay must remain in screen-reader application mode after setup.');
+assert(accessibilitySource.includes('function installGameplayApplicationMode()') && accessibilitySource.includes("game.setAttribute('role', 'application')"), 'Every game must enter screen-reader application mode during gameplay.');
 
 console.log('Prompt coverage checks passed for all game pages.');

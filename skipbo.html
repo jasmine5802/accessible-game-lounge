@@ -11,7 +11,7 @@
 <body>
   <a class="sr-only" href="#controls">Skip to game controls</a>
   <header><h1>Accessible Skip-Bo Lounge</h1><p><a href="/">Return to lounge</a> · Up/Down: hand · S: stock · 1–4: discard · Enter/Space: play · B: buildings · D: discards · O: opponents</p></header>
-  <main>
+  <main tabindex="-1" role="application" aria-label="Skip-Bo game">
     <p id="connection" class="panel" role="status">Connecting…</p><p id="turn" class="panel">Waiting for a game.</p>
     <section class="panel" aria-labelledby="build-title"><h2 id="build-title">Central building piles</h2><div id="buildings" class="table"></div></section>
     <section id="controls" class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Game controls</h2><p id="selection">No card selected.</p><div class="controls"><button id="start" type="button">Start Skip-Bo</button><button id="play" type="button" disabled>Play Selected Card</button><button id="read-buildings" type="button">Read Buildings (B)</button><button id="read-discards" type="button">Read Discards (D)</button><button id="read-opponents" type="button">Read Opponents (O)</button></div><p id="target-help">After confirming a card, press B1–B4 for a building pile or D1–D4 for a discard pile.</p></section>

@@ -11,6 +11,10 @@ const gameHelp = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
 assert(accessibility.includes("speak('Leaving the game and returning to the main game list.')") && accessibility.includes('leaveGameAndReturn();'), 'Q must leave immediately without a confirmation prompt.');
 assert(accessibility.includes("socket.emit('leave-room', {}, () =>") && accessibility.includes("location.href = '/'"), 'Quit must wait for the active room to be left before returning to the list.');
 assert(gameHelp.includes('window.LoungeAccessibility?.leaveGameAndReturn'), 'Every game must use the shared return-to-list path.');
+for (const page of ['ducks-race.html','monopoly.html','uno.html','life.html','horserace.html','dominoes.html','skipbo.html','mallmadness.html']) {
+  const source = fs.readFileSync(path.join(__dirname, page), 'utf8');
+  assert(source.includes('lounge-accessibility.js') && source.includes('game-help.js'), `${page} must load the shared Q return-to-list path.`);
+}
 
 const dataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'lounge-quit-test-'));
 process.env.LOUNGE_DATA_DIR = dataDirectory;

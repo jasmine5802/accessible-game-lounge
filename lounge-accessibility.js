@@ -580,6 +580,15 @@
     }
   }
 
+  function installGameplayApplicationMode() {
+    if (location.pathname === '/' || location.pathname.endsWith('/lobby.html') || location.pathname.endsWith('/index.html')) return;
+    const game = document.querySelector('main');
+    if (!game) return;
+    game.setAttribute('role', 'application');
+    if (!game.hasAttribute('tabindex')) game.tabIndex = -1;
+    if (!game.hasAttribute('aria-label')) game.setAttribute('aria-label', `${document.querySelector('h1')?.textContent?.trim() || 'Accessible game'} game`);
+  }
+
   function askToQuit() {
     if (document.querySelector('#lounge-quit-prompt')) return;
     for (const openDialog of document.querySelectorAll('dialog[open]')) openDialog.close();
@@ -641,7 +650,7 @@
       createGameStateController
   };
 
-  document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); addSettings(); });
+  document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); installGameplayApplicationMode(); addSettings(); });
   document.addEventListener('keydown', event => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'F2') {

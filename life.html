@@ -11,7 +11,7 @@
 <body>
   <a class="skip" href="#controls">Skip to game controls</a>
   <header><h1>The Game of Life Lounge</h1><p><a href="/">Return to lounge</a> · S or Enter: spin · C: describe tile/card · H: player stats · Left/Right Arrow: choose fork</p></header>
-  <main>
+  <main tabindex="-1" role="application" aria-label="Game of Life game">
     <p id="connection" class="panel" role="status">Connecting to your game…</p>
     <section id="controls" class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Life controls</h2><div class="toolbar"><button id="start" hidden>Start Life</button><button id="spin" disabled>Spin (S or Enter)</button><button id="describe">Describe Tile and Card (C)</button><button id="stats">Hear My Stats (H)</button></div><p id="turn-status">Waiting for the game.</p><div id="fork" hidden><p id="fork-prompt">Choose a path.</p><label for="route-choice">Route</label><select id="route-choice"></select><button id="choose">Take Selected Route (Enter)</button></div></section>
     <section class="panel" aria-labelledby="private-title"><h2 id="private-title">Your private assets</h2><p id="private-note">Only you receive these financial cards and investments from the server.</p><ul id="private-assets"><li>No private assets yet.</li></ul></section>
