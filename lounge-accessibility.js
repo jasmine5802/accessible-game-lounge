@@ -615,24 +615,20 @@
   function leaveGameAndReturn() {
     const gameId = sessionStorage.getItem('loungeGameId');
     const token = sessionStorage.getItem('loungeSessionToken');
-    if (!gameId || !token || typeof window.io !== 'function') {
-      location.href = '/';
-      return;
-    }
-    const exitSocket = window.io();
-    let finished = false;
     const returnToLobby = () => {
-      if (finished) return;
-      finished = true;
-      exitSocket.close();
       sessionStorage.removeItem('loungeGameId');
       location.href = '/';
     };
-    const fallback = setTimeout(returnToLobby, 1200);
-    exitSocket.on('connect', () => exitSocket.emit('authenticate-token', { token }, result => {
-      if (!result.ok) { clearTimeout(fallback); returnToLobby(); return; }
-      exitSocket.emit('leave-game', { gameId }, () => { clearTimeout(fallback); returnToLobby(); });
-    }));
+    if (typeof socket !== 'undefined' && socket?.connected) {
+      const fallback = setTimeout(returnToLobby, 1200);
+      socket.emit('leave-room', {}, () => { clearTimeout(fallback); returnToLobby(); });
+      return;
+    }
+    if (!gameId || !token || typeof window.io !== 'function') {
+      returnToLobby();
+      return;
+    }
+    returnToLobby();
   }
 
   installAudioMasterVolume();
@@ -641,7 +637,8 @@
     get soundVolume() { return soundVolume; },
     get speechVolume() { return speechVolume; },
     askToQuit,
-    createGameStateController
+    leaveGameAndReturn,
+      createGameStateController
   };
 
   document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); addSettings(); });
@@ -656,6 +653,7 @@
     if (location.pathname === '/' || location.pathname.endsWith('/lobby.html') || location.pathname.endsWith('/index.html')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    askToQuit();
+    speak('Leaving the game and returning to the main game list.');
+    leaveGameAndReturn();
   }, true);
 })();

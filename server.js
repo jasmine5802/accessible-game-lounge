@@ -1090,7 +1090,10 @@ io.on('connection', (socket) => {
     acknowledge(callback,{ok:true,message:'Game options saved. The host can start when everyone is ready.'});
   });
 
-  socket.on('leave-room', () => leaveCurrentRoom(socket, true));
+  socket.on('leave-room', (_data = {}, callback) => {
+    leaveCurrentRoom(socket, true);
+    acknowledge(callback, { ok: true });
+  });
   socket.on('disconnect', () => leaveCurrentRoom(socket, false));
 });
 
