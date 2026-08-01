@@ -88,7 +88,10 @@ function askPrompt(messageText) {
   window.LoungeAccessibility.speak(messageText);
 }
 
-function chooseQuickGame(item) {
+function handleMenuSelection(selectedItem = null) {
+  const item = selectedItem || loungeState.menuItems[loungeState.menuIndex];
+  if (!item || item.type !== 'game' || !loungeState.gameCatalog[item.id]) return;
+  loungeState.mode = 'SETUP_PROMPTS';
   loungeState.selectedGame = item.id;
   loungeState.promptStep = 'INSTRUCTIONS';
   askPrompt(`Would you like to hear the instructions for ${item.label}? Press Y for yes or N for no.`);
@@ -130,7 +133,7 @@ const gameMenu = window.LoungeAccessibility.createGameStateController({
   helpText: 'Game menu help. Press Up or Down Arrow to choose a menu item and Enter to select it. Press S for current scores, P for connected players, and H for help.',
   shouldIgnoreKeyEvent: () => elements.lounge.hidden || loungeState.mode === 'SETUP_PROMPTS' || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt')),
   onCurrentItemChange: syncMenuVisuals,
-  onSelect: chooseQuickGame
+  onSelect: handleMenuSelection
 });
 
 window.addEventListener('keydown', event => {

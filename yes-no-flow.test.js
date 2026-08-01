@@ -13,6 +13,7 @@ assert(source.includes("Would you like to hear the instructions for Duck Race?")
   && source.includes("'Keyboard commands?'"), 'Missing Duck-specific or generic Y/N prompt text.');
 assert(source.includes("if(startStage==='how')startContent.textContent='Instructions?'") && source.includes("else if(startStage==='keys')startContent.textContent='Keyboard commands?'") && source.includes("else if(startStage==='options')startContent.textContent='Game options?'") && source.includes("else if(startStage==='computer')startContent.textContent='Add one computer opponent?';"), 'Missing RS-style prompt reminder text.');
 assert(source.includes("function announcePrompt(text)"), 'Missing spoken prompt announcer for blind-player flow.');
+assert(source.includes('utterance.rate=1;utterance.pitch=1'), 'Shared prompt speech must use the standard rate and pitch.');
 assert(source.includes("yesNoRow.hidden=true"), 'Prompt buttons are still visible; expected keyboard-only Y/N prompt mode.');
 assert(source.includes('function parseYesNoKey(event)'), 'Missing normalized Y/N key parser.');
 assert(source.includes('function handlePromptKeys(event,isKeyup=false)'), 'Missing unified prompt key handler.');

@@ -8,6 +8,7 @@ const lounge = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
 const gameHelp = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
 
 assert(lounge.includes('function askPrompt(messageText)'), 'Central lounge prompt launcher is missing.');
+assert(lounge.includes('function handleMenuSelection(selectedItem = null)') && lounge.includes("loungeState.mode = 'SETUP_PROMPTS'") && lounge.includes("loungeState.promptStep = 'INSTRUCTIONS'"), 'Menu selection must explicitly start at the instructions prompt.');
 assert(lounge.includes("loungeState.promptStep === 'INSTRUCTIONS'") && lounge.includes("isYes ? info.instructions : 'Skipping instructions.'"), 'Lounge Y/N instructions branch is missing.');
 assert(lounge.includes("loungeState.promptStep === 'KEYBOARD'") && lounge.includes("isYes ? info.keyboard : 'Skipping keyboard commands.'"), 'Lounge Y/N keyboard branch is missing.');
 assert(lounge.includes("if (!['y', 'n'].includes(key)) return") && lounge.includes("processPromptChoice(key === 'y')") && lounge.includes('}, true);'), 'Capture-phase Y/N handling is missing.');
