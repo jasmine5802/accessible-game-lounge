@@ -34,5 +34,6 @@ assert(helpSource.includes('function remindYesNo(){') && helpSource.includes("if
 assert(helpSource.includes("yesButton.textContent='Yes'") && helpSource.includes("noButton.textContent='No'"), 'RS-style Yes/No setup labels are missing.');
 assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'Shared Y/N prompt handler is missing.');
 assert(helpSource.includes('/^[a-z]$/.test(key)') && helpSource.includes('if(applyOptionShortcut(key))'), 'Keyboard shortcut option selection support is missing.');
+assert(helpSource.includes("function afterKeys(){ask('options')}"), 'Monopoly must use the same options Y/N question as every other game.');
 
 console.log('Prompt coverage checks passed for all game pages.');

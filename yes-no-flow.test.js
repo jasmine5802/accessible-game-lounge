@@ -30,5 +30,7 @@ assert(source.includes("if(startStage==='how'){if(answerYes)"), 'Missing instruc
 assert(source.includes("else ask('keys')"), 'Missing N->bypass behavior from instructions to keyboard commands.');
 assert(source.includes("else if(startStage==='keys'){if(answerYes)"), 'Missing keyboard commands stage decision branch.');
 assert(source.includes("else afterKeys()"), 'Missing N->bypass behavior from keyboard commands to options/start.');
+assert(source.includes("function afterKeys(){ask('options')}"), 'Every game, including Monopoly, must ask before opening options.');
+assert(source.includes('Monopoly table settings could not load.'), 'Monopoly options need a recoverable missing-room error.');
 
 console.log('Y/N setup flow checks passed for instructions, keyboard commands, and bypass paths.');
