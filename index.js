@@ -60,6 +60,7 @@ function currentScores() {
 
 function openQuickGameOptions(item, focusSubmit = false) {
   loungeState.mode = 'OPTIONS_FORM';
+  window.loungeDesktopPromptKeys?.setActive(false);
   loungeState.selectedGame = item.id;
   loungeState.promptStep = 'OPTIONS';
   document.querySelector('#prompt-box').classList.add('hidden');
@@ -73,6 +74,7 @@ function openQuickGameOptions(item, focusSubmit = false) {
 
 function askPrompt(messageText) {
   loungeState.mode = 'SETUP_PROMPTS';
+  window.loungeDesktopPromptKeys?.setActive(true);
   const promptBox = document.querySelector('#prompt-box');
   const promptText = document.querySelector('#prompt-text');
   const announcer = document.querySelector('#sr-announcer');
@@ -147,6 +149,11 @@ window.addEventListener('keydown', event => {
   }
   gameMenu.handleKey(event);
 }, true);
+
+window.loungeDesktopPromptKeys?.onKey(key => {
+  if (loungeState.mode !== 'SETUP_PROMPTS' || !['y', 'n'].includes(key)) return;
+  processPromptChoice(key === 'y');
+});
 
 function announce(message) { elements.status.textContent = message; }
 

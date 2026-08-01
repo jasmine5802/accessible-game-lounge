@@ -1,6 +1,6 @@
 {
   "name": "accessible-game-lounge",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Playroom style accessible multiplayer game lounge",
   "main": "main.js",
   "scripts": {
@@ -15,9 +15,10 @@
     "test:yesno": "node yes-no-flow.test.js",
     "test:prompt-coverage": "node prompt-coverage.test.js",
     "test:desktop-multiplayer": "node desktop-multiplayer.test.js",
+    "test:desktop-prompts": "node desktop-prompt-keys.test.js",
     "test:lounge-prompts": "node lounge-prompt-flow.test.js",
     "verify:render-version": "node verify-render-version.js",
-    "release:check": "npm run test:yesno && npm run test:prompt-coverage && npm run test:lounge-prompts && npm run test:desktop-multiplayer && npm run test:lobby && npm run test:options && npm run verify:render-version",
+    "release:check": "npm run test:yesno && npm run test:prompt-coverage && npm run test:lounge-prompts && npm run test:desktop-prompts && npm run test:desktop-multiplayer && npm run test:lobby && npm run test:options && npm run verify:render-version",
     "release:win": "npm run release:check && npm run build-installer",
     "dev": "node server.js",
     "package-win": "electron-packager . AccessibleGameLounge --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/node_modules\\.pre-npm-install($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/users\\.json(?:\\.tmp)?$\"",

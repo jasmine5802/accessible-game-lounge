@@ -1,10 +1,17 @@
 'use strict';
 
-const { app, BrowserWindow, dialog } = require('electron');
+const path = require('path');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 
 const PRODUCTION_SERVER_URL = 'https://accessible-game-lounge.onrender.com/';
 
 let mainWindow;
+let promptModeActive = false;
+
+ipcMain.on('lounge-set-prompt-mode', (event, active) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return;
+  promptModeActive = active === true;
+});
 
 function configuredServerUrl() {
   const argument = process.argv.find(value => value.startsWith('--server-url='));
@@ -37,10 +44,19 @@ async function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
   mainWindow.setMenuBarVisibility(false);
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (!promptModeActive || input.type !== 'keyDown' || input.control || input.alt || input.meta) return;
+    const key = String(input.key || '').toLowerCase();
+    if (key !== 'y' && key !== 'n') return;
+    event.preventDefault();
+    mainWindow.webContents.send('lounge-prompt-key', key);
+  });
+  mainWindow.webContents.on('did-start-navigation', () => { promptModeActive = false; });
 
   while (!mainWindow.isDestroyed()) {
     try {
@@ -64,7 +80,7 @@ async function createWindow() {
     }
   }
 
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => { promptModeActive = false; mainWindow = null; });
 }
 
 app.whenReady().then(createWindow).catch(error => {
