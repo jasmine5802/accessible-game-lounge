@@ -86,7 +86,7 @@ function askPrompt(messageText) {
     announcer.textContent = '';
     requestAnimationFrame(() => { announcer.textContent = messageText; });
   }
-  document.querySelector('#app-container')?.focus();
+  promptBox?.focus();
   window.LoungeAccessibility.speak(messageText);
 }
 
