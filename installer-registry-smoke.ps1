@@ -61,11 +61,20 @@ $afterInstall = @(Get-UninstallEntries)
 Write-Output "Entries after install: $($afterInstall.Count)"
 $newEntries = @($afterInstall | Where-Object { $baselinePaths -notcontains $_.PSPath })
 Write-Output "New entries from this install: $($newEntries.Count)"
-if ($newEntries.Count -lt 1) {
-  throw 'Installer did not create a new uninstall entry.'
+if ($newEntries.Count -ge 1) {
+  $entry = $newEntries | Select-Object -First 1
+} else {
+  $entry = $afterInstall | Select-Object -First 1
+  if (-not $entry) {
+    throw 'Installer did not leave a usable uninstall entry.'
+  }
+  Write-Output 'Installer reused the existing uninstall entry.'
 }
 
-$entry = $newEntries | Select-Object -First 1
+$baselineEntry = $before | Select-Object -First 1
+if ($baselineEntry -and $entry.PSPath -eq $baselineEntry.PSPath) {
+  Write-Output 'Installer repaired the existing install entry instead of creating a new one.'
+}
 Write-Output "Installed version: $($entry.DisplayVersion)"
 if ($entry.InstallLocation) { Write-Output "Install location: $($entry.InstallLocation)" }
 

@@ -1527,6 +1527,688 @@
 				"latest-installer-artifact.ps1"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "status-after-staging",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "commit-and-push-deploy",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git commit -m \"Deploy RS-style accessibility and option flow updates\"; git push origin main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "commit-deploy-argform",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Deploy RS-style accessibility and option flow updates"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "push-deploy-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pre-share-render-version",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"try { $r = Invoke-WebRequest -Uri 'https://accessible-game-lounge.onrender.com/version.json' -UseBasicParsing; Write-Output $r.StatusCode; Write-Output $r.Content } catch { if ($_.Exception.Response) { Write-Output ([int]$_.Exception.Response.StatusCode.value__); Write-Output 'version endpoint not live yet'; } else { Write-Output $_.Exception.Message; exit 1 } }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pre-share-render-prompt-signature",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-rs-prompt-fix.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pre-share-render-desktop-signature",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\check-live-desktop-style.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pre-share-render-parity",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pre-share-installer-smoke",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "current-uninstall-entry-inspect",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\inspect-uninstall-entries.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-installer-registry-smoke",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".\\installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "rerun-render-parity-after-smoke-fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "shortcuts-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "shortcuts-multiplayer-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "shortcuts-computer-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:computer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "shortcuts-prompt-coverage-recheck",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:prompt-coverage"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "shortcuts-release-recheck",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-short",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-current",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"branch",
+				"--show-current"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-remote-list",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"remote",
+				"-v"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "diff-game-help",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--",
+				"game-help.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "diff-yesno-test",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--",
+				"yes-no-flow.test.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "diff-prompt-coverage",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--",
+				"prompt-coverage.test.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "diff-tasks-json",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--",
+				".vscode/tasks.json"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "diff-installer-smoke",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--",
+				"installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "final-error-recheck",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "post-live-verify-render-version",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "post-live-build-windows-installer",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:win"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "list-dist-artifacts",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-ChildItem -Path dist | Select-Object Name,Length,LastWriteTime"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "installer-smoke-1.0.21",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"./installer-registry-smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "reinstall-installer-1.0.21",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Start-Process -FilePath './dist/AccessibleGameLounge Setup 1.0.21.exe' -ArgumentList '/S','/CURRENTUSER' -Wait; Write-Output 'Reinstall complete.'"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "reinstall-installer-1.0.21-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"\"dist\\AccessibleGameLounge Setup 1.0.21.exe\" /S /CURRENTUSER"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "reinstall-installer-1.0.21-ps",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"& './dist/AccessibleGameLounge Setup 1.0.21.exe' /S /CURRENTUSER; Write-Output 'Reinstall complete.'"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "reinstall-installer-1.0.21-direct-ps",
+			"type": "shell",
+			"command": "& './dist/AccessibleGameLounge Setup 1.0.21.exe' /S /CURRENTUSER; Write-Output 'Reinstall complete.'",
+			"isBackground": false
+		},
+		{
+			"label": "verify-installed-version-after-reinstall",
+			"type": "shell",
+			"command": "$paths=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq \"Jazzy Jay's Accessible Game Lounge\" } | Select-Object DisplayName,DisplayVersion,InstallLocation,UninstallString | Format-List",
+			"isBackground": false
+		},
+		{
+			"label": "verify-installed-version-after-reinstall-2",
+			"type": "shell",
+			"command": "$paths=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '*Accessible*Game*Lounge*' } | Select-Object DisplayName,DisplayVersion,InstallLocation,UninstallString | Format-List",
+			"isBackground": false
+		},
+		{
+			"label": "verify-installed-exe-path",
+			"type": "shell",
+			"command": "$exe='C:\\Users\\jasmi\\AppData\\Local\\Programs\\accessible-game-lounge\\Jazzy Jay''s Accessible Game Lounge.exe'; if(Test-Path $exe){Write-Output \"Installed executable present: $exe\"}else{Write-Output \"Installed executable not found: $exe\"; exit 1}",
+			"isBackground": false
+		},
+		{
+			"label": "confirm-shareable-installer",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$p = Join-Path (Resolve-Path './dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'; if (Test-Path $p) { Get-Item $p | Select-Object FullName,Length,LastWriteTime | Format-List } else { Write-Error \"Installer not found: $p\"; exit 1 }"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "open-installer-folder",
+			"type": "shell",
+			"command": "explorer",
+			"args": [
+				"dist"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "confirm-shareable-installer-2",
+			"type": "shell",
+			"command": "$p = Join-Path (Resolve-Path './dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'; if (Test-Path $p) { Get-Item $p | Select-Object FullName,Length,LastWriteTime | Format-List } else { Write-Error \"Installer not found: $p\"; exit 1 }",
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-shortcuts-yesno-test",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-shortcuts-prompt-coverage",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:prompt-coverage"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-shortcuts-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "layout-alignment-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-test-yesno",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:yesno"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-test-prompt-coverage",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:prompt-coverage"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-test-lobby",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:lobby"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "keyboard-test-options",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:options"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "manual-keyboard-server",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"server.js"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "roll-move-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "restart-server-stop-node",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Output 'Stopped node processes.'"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "restart-server-start-node",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"server.js"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "all-games-shortcuts-release-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "all-games-shortcuts-multiplayer-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:multiplayer"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-before-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-before-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"branch",
+				"--show-current"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-stage-release-updates",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"ducks-race.html",
+				"game-help.js",
+				"horserace.html",
+				"horserace.js",
+				"prompt-coverage.test.js",
+				"server.js",
+				"yes-no-flow.test.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-staged-check",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-commit-release-updates",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Unify keyboard prompt shortcuts and roll-to-move race flow"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-push-main",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-after-push",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "postpush-verify-render-version",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:render-version"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "postpush-release-win",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"release:win"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "postpush-list-artifacts",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$ErrorActionPreference='SilentlyContinue'; Write-Host 'dist:'; Get-ChildItem dist | Select-Object Name,Length,LastWriteTime; Write-Host ''; Write-Host 'installer-dist:'; Get-ChildItem installer-dist | Select-Object Name,Length,LastWriteTime"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "postpush-list-artifacts-cmd",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/c",
+				"dir dist && echo. && dir installer-dist"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "open-dist-folder",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/c",
+				"start",
+				"\"\"",
+				"dist"
+			],
+			"isBackground": false
 		}
 	]
 }

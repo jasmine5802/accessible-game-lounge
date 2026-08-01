@@ -23,6 +23,24 @@ let selectedCardIndex = -1;
 let targetingCard = null;
 let selectedTargetIndex = 0;
 let lastSequence = -1;
+const accessibility = window.LoungeAccessibility?.createGameStateController({
+  mode: 'GAME',
+  statusEl: elements.polite,
+  items: [
+    { label: 'Start Duck Race', type: 'game' },
+    { label: 'Roll Dice', type: 'game' },
+    { label: 'View Cards', type: 'game' },
+    { label: 'Check Feathers', type: 'game' },
+    { label: 'Help / Instructions', type: 'help' }
+  ],
+  helpText: 'Keyboard shortcuts: Up or Down arrows choose cards or targets. Enter confirms or rolls. Press S for current feathers leaderboard. Press P for connected players. Press H for help.'
+});
+
+function syncAccessibilityState() {
+  if (!accessibility || !game) return;
+  accessibility.setPlayers((game.players || []).map(player => player.name));
+  accessibility.setScores(Object.fromEntries((game.players || []).map(player => [player.name, `${player.feathers} feathers`])));
+}
 
 function announcePolite(text) {
   elements.polite.textContent = '';
@@ -213,6 +231,7 @@ function render() {
       : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name || 'the host'}.`;
   elements.feathers.disabled = !me;
   renderPlayers(); renderCards(); renderBoard();
+  syncAccessibilityState();
 }
 
 function panForSquare(square) {
@@ -296,6 +315,7 @@ elements.board.addEventListener('keydown', event => {
 });
 document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea')) return;
+  if (accessibility?.handleKey(event)) return;
   if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     event.preventDefault();
     const direction = event.key === 'ArrowUp' ? -1 : 1;

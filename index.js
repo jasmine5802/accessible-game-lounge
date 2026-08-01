@@ -19,6 +19,62 @@ elements.createSubmit = document.querySelector('#create-submit');
 let currentRoom = null;
 let username = sessionStorage.getItem('loungeUsername') || '';
 
+const quickMenuItems = [
+  { label: 'Uno Flip', type: 'game', game: 'Accessible Uno & Dos Lounge', variant: 'Uno Flip!' },
+  { label: 'Skip-Bo', type: 'game', game: 'Accessible Skip-Bo Lounge' },
+  { label: 'Monopoly', type: 'game', game: 'Monopoly Multi-Edition' },
+  { label: 'Horse Race', type: 'game', game: 'Horse Race' },
+  { label: 'Help / Instructions', type: 'help' },
+  { label: 'Exit', type: 'exit' }
+];
+
+function currentPlayers() {
+  return currentRoom?.players?.map(player => `${player.name}${player.id === currentRoom.hostId ? ' (host)' : ''}`) || [];
+}
+
+function currentScores() {
+  if (!currentRoom) return {};
+  if (currentRoom.scores && typeof currentRoom.scores === 'object') return currentRoom.scores;
+  return Object.fromEntries((currentRoom.players || [])
+    .filter(player => Number.isFinite(player.score))
+    .map(player => [player.name, player.score]));
+}
+
+function chooseQuickGame(item) {
+  elements.createPanel.hidden = false;
+  elements.gameChoice.value = item.game;
+  elements.gameChoice.dispatchEvent(new Event('change'));
+  if (item.variant) document.querySelector('#uno-variant').value = item.variant;
+  announce(`${item.label} selected. Review the options, then create the game.`);
+  requestAnimationFrame(() => elements.gameChoice.focus());
+}
+
+function syncMenuVisuals(item, selectedIndex) {
+  const hudGame = document.querySelector('#hud-game');
+  if (hudGame) hudGame.textContent = item.label;
+  document.querySelectorAll('.visual-card').forEach((card, index) => {
+    card.classList.toggle('selected', index === selectedIndex);
+  });
+}
+
+const gameMenu = window.LoungeAccessibility.createGameStateController({
+  mode: 'GAME',
+  items: quickMenuItems,
+  menuListEl: document.querySelector('#menu-items'),
+  statusEl: document.querySelector('#status-message'),
+  getPlayers: currentPlayers,
+  getScores: currentScores,
+  emptyScoresText: 'Join or create a game before checking scores.',
+  emptyPlayersText: 'Join or create a game before checking connected players.',
+  helpText: 'Game menu help. Press Up or Down Arrow to choose a menu item and Enter to select it. Press S for current scores, P for connected players, and H for help.',
+  shouldIgnoreKeyEvent: () => elements.lounge.hidden || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt')),
+  onCurrentItemChange: syncMenuVisuals,
+  onSelect: chooseQuickGame,
+  onExit: () => elements.logout.click()
+});
+
+document.addEventListener('keydown', event => gameMenu.handleKey(event));
+
 function announce(message) { elements.status.textContent = message; }
 
 function authMessage(message, isError = false) {
@@ -38,7 +94,12 @@ function completeLogin(result, chime = true) {
   announce(`Logged in as ${username}.`);
   if (chime) window.playSuccessChime?.();
   socket.emit('list-games', {}, response => { if (response.ok) renderGames(response.games); });
-  requestAnimationFrame(() => elements.createGame.focus());
+  gameMenu.setMode('MENU');
+  gameMenu.renderMenu();
+  requestAnimationFrame(() => {
+    document.querySelector('#menu-items').focus();
+    gameMenu.announceCurrentItem();
+  });
 }
 
 function updateCurrentGame(room) {
@@ -51,6 +112,8 @@ function updateCurrentGame(room) {
     item.textContent = `${player.name}${player.id === room.hostId ? ' (host)' : ''}${player.connected ? '' : ' (reconnecting)'}`;
     return item;
   }));
+  document.querySelector('#hud-players').textContent = String(room.players.length);
+  document.querySelector('#hud-active-game').textContent = room.unoVariant || room.game;
   elements.enterGame.hidden = !["Duck Race", 'Horse Race', 'Accessible Dominoes Lounge', 'Accessible Skip-Bo Lounge', 'Accessible Mall Madness Lounge', 'Monopoly Multi-Edition', 'Accessible Uno & Dos Lounge', 'The Game of Life Lounge'].includes(room.game);
   elements.enterGame.textContent = room.game === 'Monopoly Multi-Edition' ? 'Enter Monopoly' : room.game === 'Accessible Uno & Dos Lounge' ? 'Enter UNO & DOS Lounge' : room.game === 'The Game of Life Lounge' ? 'Enter The Game of Life' : room.game === 'Horse Race' ? 'Enter Horse Race' : room.game === 'Accessible Dominoes Lounge' ? 'Enter Dominoes Lounge' : room.game === 'Accessible Skip-Bo Lounge' ? 'Enter Skip-Bo Lounge' : room.game === 'Accessible Mall Madness Lounge' ? 'Enter Mall Madness Lounge' : "Enter Duck Race";
   announce(`Joined ${room.game}. ${room.players.length} player${room.players.length === 1 ? '' : 's'} present.`);

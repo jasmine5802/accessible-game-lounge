@@ -59,6 +59,197 @@
     speechSynthesis.speak(utterance);
   }
 
+  function createGameStateController(options = {}) {
+    const state = {
+      mode: options.mode || 'GAME',
+      menuIndex: 0,
+      items: Array.isArray(options.items) ? [...options.items] : [],
+      players: Array.isArray(options.players) ? [...options.players] : [],
+      scores: options.scores && typeof options.scores === 'object' ? { ...options.scores } : {}
+    };
+    const menuListEl = options.menuListEl || document.getElementById('menu-items') || null;
+    const statusEl = options.statusEl || document.getElementById('status-message') || document.getElementById('status') || document.getElementById('announcement') || null;
+    const hotkeys = {
+      scores: Array.isArray(options.hotkeys?.scores) ? options.hotkeys.scores.map(key => String(key).toLowerCase()) : ['s'],
+      players: Array.isArray(options.hotkeys?.players) ? options.hotkeys.players.map(key => String(key).toLowerCase()) : ['p'],
+      help: Array.isArray(options.hotkeys?.help) ? options.hotkeys.help.map(key => String(key).toLowerCase()) : ['h', '?']
+    };
+
+    function speakWithLiveRegion(text) {
+      if (!text) return;
+      if (statusEl) {
+        statusEl.textContent = '';
+        requestAnimationFrame(() => { statusEl.textContent = String(text); });
+      }
+      if (typeof options.speak === 'function') options.speak(String(text));
+      else speak(String(text));
+    }
+
+    function renderMenu() {
+      if (!menuListEl) return;
+      menuListEl.innerHTML = '';
+      menuListEl.setAttribute('aria-activedescendant', state.items.length ? `item-${state.menuIndex}` : '');
+      state.items.forEach((item, index) => {
+        const node = document.createElement(options.menuItemTag || 'div');
+        node.id = `item-${index}`;
+        node.className = `menu-item ${index === state.menuIndex ? 'focused' : ''}`;
+        node.setAttribute('role', 'option');
+        node.setAttribute('aria-selected', index === state.menuIndex ? 'true' : 'false');
+        node.textContent = item.label;
+        node.addEventListener('click', () => {
+          state.menuIndex = index;
+          announceCurrentItem();
+        });
+        node.addEventListener('dblclick', () => {
+          state.menuIndex = index;
+          selectMenuItem();
+        });
+        menuListEl.appendChild(node);
+      });
+    }
+
+    function updateVisualFocus() {
+      if (!menuListEl) return;
+      menuListEl.setAttribute('aria-activedescendant', state.items.length ? `item-${state.menuIndex}` : '');
+      const nodes = menuListEl.querySelectorAll('[role="option"], .menu-item');
+      nodes.forEach((node, index) => {
+        const focused = index === state.menuIndex;
+        node.classList.toggle('focused', focused);
+        node.setAttribute('aria-selected', focused ? 'true' : 'false');
+      });
+    }
+
+    function announceCurrentItem() {
+      if (!state.items.length) return;
+      const current = state.items[state.menuIndex];
+      speakWithLiveRegion(`${current.label}, item ${state.menuIndex + 1} of ${state.items.length}`);
+      updateVisualFocus();
+      options.onCurrentItemChange?.(current, state.menuIndex);
+    }
+
+    function announceScores() {
+      const currentScores = typeof options.getScores === 'function' ? options.getScores() : state.scores;
+      if (!currentScores || !Object.keys(currentScores).length) {
+        speakWithLiveRegion(options.emptyScoresText || 'Scores are not available right now.');
+        return;
+      }
+      const scoreStrings = Object.entries(currentScores)
+        .map(([player, score]) => `${player}: ${score}`)
+        .join(', ');
+      speakWithLiveRegion(`Current scores: ${scoreStrings}`);
+    }
+
+    function announcePlayers() {
+      const currentPlayers = typeof options.getPlayers === 'function' ? options.getPlayers() : state.players;
+      if (!currentPlayers || !currentPlayers.length) {
+        speakWithLiveRegion(options.emptyPlayersText || 'No players are currently connected.');
+        return;
+      }
+      const list = currentPlayers.join(', ');
+      speakWithLiveRegion(`${currentPlayers.length} players online: ${list}`);
+    }
+
+    function announceHelp() {
+      const helpText = typeof options.getHelpText === 'function'
+        ? options.getHelpText()
+        : options.helpText || 'Keyboard shortcuts: Press Up or Down arrows to navigate menus. Press Enter to select. Press S for current scores. Press P for connected players. Press H for help.';
+      speakWithLiveRegion(helpText);
+    }
+
+    function selectMenuItem() {
+      if (!state.items.length) return;
+      const selected = state.items[state.menuIndex];
+      if (selected.type === 'help') {
+        announceHelp();
+        return;
+      }
+      if (selected.type === 'exit') {
+        speakWithLiveRegion('Exiting game lounge.');
+        options.onExit?.(selected);
+        return;
+      }
+      if (selected.type === 'game') {
+        speakWithLiveRegion(`Selected ${selected.label}. Connecting to server...`);
+      }
+      options.onSelect?.(selected, state.menuIndex);
+    }
+
+    function handleKey(event) {
+      if (!event || event.altKey || event.ctrlKey || event.metaKey) return false;
+      if (typeof options.shouldIgnoreKeyEvent === 'function' && options.shouldIgnoreKeyEvent(event)) return false;
+      const tagName = event.target?.tagName;
+      if (tagName && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) return false;
+
+      if (state.mode === 'MENU' && state.items.length) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          state.menuIndex = (state.menuIndex + 1) % state.items.length;
+          announceCurrentItem();
+          return true;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          state.menuIndex = (state.menuIndex - 1 + state.items.length) % state.items.length;
+          announceCurrentItem();
+          return true;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          selectMenuItem();
+          return true;
+        }
+      }
+
+      const key = String(event.key || '').toLowerCase();
+      if (hotkeys.scores.includes(key)) {
+        event.preventDefault();
+        announceScores();
+        return true;
+      }
+      if (hotkeys.players.includes(key)) {
+        event.preventDefault();
+        announcePlayers();
+        return true;
+      }
+      if (hotkeys.help.includes(key)) {
+        event.preventDefault();
+        announceHelp();
+        return true;
+      }
+      return false;
+    }
+
+    function setMode(mode) { state.mode = mode === 'MENU' ? 'MENU' : 'GAME'; }
+    function setItems(items) {
+      state.items = Array.isArray(items) ? [...items] : [];
+      if (state.menuIndex >= state.items.length) state.menuIndex = Math.max(0, state.items.length - 1);
+      renderMenu();
+      updateVisualFocus();
+    }
+    function setPlayers(players) { state.players = Array.isArray(players) ? [...players] : []; }
+    function setScores(scores) { state.scores = scores && typeof scores === 'object' ? { ...scores } : {}; }
+
+    if (state.mode === 'MENU' && state.items.length && menuListEl) {
+      renderMenu();
+      announceCurrentItem();
+    }
+
+    return {
+      state,
+      renderMenu,
+      announceCurrentItem,
+      announceScores,
+      announcePlayers,
+      announceHelp,
+      selectMenuItem,
+      handleKey,
+      setMode,
+      setItems,
+      setPlayers,
+      setScores
+    };
+  }
+
   function addStyles() {
     document.documentElement.classList.add('lounge-desktop-client');
     const style = document.createElement('style');
@@ -449,7 +640,8 @@
     speak,
     get soundVolume() { return soundVolume; },
     get speechVolume() { return speechVolume; },
-    askToQuit
+    askToQuit,
+    createGameStateController
   };
 
   document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); addSettings(); });

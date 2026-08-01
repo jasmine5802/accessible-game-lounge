@@ -1,6 +1,6 @@
 {
   "name": "accessible-game-lounge",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "description": "Playroom style accessible multiplayer game lounge",
   "main": "main.js",
   "scripts": {
@@ -55,8 +55,8 @@
       "!dist/**",
       "!installer-dist/**",
       "!installer-dist-*/**",
-      "!installer-final-*/**"
-      ,"!electron-base-*/**"
+      "!installer-final-*/**",
+      "!electron-base-*/**"
     ],
     "win": {
       "target": "nsis"

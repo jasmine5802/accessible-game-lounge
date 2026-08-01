@@ -6,6 +6,19 @@ const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
 const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','offer-panel','offer-title','offer-details','buy','decline','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null; let lastOfferKey = null; let gameplayStarted = false;
+const accessibility = window.LoungeAccessibility?.createGameStateController({
+  mode: 'GAME',
+  statusEl: elements.politeAnnouncer,
+  items: [
+    { label: 'Roll Dice', type: 'game' },
+    { label: 'Check Balance', type: 'game' },
+    { label: 'Hear Properties', type: 'game' },
+    { label: 'Hear Room State', type: 'game' },
+    { label: 'Help / Instructions', type: 'help' }
+  ],
+  hotkeys: { scores: ['s'], players: [], help: ['?'] },
+  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P reports owned properties and color-set progress. H reports room state. Y and N answer offers. Press S for all player balances.'
+});
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
 function announceGameplay(message) { elements.gameAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.gameAnnouncer.textContent = message; }); }
@@ -28,6 +41,11 @@ function ownershipReport() {
   const progress = myOwnershipProgress();
   if (!progress.length) return 'You do not own any properties.';
   return `You own ${progress.flatMap(group => group.properties).length} properties. ${progress.map(group => `${groupLabel(group.group)}: ${group.properties.join(', ')}. ${group.owned} of ${group.total}; ${group.complete ? 'color set complete' : `need ${group.needed} more to complete this set`}.`).join(' ')}`;
+}
+function syncAccessibilityState() {
+  if (!accessibility || !game) return;
+  accessibility.setPlayers((game.players || []).map(player => player.name));
+  accessibility.setScores(Object.fromEntries((game.players || []).map(player => [player.name, money(player.balance)])));
 }
 
 function applyEditionTheme(edition) {
@@ -103,6 +121,7 @@ function render() {
     item.append(heading,properties,progress); return item;
   }));
   renderBoard(); if (mine && game.sequence !== lastSequence) lastSequence = game.sequence;
+  syncAccessibilityState();
 }
 function renderTokenChoices(openWhenMissing=false) {
   if (!room || !playerId) return;
@@ -151,6 +170,7 @@ elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOpt
 elements.tokenCancel.addEventListener('click',()=>{elements.tokenDialog.close();elements.tokenPicker.focus()});
 document.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if (accessibility?.handleKey(event)) return;
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);
   if (onBoard && ['arrowleft','arrowup','arrowright','arrowdown'].includes(key)) { event.preventDefault(); const delta={arrowleft:-1,arrowright:1,arrowup:-10,arrowdown:10}[key]; boardIndex=(boardIndex+delta+40)%40; elements.board.querySelectorAll('.space').forEach((space,index)=>space.tabIndex=index===boardIndex?0:-1); elements.board.children[boardIndex].focus(); return; }
   if (event.key === 'Enter' && !elements.roll.disabled && !['BUTTON','A'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.roll.click(); }
