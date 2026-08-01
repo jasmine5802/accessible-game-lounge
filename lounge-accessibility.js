@@ -584,9 +584,12 @@
     if (location.pathname === '/' || location.pathname.endsWith('/lobby.html') || location.pathname.endsWith('/index.html')) return;
     const game = document.querySelector('main');
     if (!game) return;
+    const gameName = document.querySelector('h1')?.textContent?.trim() || 'Accessible game';
+    document.body.setAttribute('role', 'application');
+    document.body.setAttribute('aria-label', `${gameName} window`);
     game.setAttribute('role', 'application');
     if (!game.hasAttribute('tabindex')) game.tabIndex = -1;
-    if (!game.hasAttribute('aria-label')) game.setAttribute('aria-label', `${document.querySelector('h1')?.textContent?.trim() || 'Accessible game'} game`);
+    if (!game.hasAttribute('aria-label')) game.setAttribute('aria-label', `${gameName} game`);
   }
 
   function askToQuit() {
