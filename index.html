@@ -65,7 +65,7 @@
     @media (max-width: 40rem) { .actions { grid-template-columns: 1fr; } .menu-bar { flex-wrap: wrap; } .app-shell { width: 100%; } }
   </style>
 </head>
-<body>
+<body tabindex="-1">
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="app-shell">
     <header>
@@ -96,7 +96,7 @@
       <div id="sr-announcer" role="log" aria-live="assertive" aria-atomic="true"></div>
       <p id="status" role="status" aria-live="polite">Welcome to the game lounge.</p>
       <section class="panel" aria-labelledby="quick-menu-title">
-        <div id="app-container">
+        <div id="app-container" role="application" aria-label="Accessible Game Lounge" tabindex="0">
           <div id="menu-sidebar">
             <h2 id="quick-menu-title" class="menu-title game-title">Game Lounge</h2>
             <div id="menu-items" role="listbox" tabindex="0" aria-label="Lounge Games Menu" aria-describedby="quick-menu-help"></div>

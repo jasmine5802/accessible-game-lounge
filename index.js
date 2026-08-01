@@ -58,16 +58,57 @@ function currentScores() {
   return loungeState.scores;
 }
 
-function chooseQuickGame(item) {
-  loungeState.mode = 'SETUP_PROMPTS';
+function openQuickGameOptions(item, focusSubmit = false) {
+  loungeState.mode = 'OPTIONS_FORM';
   loungeState.selectedGame = item.id;
   loungeState.promptStep = 'OPTIONS';
+  document.querySelector('#prompt-box').classList.add('hidden');
   elements.createPanel.hidden = false;
   elements.gameChoice.value = item.game;
   elements.gameChoice.dispatchEvent(new Event('change'));
   if (item.variant) document.querySelector('#uno-variant').value = item.variant;
   announce(`${item.label} selected. Review the options, then create the game.`);
-  requestAnimationFrame(() => elements.gameChoice.focus());
+  requestAnimationFrame(() => (focusSubmit ? elements.createSubmit : elements.gameChoice).focus());
+}
+
+function askPrompt(messageText) {
+  loungeState.mode = 'SETUP_PROMPTS';
+  const promptBox = document.querySelector('#prompt-box');
+  const promptText = document.querySelector('#prompt-text');
+  const announcer = document.querySelector('#sr-announcer');
+  if (promptBox && promptText) {
+    promptBox.classList.remove('hidden');
+    promptText.textContent = messageText;
+  }
+  if (announcer) {
+    announcer.textContent = '';
+    requestAnimationFrame(() => { announcer.textContent = messageText; });
+  }
+  document.querySelector('#app-container')?.focus();
+  window.LoungeAccessibility.speak(messageText);
+}
+
+function chooseQuickGame(item) {
+  loungeState.selectedGame = item.id;
+  loungeState.promptStep = 'INSTRUCTIONS';
+  askPrompt(`Would you like to hear the instructions for ${item.label}? Press Y for yes or N for no.`);
+}
+
+function processPromptChoice(isYes) {
+  const item = loungeState.menuItems.find(entry => entry.id === loungeState.selectedGame);
+  const info = loungeState.gameCatalog[loungeState.selectedGame];
+  if (!item || !info) return;
+  if (loungeState.promptStep === 'INSTRUCTIONS') {
+    loungeState.promptStep = 'KEYBOARD';
+    askPrompt(`${isYes ? info.instructions : 'Skipping instructions.'} Would you like to hear the keyboard commands for ${item.label}? Press Y for yes or N for no.`);
+    return;
+  }
+  if (loungeState.promptStep === 'KEYBOARD') {
+    loungeState.promptStep = 'OPTIONS';
+    askPrompt(`${isYes ? info.keyboard : 'Skipping keyboard commands.'} Would you like to review game options for ${item.label}? Press Y for yes or N for no.`);
+    return;
+  }
+  if (loungeState.promptStep === 'OPTIONS') openQuickGameOptions(item, !isYes);
 }
 
 function syncMenuVisuals(item, selectedIndex) {
@@ -87,12 +128,22 @@ const gameMenu = window.LoungeAccessibility.createGameStateController({
   emptyScoresText: 'Join or create a game before checking scores.',
   emptyPlayersText: 'Join or create a game before checking connected players.',
   helpText: 'Game menu help. Press Up or Down Arrow to choose a menu item and Enter to select it. Press S for current scores, P for connected players, and H for help.',
-  shouldIgnoreKeyEvent: () => elements.lounge.hidden || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt')),
+  shouldIgnoreKeyEvent: () => elements.lounge.hidden || loungeState.mode === 'SETUP_PROMPTS' || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt')),
   onCurrentItemChange: syncMenuVisuals,
   onSelect: chooseQuickGame
 });
 
-document.addEventListener('keydown', event => gameMenu.handleKey(event));
+window.addEventListener('keydown', event => {
+  if (loungeState.mode === 'SETUP_PROMPTS') {
+    const key = String(event.key || '').toLowerCase();
+    if (!['y', 'n'].includes(key)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    processPromptChoice(key === 'y');
+    return;
+  }
+  gameMenu.handleKey(event);
+}, true);
 
 function announce(message) { elements.status.textContent = message; }
 
