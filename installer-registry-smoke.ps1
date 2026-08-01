@@ -1,8 +1,11 @@
 $ErrorActionPreference = 'Stop'
 
 $productName = "Jazzy Jay's Accessible Game Lounge"
-$installer = Join-Path (Resolve-Path '.\dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'
+$package = Get-Content -Raw '.\package.json' | ConvertFrom-Json
+$installer = Join-Path (Resolve-Path '.\dist').Path "AccessibleGameLounge Setup $($package.version).exe"
 if (!(Test-Path $installer)) { throw "Installer not found: $installer" }
+$shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) "$productName.lnk"
+$shortcutExistedBefore = Test-Path $shortcut
 
 function Get-UninstallEntries {
   $paths = @(
@@ -76,7 +79,12 @@ if ($baselineEntry -and $entry.PSPath -eq $baselineEntry.PSPath) {
   Write-Output 'Installer repaired the existing install entry instead of creating a new one.'
 }
 Write-Output "Installed version: $($entry.DisplayVersion)"
+if ($entry.DisplayVersion -ne $package.version) {
+  throw "Installed version $($entry.DisplayVersion) does not match package version $($package.version)."
+}
 if ($entry.InstallLocation) { Write-Output "Install location: $($entry.InstallLocation)" }
+if (!(Test-Path $shortcut)) { throw "Desktop shortcut was not created: $shortcut" }
+Write-Output "Desktop shortcut: $shortcut"
 
 $exeCandidates = @()
 if ($entry.InstallLocation -and (Test-Path $entry.InstallLocation)) {
@@ -112,6 +120,9 @@ if ($remainingNewEntries.Count -gt 0) {
   Write-Output 'Uninstall entries left from this smoke test:'
   $remainingNewEntries | Select-Object PSPath, DisplayVersion, InstallLocation, UninstallString, QuietUninstallString | Format-List
   throw 'Uninstall entry from smoke test still exists after uninstall.'
+}
+if (!$shortcutExistedBefore -and (Test-Path $shortcut)) {
+  throw "Desktop shortcut remains after uninstall: $shortcut"
 }
 
 Write-Output 'Installer registry/install/uninstall smoke check passed.'
