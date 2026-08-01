@@ -42,14 +42,26 @@ async function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
 
-  try {
-    await mainWindow.loadURL(loungeUrl);
-  } catch (_error) {
-    process.env.LOUNGE_DATA_DIR = app.getPath('userData');
-    const { startServer } = require('./server');
-    const loungeServer = await startServer(0, '127.0.0.1');
-    const localUrl = `http://127.0.0.1:${loungeServer.address().port}/`;
-    await mainWindow.loadURL(localUrl);
+  while (!mainWindow.isDestroyed()) {
+    try {
+      await mainWindow.loadURL(loungeUrl);
+      break;
+    } catch (_error) {
+      const { response } = await dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Shared Lounge Connection Required',
+        message: 'The shared Accessible Game Lounge server could not be reached.',
+        detail: 'Choose Retry Connection to keep trying. Offline local rooms are disabled because players on different computers cannot see or join them.',
+        buttons: ['Retry Connection', 'Quit'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true
+      });
+      if (response === 1) {
+        app.quit();
+        return;
+      }
+    }
   }
 
   mainWindow.on('closed', () => { mainWindow = null; });

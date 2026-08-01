@@ -17,6 +17,16 @@ const once = (socket, event) => new Promise((resolve, reject) => {
   const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${event}.`)), 3000);
   socket.once(event, data => { clearTimeout(timer); resolve(data); });
 });
+const onceWhere = (socket, event, predicate) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => { socket.off(event, handler); reject(new Error(`Timed out waiting for matching ${event}.`)); }, 3000);
+  const handler = data => {
+    if (!predicate(data)) return;
+    clearTimeout(timer);
+    socket.off(event, handler);
+    resolve(data);
+  };
+  socket.on(event, handler);
+});
 
 (async () => {
   await startServer(0, '127.0.0.1');
@@ -64,8 +74,11 @@ const once = (socket, event) => new Promise((resolve, reject) => {
     if (!filtered.ok || filtered.tables.some(table => table.displayGame !== game)) throw new Error(`${game} table filtering failed.`);
     const unoVariants = { 'Classic UNO':'Classic Uno', 'UNO Flip':'Uno Flip!', DOS:'Uno Dos', "UNO Show 'Em No Mercy":"Show 'Em No Mercy", 'UNO Attack':'Uno Attack' };
     const settings = game === 'Monopoly' ? { edition:'Classic' } : unoVariants[game] ? { unoVariant:unoVariants[game] } : game === 'Dominoes' ? { dominoSet:'Double-Nine',dominoMode:'All Fives' } : game === 'The Game of Life' ? { lifeTheme:'Space Colonization' } : {};
+    const roomListEvent = onceWhere(guest, 'available-games', games => games.some(table => table.host === `Host${suffix}` && table.displayGame === game && table.playerCount === 1));
     const created = await call(host, 'create-game', { category: categories[game], ...settings });
+    const broadcastRoomList = await roomListEvent;
     if (!created.ok || created.room.displayGame !== game) throw new Error(`${game} creation metadata failed.`);
+    if (!broadcastRoomList.some(table => table.id === created.room.code && table.playerCount === 1)) throw new Error(`${game} creation was not broadcast to other online players.`);
     if(game==='Monopoly'){
       const token=MonopolyBoards.tokens.Classic[0];
       const selected=await call(host,'monopoly-select-token',{tokenId:token.id});
