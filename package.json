@@ -14,6 +14,7 @@
     "test:options": "node game-options.test.js",
     "test:yesno": "node yes-no-flow.test.js",
     "test:prompt-coverage": "node prompt-coverage.test.js",
+    "test:enter-smoke": "npm run test:yesno && npm run test:prompt-coverage && npm run test:options",
     "test:desktop-multiplayer": "node desktop-multiplayer.test.js",
     "test:desktop-prompts": "node desktop-prompt-keys.test.js",
     "test:quit-list": "node quit-to-list.test.js",

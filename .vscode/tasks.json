@@ -1971,6 +1971,16 @@
 			"isBackground": false
 		},
 		{
+			"label": "keyboard-quick-enter-smoke",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"test:enter-smoke"
+			],
+			"isBackground": false
+		},
+		{
 			"label": "layout-alignment-release-check",
 			"type": "shell",
 			"command": "npm",
