@@ -21,6 +21,9 @@
     .skip-link:focus { left: .5rem; }
     .panel { margin: 1rem 0; padding: 1rem; border: 2px solid #7ba4b7; border-radius: .75rem; background: var(--panel); }
     #announcement { border-left: 7px solid var(--yellow); font-weight: 700; }
+    .action-menu { display: grid; gap: .6rem; margin: .7rem 0 0; }
+    .action-menu button { width: 100%; justify-content: flex-start; text-align: left; }
+    .action-menu .action-selected { outline: 4px solid var(--focus); outline-offset: 2px; box-shadow: inset 0 0 0 3px #07131b; }
     .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: .7rem; }
     label { display: block; font-weight: 750; }
     .shortcut-strip { margin: .5rem 0 0; color: #d5eeff; font-weight: 700; }
@@ -62,11 +65,11 @@
       <div class="qcp-primary">
         <section class="panel" aria-labelledby="controls-title">
           <h2 id="controls-title">Turn controls</h2>
-          <div class="toolbar">
-            <button id="start" type="button" hidden>Start Duck Race</button>
-            <button id="roll" type="button" disabled>Roll Dice (Enter)</button>
-            <button id="show-cards" type="button" aria-expanded="false" aria-controls="cards-panel">View Cards (C)</button>
-            <button id="feathers" type="button">Check Feathers (F)</button>
+          <div class="action-menu" role="menu" aria-label="Duck Race actions">
+            <button id="roll" type="button" class="action-option" role="menuitem" disabled>Roll Dice</button>
+            <button id="show-cards" type="button" class="action-option" role="menuitem" aria-expanded="false" aria-controls="cards-panel">View Cards</button>
+            <button id="feathers" type="button" class="action-option" role="menuitem">Check Feathers</button>
+            <button id="start" type="button" class="action-option" role="menuitem" hidden>Start Duck Race</button>
           </div>
           <p id="turn-status">The race has not started.</p>
         </section>

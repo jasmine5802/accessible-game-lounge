@@ -17,6 +17,9 @@
     .skip { position: absolute; left: -9999px; background: #fff; color: #000; padding: .7rem; }
     .skip:focus { left: .5rem; }
     .panel { border: 3px solid #c9f0d5; border-radius: .7rem; background: var(--panel); padding: 1rem; margin: 1rem 0; }
+    .action-menu { display: grid; gap: .6rem; margin: .7rem 0 0; }
+    .action-menu button { width: 100%; justify-content: flex-start; text-align: left; }
+    .action-menu .action-selected { outline: 4px solid var(--focus); outline-offset: 2px; box-shadow: inset 0 0 0 3px #07120a; }
     .toolbar { display: flex; flex-wrap: wrap; gap: .7rem; }
     button, select { min-height: 3rem; padding: .55rem .9rem; border: 3px solid #fff; border-radius: .45rem; font: inherit; font-weight: 800; }
     button { background: var(--gold); color: #07120a; }
@@ -61,12 +64,12 @@
         <section id="controls" class="panel" aria-labelledby="controls-title">
           <h2 id="controls-title">Race controls</h2>
           <p id="active-event">Lap 1 of 6 - The Gates Open: Standard, clean track.</p>
-          <div class="toolbar">
-            <button id="start" hidden>Start Derby</button>
-            <button id="draw" disabled>Roll Dice (Enter, D, or Space)</button>
-            <button id="describe">Describe Space and Lap (C)</button>
-            <button id="standings">Six-Lap Leaderboard (S)</button>
-            <button id="end-turn" hidden>End Sabotage Turn</button>
+          <div class="action-menu" role="menu" aria-label="Horse Race actions">
+            <button id="draw" class="action-option" role="menuitem" disabled>Roll Dice</button>
+            <button id="describe" class="action-option" role="menuitem">Describe Space and Lap</button>
+            <button id="standings" class="action-option" role="menuitem">Six-Lap Leaderboard</button>
+            <button id="start" class="action-option" role="menuitem" hidden>Start Derby</button>
+            <button id="end-turn" class="action-option" role="menuitem" hidden>End Sabotage Turn</button>
           </div>
           <p id="turn-status">Waiting for the race.</p>
           <div id="target-panel" hidden>

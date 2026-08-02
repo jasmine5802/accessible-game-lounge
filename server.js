@@ -560,7 +560,7 @@ io.on('connection', (socket) => {
     const room = { code, hostId: playerId, game: requestedGame, displayGame: requestedDisplayGame, raceSelections:new Map(), raceSettings:{startingCards:3,startingFeathers:5}, monopolyEdition: requestedGame === 'Monopoly Multi-Edition' ? edition : null, monopolyTokens: requestedGame === 'Monopoly Multi-Edition' ? new Map() : null, unoVariant: requestedGame === 'Accessible Uno & Dos Lounge' ? unoVariant : null, lifeTheme: requestedGame === 'The Game of Life Lounge' ? lifeTheme : null, dominoSet: requestedGame === 'Accessible Dominoes Lounge' ? dominoSet : null, dominoMode: requestedGame === 'Accessible Dominoes Lounge' ? dominoMode : null, skipboPace: requestedGame === 'Accessible Skip-Bo Lounge' ? 'Standard game' : null, mallChallenge: requestedGame === 'Accessible Mall Madness Lounge' ? 'Standard shopping list' : null, players: new Map(), gameState: {}, ducksRace: null, monopoly: null, uno: null, life: null, derby: null, dominoes: null, skipbo: null, mall: null };
     rooms.set(code, room);
     joinSocketToRoom(socket, room, playerId, socket.data.username);
-    acknowledge(callback, { ok: true, room: publicRoom(room) });
+    acknowledge(callback, { ok: true, room: publicRoom(room), playerId });
     io.to(code).emit('lobby-updated', publicRoom(room));
     broadcastGames();
   });
@@ -590,7 +590,7 @@ io.on('connection', (socket) => {
       room.ducksRace.announcement = `${room.players.get(playerId).name} joined the race on square 1.`;
       room.ducksRace.sequence += 1;
     }
-    acknowledge(callback, { ok: true, room: publicRoom(room) });
+    acknowledge(callback, { ok: true, room: publicRoom(room), playerId });
     io.to(code).emit('lobby-updated', publicRoom(room));
     io.to(code).emit('table-player-joined', { message: `${room.players.get(playerId).name} joined. ${room.players.size} of ${maxPlayers} players.`, playerId, playerCount: room.players.size, maxPlayers });
     if (room.ducksRace) emitDuckState(room);

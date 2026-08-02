@@ -1,0 +1,29 @@
+directories:
+  output: dist
+  buildResources: build
+asar: false
+appId: com.jazzyjay.accessiblegamelounge
+productName: Jazzy Jay's Accessible Game Lounge
+artifactName: AccessibleGameLounge Setup ${version}.${ext}
+files:
+  - filter:
+      - '**/*'
+      - '!users.json'
+      - '!users.json.tmp'
+      - '!node_modules.pre-npm-install/**'
+      - '!dist/**'
+      - '!installer-dist/**'
+      - '!installer-dist-*/**'
+      - '!installer-final-*/**'
+      - '!electron-base-*/**'
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Jazzy Jay's Accessible Game Lounge
+  uninstallDisplayName: Jazzy Jay's Accessible Game Lounge
+  deleteAppDataOnUninstall: false
+electronVersion: 30.5.1

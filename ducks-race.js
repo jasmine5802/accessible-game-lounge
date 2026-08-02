@@ -5,7 +5,7 @@ const params = new URLSearchParams(location.search);
 const gameId = (params.get('game') || sessionStorage.getItem('loungeGameId') || '').toUpperCase();
 const sessionToken = sessionStorage.getItem('loungeSessionToken') || '';
 const playerName = sessionStorage.getItem('loungeUsername') || '';
-const playerId = playerName.toLowerCase();
+let playerId = null;
 
 const elements = {
   connection: document.querySelector('#connection'), announcement: document.querySelector('#announcement'),
@@ -19,10 +19,31 @@ const elements = {
 let room = null;
 let game = null;
 let boardIndex = 0;
+function resolvePlayerId(nextRoom = room, fallbackName = playerName, fallbackUsername = '') {
+  const candidates = [];
+  const storedPlayerId = sessionStorage.getItem('loungePlayerId') || '';
+  if (storedPlayerId) candidates.push(storedPlayerId);
+  if (fallbackName) candidates.push(fallbackName);
+  if (fallbackUsername) candidates.push(fallbackUsername);
+  const allPlayers = [
+    ...(nextRoom?.players || []),
+    ...(game?.players || [])
+  ];
+  const byId = allPlayers.find(player => player.id && candidates.includes(player.id));
+  if (byId?.id) return byId.id;
+  const byName = allPlayers.find(player => player.name && candidates.some(candidate => String(candidate).toLowerCase() === String(player.name).toLowerCase()));
+  if (byName?.id) return byName.id;
+  return playerId || null;
+}
+const gameplayLayoutStyle = document.createElement('style');
+gameplayLayoutStyle.textContent = 'body.rs-clean-gameplay .lounge-client-shell{display:none!important}';
+document.head.appendChild(gameplayLayoutStyle);
 let selectedCardIndex = -1;
 let targetingCard = null;
 let selectedTargetIndex = 0;
 let lastSequence = -1;
+let actionIndex = 0;
+const actionButtons = [];
 const accessibility = window.LoungeAccessibility?.createGameStateController({
   mode: 'GAME',
   statusEl: elements.polite,
@@ -219,10 +240,24 @@ function activateSelectedTarget() {
   playCard(card, target.id);
 }
 
+function moveActionSelection(direction) {
+  const actions = actionButtons.filter(Boolean);
+  if (!actions.length) return;
+  actionIndex = (actionIndex + direction + actions.length) % actions.length;
+  actions[actionIndex]?.focus();
+  actions.forEach((button, index) => button.classList.toggle('action-selected', index === actionIndex));
+}
+
 function render() {
   if (!game) return;
   const me = game.players.find(player => player.id === playerId);
   const myTurn = game.status === 'playing' && game.turnPlayerId === playerId;
+  actionButtons.splice(0, actionButtons.length, ...Array.from(document.querySelectorAll('.action-option')));
+  actionButtons.forEach((button, index) => {
+    button.classList.toggle('action-selected', index === actionIndex);
+    button.disabled = button.id === 'roll' ? !myTurn : false;
+    if (button.id === 'start') button.hidden = room?.hostId !== playerId || game.status !== 'waiting';
+  });
   elements.start.hidden = room?.hostId !== playerId || game.status !== 'waiting';
   elements.roll.disabled = !myTurn;
   elements.turn.textContent = game.status === 'finished'
@@ -230,6 +265,10 @@ function render() {
     : myTurn ? 'It is your turn. Use Up or Down Arrow to choose a card, or press Enter outside the card list to roll.'
       : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name || 'the host'}.`;
   elements.feathers.disabled = !me;
+  if (game.status === 'playing' && me?.hand?.length && elements.cardsPanel.hidden) {
+    elements.cardsPanel.hidden = false;
+    elements.showCards.setAttribute('aria-expanded', 'true');
+  }
   renderPlayers(); renderCards(); renderBoard();
   syncAccessibilityState();
 }
@@ -249,6 +288,7 @@ function playCue(cue) {
 
 function receiveState(payload) {
   game = payload.game;
+  playerId = resolvePlayerId(room, playerName, sessionStorage.getItem('loungeUsername') || '');
   if (game.status === 'playing') {
     window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));
   }
@@ -278,7 +318,9 @@ function connectToGame() {
     socket.emit('join-game', { gameId }, result => {
       if (!result.ok) { elements.connection.textContent = result.error; return; }
       room = result.room;
+      playerId = result.playerId || resolvePlayerId(room, playerName, authResult.username);
       sessionStorage.setItem('loungeGameId', room.id);
+      sessionStorage.setItem('loungePlayerId', playerId || '');
       elements.connection.textContent = `Connected to ${room.game} as ${authResult.username}.`;
       if (room.game !== 'Duck Race') {
         elements.connection.textContent = `This game is ${room.game}, not Duck Race.`; return;
@@ -320,6 +362,11 @@ document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea')) return;
   if (accessibility?.handleKey(event)) return;
   if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    if (document.activeElement?.classList?.contains('action-option')) {
+      event.preventDefault();
+      moveActionSelection(event.key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
     event.preventDefault();
     const direction = event.key === 'ArrowUp' ? -1 : 1;
     if (targetingCard) cycleTarget(direction); else cycleCard(direction);
@@ -332,6 +379,9 @@ document.addEventListener('keydown', event => {
     } else if (elements.cards.contains(document.activeElement)) {
       event.preventDefault();
       activateSelectedCard();
+    } else if (document.activeElement?.classList?.contains('action-option')) {
+      event.preventDefault();
+      document.activeElement.click();
     } else if (!elements.roll.disabled) {
       event.preventDefault();
       elements.roll.click();
