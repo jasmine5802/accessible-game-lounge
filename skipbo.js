@@ -251,6 +251,11 @@ document.addEventListener('keydown', event => {
   if (accessibility?.handleKey(event)) return;
 
   const key = event.key.toLowerCase();
+  if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
+    event.preventDefault();
+    el.start.click();
+    return;
+  }
   if (['arrowup', 'arrowdown'].includes(key)) {
     event.preventDefault();
     const hand = game?.myHand || [];
@@ -330,7 +335,10 @@ socket.on('skipbo-state', payload => {
 
 socket.on('lobby-updated', updated => {
   room = updated;
-  if (!game) render();
+  if (!game || game.status === 'waiting') {
+    game = room.skipbo || null;
+    render();
+  }
 });
 
 socket.on('connect', connect);

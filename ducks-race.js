@@ -382,6 +382,11 @@ elements.board.addEventListener('keydown', event => {
 document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea')) return;
   if (accessibility?.handleKey(event)) return;
+  if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
+    event.preventDefault();
+    elements.start.click();
+    return;
+  }
   if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     if (document.activeElement?.classList?.contains('action-option')) {
       event.preventDefault();
@@ -421,7 +426,7 @@ document.addEventListener('keydown', event => {
 socket.on('connect', connectToGame);
 socket.on('lobby-updated', updated => {
   room = updated;
-  if (game?.status === 'waiting') {
+  if (!game || game.status === 'waiting') {
     game = waitingGame();
     render();
     syncAccessibilityState();

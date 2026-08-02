@@ -131,7 +131,16 @@ function renderTokenChoices(openWhenMissing=false) {
   elements.tokenSave.disabled=!selectedAvailable;
   if(openWhenMissing&&!current&&!elements.tokenDialog.open){elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())}
 }
-function syncWaitingRoom(updated) { room=updated;if(game?.status==='waiting'){game.players=room.players.map(player=>({...player,token:player.monopolyToken,balance:1500,position:0}));render();renderTokenChoices();} }
+function syncWaitingRoom(updated) {
+  room = updated;
+  if (!game || game.status === 'waiting') {
+    game = game?.status === 'waiting'
+      ? { ...game, players: room.players.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })) }
+      : { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], status: 'waiting', players: room.players.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })), owners: {}, announcement: `Waiting to start ${room.monopolyEdition} Monopoly.`, sequence: 0 };
+    render();
+    renderTokenChoices();
+  }
+}
 function receiveState(payload) {
   const isNewGameplayUpdate = payload.game.sequence !== lastSequence;
   game = payload.game;
@@ -172,6 +181,7 @@ document.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
   if (accessibility?.handleKey(event)) return;
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);
+  if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) { event.preventDefault(); elements.start.click(); return; }
   if (onBoard && ['arrowleft','arrowup','arrowright','arrowdown'].includes(key)) { event.preventDefault(); const delta={arrowleft:-1,arrowright:1,arrowup:-10,arrowdown:10}[key]; boardIndex=(boardIndex+delta+40)%40; elements.board.querySelectorAll('.space').forEach((space,index)=>space.tabIndex=index===boardIndex?0:-1); elements.board.children[boardIndex].focus(); return; }
   if (event.key === 'Enter' && !elements.roll.disabled && !['BUTTON','A'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.roll.click(); }
   if (key==='f') { event.preventDefault(); elements.balance.click(); } if (key==='p') { event.preventDefault(); elements.properties.click(); }
