@@ -108,6 +108,28 @@ function renderPlayers() {
   }));
 }
 
+function waitingGame() {
+  return {
+    boardSize: 40,
+    boardSpaces: room?.boardSpaces || [],
+    trapSquares: [],
+    status: 'waiting',
+    turnPlayerId: null,
+    winnerId: null,
+    announcement: 'Waiting for the host to start Duck\'s Race.',
+    sequence: 0,
+    players: (room?.players || []).map(player => ({
+      ...player,
+      square: 1,
+      feathers: 5,
+      hand: [],
+      shielded: false,
+      duckType: 'Mallard',
+      color: 'Green and brown'
+    }))
+  };
+}
+
 function cardDescription(card) {
   if (card === 'Wind Gust') return 'Push another player back 3 spaces.';
   if (card === 'Shield') return 'Protect yourself from the next hazard.';
@@ -327,8 +349,7 @@ function connectToGame() {
       }
       if (room.ducksRace) receiveState({ game: room.ducksRace, cue: null });
       else {
-        game = { boardSize: 40, boardSpaces: room.boardSpaces, trapSquares: [], status: 'waiting', turnPlayerId: null, winnerId: null, announcement: 'Waiting for the host to start Duck\'s Race.', sequence: 0,
-          players: room.players.map(player => ({ ...player, square: 1, feathers: 5, hand: [], shielded: false })) };
+        game = waitingGame();
         render(); elements.announcement.textContent = game.announcement;
       }
     });
@@ -398,6 +419,13 @@ document.addEventListener('keydown', event => {
 });
 
 socket.on('connect', connectToGame);
-socket.on('lobby-updated', updated => { room = updated; });
+socket.on('lobby-updated', updated => {
+  room = updated;
+  if (game?.status === 'waiting') {
+    game = waitingGame();
+    render();
+    syncAccessibilityState();
+  }
+});
 socket.on('ducks-race-state', receiveState);
 socket.on('disconnect', () => { elements.connection.textContent = 'Connection lost. Trying to reconnect…'; });

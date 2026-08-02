@@ -5,7 +5,7 @@ const SkipBoEngine = require('./skipbo-engine');
 const emit=(socket,event,data={})=>new Promise(resolve=>socket.emit(event,data,result=>resolve(result||{ok:false})));
 function startComputerPlayer({url,roomCode,secret,onReady}){
  const socket=io(url,{transports:['websocket'],reconnection:true});let playerId=null,busy=false;const seen=new Map();
- async function once(key,game,action){if(!game||game.status!=='playing'||game.turnPlayerId!==playerId||busy)return;const marker=`${game.sequence}:${game.phase||''}:${game.pendingDraw||0}:${game.movesRemaining||0}`;if(seen.get(key)===marker)return;seen.set(key,marker);busy=true;try{await new Promise(r=>setTimeout(r,650));await action()}finally{busy=false}}
+ async function once(key,game,action){if(!game||game.status!=='playing'||game.turnPlayerId!==playerId||busy)return;const marker=`${game.sequence}:${game.phase||''}:${game.pendingDraw||0}:${game.movesRemaining||0}:${game.turnPlayerId||''}`;const lastMarker=seen.get(key);if(lastMarker===marker)return;seen.set(key,marker);busy=true;try{await new Promise(r=>setTimeout(r,650));await action()}finally{busy=false}}
  socket.on('connect',()=>socket.emit('authenticate-computer',{roomCode,secret},result=>{if(!result?.ok)return socket.disconnect();playerId=result.playerId;onReady?.(result)}));
  socket.on('ducks-race-state',({game})=>once('duck',game,()=>emit(socket,'ducks-race-roll')));
  socket.on('monopoly-state',({game})=>{if(!game||busy)return;if(game.pendingTrade?.toId===playerId)return setTimeout(()=>emit(socket,'monopoly-trade-response',{accept:false}),650);if(game.pendingPurchase?.playerId===playerId)return setTimeout(()=>emit(socket,'monopoly-purchase-response',{accept:true}),650);return once('monopoly',game,()=>emit(socket,'monopoly-roll'))});
