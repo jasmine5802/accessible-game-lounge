@@ -29,6 +29,9 @@ function announce(message) {
   elements.status.textContent = '';
   requestAnimationFrame(() => { elements.status.textContent = message; });
 }
+function rosterNames(room) {
+  return (room?.players || []).map(player => player.name).filter(Boolean).join(', ');
+}
 function audio() { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); return audioContext; }
 function tone(frequency, start, duration, gain=.12, type='square') {
   const context=audio(), oscillator=context.createOscillator(), volume=context.createGain();
@@ -70,12 +73,14 @@ function showWaiting(room){ currentRoom=room;sessionStorage.setItem('loungeGameI
 function updateWaiting(room){
   currentRoom=room;
   const hostName=room.players.find(player=>player.id===room.hostId)?.name||'Host';
+  const roster=rosterNames(room);
   elements.waitingTitle.textContent=`${room.displayGame||selectedGame} Table`;
-  elements.tableSummary.textContent=`Hosted by ${hostName}. ${room.players.length} of ${room.maxPlayers} players.`;
+  elements.tableSummary.textContent=`Hosted by ${hostName}. ${room.players.length} of ${room.maxPlayers} players. Players at this table: ${roster}.`;
   elements.tableSettings.textContent=[room.monopolyEdition&&`Board: ${room.monopolyEdition}`,room.unoVariant&&`Rules: ${room.unoVariant}`,room.lifeTheme&&`Board: ${room.lifeTheme}`,room.dominoSet&&`${room.dominoSet}, ${room.dominoMode}`].filter(Boolean).join('. ');
   elements.waitingPlayers.replaceChildren(...room.players.map(player=>{const li=document.createElement('li');li.textContent=`${player.name}${player.id===room.hostId?' (host)':''}${player.connected?'':' (reconnecting)'}`;return li;}));
   const amHost=room.players.find(player=>player.id===room.hostId)?.name===myUsername;
   elements.hostInstruction.textContent=amHost?'Press Enter to continue to game setup. Press Escape to leave the table.':`Waiting for ${hostName} to continue to game setup. Press Escape to leave the table.`;
+  announce(elements.tableSummary.textContent);
 }
 function startTable(){ if(!currentRoom)return;const amHost=currentRoom.players.find(player=>player.id===currentRoom.hostId)?.name===myUsername;if(!amHost)return announce('Waiting for the host to start.');swipeSound();socket.emit('start-game',{},result=>{if(!result.ok){announce(result.error);tone(150,audio().currentTime,.25,.12,'sawtooth');}}); }
 function enterLobby(result){ myUsername=result.username;sessionStorage.setItem('loungeUsername',myUsername);if(result.token)sessionStorage.setItem('loungeSessionToken',result.token);elements.password.value='';elements.authScreen.hidden=true;elements.lobby.hidden=false;screen='games';gameIndex=0;renderGames();announce(`Welcome, ${myUsername}. Duck Race selected. Use Up and Down Arrow to choose a game, then press Enter.`); }
@@ -97,7 +102,7 @@ document.addEventListener('keydown',event=>{
   else if(event.key==='Escape'&&screen==='waiting'){event.preventDefault();returnToGameList();}
 });
 socket.on('lobby-updated',room=>{if(screen==='waiting')updateWaiting(room);});
-socket.on('table-player-joined',data=>{if(screen==='waiting'){bellSound();announce(data.message);}});
+socket.on('table-player-joined',data=>{if(screen==='waiting'){bellSound();announce(data.message);if(currentRoom)updateWaiting(currentRoom);}});
 socket.on('update-room-list',()=>{if(screen==='tables'&&selectedGame)socket.emit('get-game-tables',{category:GAME_CATEGORIES[selectedGame]},result=>{if(result.ok){tables=result.tables;renderTables();}});});
 socket.on('game-started',data=>{startSound(data.cue);announce(data.message);setTimeout(()=>{location.href=data.destination;},350);});
 socket.on('connect',()=>{socket.emit('get-active-rooms');const token=sessionStorage.getItem('loungeSessionToken');if(!token){elements.username.focus();return;}socket.emit('authenticate-token',{token},result=>result.ok?enterLobby(result):(sessionStorage.clear(),elements.username.focus()));});

@@ -188,7 +188,7 @@ function makeRoomCode() {
   return code;
 }
 
-function publicDuckGame(room) {
+function publicDuckGame(room, viewerId) {
   if (!room.ducksRace) return null;
   const game = room.ducksRace;
   return {
@@ -210,7 +210,8 @@ function publicDuckGame(room) {
         color: duck.color,
         square: duck.square,
         feathers: duck.feathers,
-        hand: [...duck.hand],
+        hand: viewerId === id ? [...duck.hand] : [],
+        handCount: duck.hand.length,
         shielded: duck.shielded,
         connected: Boolean(room.players.get(id)?.socketId)
       };
@@ -233,7 +234,7 @@ function publicRoom(room) {
     boardSpaces: BOARD_SPACES,
     players: [...room.players.entries()].map(([id, player]) => ({ id, name: player.name, connected: Boolean(player.socketId), monopolyToken: room.monopolyTokens?.get(id) || null })),
     gameState: room.gameState,
-    ducksRace: publicDuckGame(room),
+    ducksRace: publicDuckGame(room, null),
     monopoly: publicMonopolyGame(room),
     uno: publicUnoGame(room, null),
     unoVariant: room.unoVariant || null
@@ -298,7 +299,9 @@ function beginDucksRace(room) {
 }
 
 function emitDuckState(room, cue = null) {
-  io.to(room.code).emit('ducks-race-state', { game: publicDuckGame(room), cue });
+  for (const [id, member] of room.players) {
+    if (member.socketId) io.to(member.socketId).emit('ducks-race-state', { game: publicDuckGame(room, id), cue });
+  }
 }
 
 function roomForPlayer(socket, callback) {
@@ -592,7 +595,13 @@ io.on('connection', (socket) => {
     }
     acknowledge(callback, { ok: true, room: publicRoom(room), playerId });
     io.to(code).emit('lobby-updated', publicRoom(room));
-    io.to(code).emit('table-player-joined', { message: `${room.players.get(playerId).name} joined. ${room.players.size} of ${maxPlayers} players.`, playerId, playerCount: room.players.size, maxPlayers });
+    const roster = [...room.players.values()].map(player => player.name).join(', ');
+    io.to(code).emit('table-player-joined', {
+      message: `${room.players.get(playerId).name} joined. ${room.players.size} of ${maxPlayers} players. Players at this table: ${roster}.`,
+      playerId,
+      playerCount: room.players.size,
+      maxPlayers
+    });
     if (room.ducksRace) emitDuckState(room);
     if (room.monopoly) emitMonopolyState(room);
     if (room.uno) emitUnoState(room);
@@ -641,7 +650,7 @@ io.on('connection', (socket) => {
     if (room.hostId !== socket.data.playerId) return acknowledge(callback, { ok: false, error: 'Only the host can start the race.' });
     beginDucksRace(room);
     emitDuckState(room, { type: 'card', square: 1 });
-    acknowledge(callback, { ok: true, game: publicDuckGame(room) });
+    acknowledge(callback, { ok: true, game: publicDuckGame(room, socket.data.playerId) });
   });
 
   socket.on('start-monopoly', (_data, callback) => {

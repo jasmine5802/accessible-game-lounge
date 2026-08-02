@@ -3,7 +3,18 @@
 (() => {
   const SOUND_KEY = 'loungeSoundVolume';
   const SPEECH_KEY = 'loungeSpeechVolume';
+  const BLIND_MODE_KEY = 'loungeBlindMode';
+  const ACCESSIBLE_MODE_KEY = 'loungeAccessibleMode';
   const clamp = (value, maximum=100) => Math.max(0, Math.min(maximum, Number(value) || 0));
+  const readFlag = (key, fallback=false) => {
+    try {
+      const value = localStorage.getItem(key);
+      if (value === null) return fallback;
+      return value === '1' || value === 'true';
+    } catch {
+      return fallback;
+    }
+  };
   const readSetting = (key, fallback, maximum=100) => {
     try {
       const value = localStorage.getItem(key);
@@ -15,7 +26,9 @@
 
   let soundVolume = readSetting(SOUND_KEY, 125, 200);
   let speechVolume = readSetting(SPEECH_KEY, 80);
+  let accessibleMode = readFlag(ACCESSIBLE_MODE_KEY, readFlag(BLIND_MODE_KEY, false));
   const audioMasters = new Set();
+  const accessibleModeControls = new Set();
 
   function saveSetting(key, value) {
     try { localStorage.setItem(key, String(value)); } catch {}
@@ -57,6 +70,47 @@
     const utterance = new SpeechSynthesisUtterance(String(message));
     utterance.volume = speechVolume / 100;
     speechSynthesis.speak(utterance);
+  }
+
+  function applyAccessibleMode(active) {
+    accessibleMode = Boolean(active);
+    document.documentElement.classList.toggle('lounge-accessible-mode', accessibleMode);
+    document.body?.classList.toggle('lounge-accessible-mode', accessibleMode);
+    syncGameplayChromeAccessibility();
+  }
+
+  function syncGameplayChromeAccessibility() {
+    const onGameplayPage = !(location.pathname === '/' || location.pathname.endsWith('/lobby.html') || location.pathname.endsWith('/index.html'));
+    const hideChrome = accessibleMode && onGameplayPage;
+    for (const selector of ['.lounge-client-titlebar', '.lounge-client-menubar', '.lounge-client-workspace > header', '.lounge-client-workspace > footer', 'body > header', 'body > footer']) {
+      const node = document.querySelector(selector);
+      if (!node) continue;
+      node.setAttribute('aria-hidden', hideChrome ? 'true' : 'false');
+    }
+  }
+
+  function setAccessibleMode(active) {
+    applyAccessibleMode(active);
+    saveSetting(BLIND_MODE_KEY, accessibleMode ? '1' : '0');
+    saveSetting(ACCESSIBLE_MODE_KEY, accessibleMode ? '1' : '0');
+    for (const control of accessibleModeControls) {
+      if (!control || !control.isConnected) continue;
+      control.textContent = accessibleMode ? 'Accessible Mode: On (F4)' : 'Accessible Mode: Off (F4)';
+      control.setAttribute('aria-pressed', accessibleMode ? 'true' : 'false');
+    }
+  }
+
+  function toggleAccessibleMode() {
+    setAccessibleMode(!accessibleMode);
+    speak(accessibleMode ? 'Accessible mode enabled.' : 'Accessible mode disabled.');
+  }
+
+  function setBlindMode(active) {
+    setAccessibleMode(active);
+  }
+
+  function toggleBlindMode() {
+    toggleAccessibleMode();
   }
 
   function createGameStateController(options = {}) {
@@ -472,6 +526,7 @@
         text-shadow:none!important;
       }
       .lounge-settings-button { position:fixed; right:1rem; top:1rem; z-index:900; width:auto!important; }
+      .lounge-accessible-mode-button { position:fixed; right:1rem; top:4.15rem; z-index:900; width:auto!important; }
       .lounge-dialog { color:#111; background:#ece6d9; border:2px solid #8b8578; border-radius:2px; width:min(34rem,92vw); }
       .lounge-dialog::backdrop { background:#0008; }
       .lounge-dialog label { display:block; margin-top:1rem; font-weight:800; }
@@ -480,6 +535,46 @@
       .lounge-key-prompt { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:1rem; background:#0008; }
       .lounge-key-prompt > div { width:min(38rem,96vw); padding:1.25rem; color:#111; background:#ece6d9; border:2px solid #8b8578; border-radius:2px; }
       .lounge-key-prompt:focus-visible, .lounge-key-prompt > div:focus-visible { outline:6px solid #24558f; outline-offset:-10px; }
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .lounge-client-titlebar,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .lounge-client-menubar,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay header h1,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay header p,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .toolbar,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .controls,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .actions,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .action-menu,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #board,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #players,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #cards-panel,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .qcp-side,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay button:not(.lounge-settings-button),
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay select,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay input {
+        display:none!important;
+      }
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .panel,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay section.panel {
+        border:none!important;
+        box-shadow:none!important;
+        background:transparent!important;
+        padding:.2rem 0!important;
+        margin:.35rem 0!important;
+      }
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #announcement,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #turn,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #turn-status,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #status {
+        border:2px solid #24558f!important;
+        border-left:8px solid #24558f!important;
+        background:#fffdf5!important;
+        font-size:1.2rem!important;
+        line-height:1.45!important;
+        padding:.7rem .8rem!important;
+      }
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .lounge-client-workspace > main,
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay body > main {
+        padding-top:.25rem!important;
+      }
       @media (max-width: 860px) {
         html.lounge-desktop-client .lounge-client-workspace { padding:.5rem .5rem .8rem; }
         html.lounge-desktop-client .toolbar,
@@ -514,6 +609,7 @@
     document.body.prepend(shell);
     const movable = [...document.body.children].filter(node => node !== shell && node.tagName !== 'SCRIPT');
     movable.forEach(node => workspace.appendChild(node));
+    syncGameplayChromeAccessibility();
   }
 
   function announceValue(name, value, output) {
@@ -525,10 +621,21 @@
 
   function addSettings() {
     if (!document.body || document.querySelector('#lounge-audio-settings')) return;
+    const accessibleButton = document.createElement('button');
+    accessibleButton.type = 'button';
+    accessibleButton.className = 'lounge-accessible-mode-button';
+    accessibleButton.setAttribute('aria-keyshortcuts', 'F4');
+    accessibleButton.addEventListener('click', () => {
+      toggleAccessibleMode();
+      const input = document.querySelector('#lounge-blind-mode');
+      if (input) input.checked = accessibleMode;
+    });
+    accessibleModeControls.add(accessibleButton);
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'lounge-settings-button';
-    button.textContent = 'Audio Settings';
+    button.textContent = 'Settings';
     button.setAttribute('aria-keyshortcuts', 'F2');
 
     const dialog = document.createElement('dialog');
@@ -536,7 +643,7 @@
     dialog.className = 'lounge-dialog';
     dialog.setAttribute('aria-labelledby', 'lounge-settings-title');
     dialog.innerHTML = `
-      <h2 id="lounge-settings-title">Audio Settings</h2>
+      <h2 id="lounge-settings-title">Audio and Display Settings</h2>
       <p>Sound effects and synthesized speech are controlled separately. Sound can be boosted up to 200 percent. Changes are saved automatically.</p>
       <label for="lounge-sound-volume">Sound volume</label>
       <input id="lounge-sound-volume" type="range" min="0" max="200" step="5">
@@ -544,15 +651,20 @@
       <label for="lounge-speech-volume">Speech volume</label>
       <input id="lounge-speech-volume" type="range" min="0" max="100" step="5">
       <output id="lounge-speech-output" class="lounge-dialog-output" for="lounge-speech-volume"></output>
+      <label for="lounge-blind-mode">Accessible mode</label>
+      <p id="lounge-blind-mode-help">When enabled, gameplay uses an RS or Playroom-style minimal visual layout. Sighted board and button-heavy visuals stay enabled when this is off.</p>
+      <p><input id="lounge-blind-mode" type="checkbox" aria-describedby="lounge-blind-mode-help"> <span>Enable minimal gameplay visuals</span></p>
       <p><button id="lounge-test-speech" type="button">Test Speech</button> <button id="lounge-close-settings" type="button">Close</button></p>
     `;
-    document.body.append(button, dialog);
+    document.body.append(accessibleButton, button, dialog);
     const sound = dialog.querySelector('#lounge-sound-volume');
     const speech = dialog.querySelector('#lounge-speech-volume');
     const soundOutput = dialog.querySelector('#lounge-sound-output');
     const speechOutput = dialog.querySelector('#lounge-speech-output');
+    const blindModeInput = dialog.querySelector('#lounge-blind-mode');
     sound.value = String(soundVolume);
     speech.value = String(speechVolume);
+    blindModeInput.checked = accessibleMode;
     soundOutput.textContent = `Sound volume ${soundVolume} percent.`;
     speechOutput.textContent = `Speech volume ${speechVolume} percent.`;
     sound.addEventListener('input', () => {
@@ -563,10 +675,15 @@
       speechVolume = clamp(speech.value); saveSetting(SPEECH_KEY, speechVolume);
       announceValue('Speech volume', speechVolume, speechOutput);
     });
+    blindModeInput.addEventListener('change', () => {
+      setAccessibleMode(blindModeInput.checked);
+      speak(accessibleMode ? 'Accessible mode enabled.' : 'Accessible mode disabled.');
+    });
     dialog.querySelector('#lounge-test-speech').addEventListener('click', () => speak(`Speech volume is ${speechVolume} percent.`));
     dialog.querySelector('#lounge-close-settings').addEventListener('click', () => dialog.close());
     button.addEventListener('click', () => { dialog.showModal(); requestAnimationFrame(() => sound.focus()); });
     dialog.addEventListener('close', () => button.focus());
+    setAccessibleMode(accessibleMode);
   }
 
   function replaceLobbyLinksWithDesktopControl() {
@@ -587,9 +704,13 @@
     const gameName = document.querySelector('h1')?.textContent?.trim() || 'Accessible game';
     document.body.setAttribute('role', 'application');
     document.body.setAttribute('aria-label', `${gameName} window`);
+    document.body.setAttribute('aria-roledescription', 'game window');
     game.setAttribute('role', 'application');
     if (!game.hasAttribute('tabindex')) game.tabIndex = -1;
     if (!game.hasAttribute('aria-label')) game.setAttribute('aria-label', `${gameName} game`);
+    game.setAttribute('aria-roledescription', 'game surface');
+    document.body.classList.add('lounge-gameplay-page');
+    syncGameplayChromeAccessibility();
   }
 
   function askToQuit() {
@@ -648,17 +769,30 @@
     speak,
     get soundVolume() { return soundVolume; },
     get speechVolume() { return speechVolume; },
+    get blindMode() { return accessibleMode; },
+    get accessibleMode() { return accessibleMode; },
+    setBlindMode,
+    setAccessibleMode,
+    toggleBlindMode,
+    toggleAccessibleMode,
     askToQuit,
     leaveGameAndReturn,
       createGameStateController
   };
 
-  document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); installGameplayApplicationMode(); addSettings(); });
+  document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); installGameplayApplicationMode(); addSettings(); applyAccessibleMode(accessibleMode); });
   document.addEventListener('keydown', event => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'F2') {
       event.preventDefault();
       document.querySelector('.lounge-settings-button')?.click();
+      return;
+    }
+    if (event.key === 'F4') {
+      event.preventDefault();
+      toggleAccessibleMode();
+      const input = document.querySelector('#lounge-blind-mode');
+      if (input) input.checked = accessibleMode;
       return;
     }
     if (event.key.toLowerCase() !== 'q' || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;

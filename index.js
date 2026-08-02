@@ -31,6 +31,7 @@ const loungeState = {
     { label: 'Help / Instructions', id: 'help', type: 'help' }
   ],
   selectedGame: null,
+  awaitingAccessibilityChoice: false,
   promptStep: 'INSTRUCTIONS',
   gameCatalog: {
     duck_race: { instructions: 'Race once around the 40-space pond. Collect feathers and use cards to protect yourself or slow opponents.', keyboard: 'Enter rolls. C opens cards. Up and Down choose cards and targets. F reports feathers.', options: 'Choose a duck type, color, starting cards, and starting feathers.' },
@@ -43,6 +44,20 @@ const loungeState = {
   scores: {}
 };
 window.loungeState = loungeState;
+
+function setAccessibleGameplayMode(useAccessibleMode) {
+  if (window.LoungeAccessibility?.setAccessibleMode) {
+    window.LoungeAccessibility.setAccessibleMode(useAccessibleMode);
+    return;
+  }
+  if (window.LoungeAccessibility?.setBlindMode) {
+    window.LoungeAccessibility.setBlindMode(useAccessibleMode);
+  }
+}
+
+function gameLabelForPrompt(item) {
+  return item?.label || 'this game';
+}
 
 function currentPlayers() {
   loungeState.players = currentRoom?.players?.map(player => `${player.name}${player.id === currentRoom.hostId ? ' (host)' : ''}`) || [];
@@ -96,7 +111,16 @@ function handleMenuSelection(selectedItem = null) {
   loungeState.mode = 'SETUP_PROMPTS';
   loungeState.selectedGame = item.id;
   loungeState.promptStep = 'INSTRUCTIONS';
-  askPrompt(`Would you like to hear the instructions for ${item.label}? Press Y for yes or N for no.`);
+  loungeState.awaitingAccessibilityChoice = true;
+  askPrompt(`Would you like to use accessible mode for ${gameLabelForPrompt(item)}? Press Y for yes or N for no.`);
+}
+
+function handleAccessibilityChoice(useAccessibleMode) {
+  const item = loungeState.menuItems.find(entry => entry.id === loungeState.selectedGame);
+  if (!item) return;
+  setAccessibleGameplayMode(useAccessibleMode);
+  loungeState.awaitingAccessibilityChoice = false;
+  askPrompt(`${useAccessibleMode ? 'Accessible mode enabled.' : 'Visual mode enabled.'} Would you like to hear the instructions for ${item.label}? Press Y for yes or N for no.`);
 }
 
 function processPromptChoice(isYes) {
@@ -144,6 +168,10 @@ window.addEventListener('keydown', event => {
     if (!['y', 'n'].includes(key)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (loungeState.awaitingAccessibilityChoice) {
+      handleAccessibilityChoice(key === 'y');
+      return;
+    }
     processPromptChoice(key === 'y');
     return;
   }
@@ -152,6 +180,10 @@ window.addEventListener('keydown', event => {
 
 window.loungeDesktopPromptKeys?.onKey(key => {
   if (loungeState.mode !== 'SETUP_PROMPTS' || !['y', 'n'].includes(key)) return;
+  if (loungeState.awaitingAccessibilityChoice) {
+    handleAccessibilityChoice(key === 'y');
+    return;
+  }
   processPromptChoice(key === 'y');
 });
 

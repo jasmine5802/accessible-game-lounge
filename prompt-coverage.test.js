@@ -26,6 +26,7 @@ for (const page of gamePages) {
 }
 
 const helpSource = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
+const loungeSource = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
 const accessibilitySource = fs.readFileSync(path.join(__dirname, 'lounge-accessibility.js'), 'utf8');
 const monopolySource = fs.readFileSync(path.join(__dirname, 'monopoly.html'), 'utf8');
 assert(helpSource.includes("Would you like to hear the instructions for Duck Race?")
@@ -33,6 +34,7 @@ assert(helpSource.includes("Would you like to hear the instructions for Duck Rac
   && helpSource.includes("Would you like to configure Duck Race game options?")
   && helpSource.includes("'Instructions?'")
   && helpSource.includes("'Keyboard commands?'"), 'Duck-specific or generic setup question text is missing.');
+assert(loungeSource.includes('Would you like to use accessible mode for') && loungeSource.includes('Accessible mode enabled.') && loungeSource.includes('Visual mode enabled.'), 'Accessible-mode selection prompt is missing from the lobby flow.');
 assert(helpSource.includes('function remindYesNo(){') && helpSource.includes("if(startStage==='how')startContent.textContent='Instructions?'") && helpSource.includes("else if(startStage==='keys')startContent.textContent='Keyboard commands?'") && helpSource.includes("else if(startStage==='options')startContent.textContent='Game options?'") && helpSource.includes("else if(startStage==='computer')startContent.textContent='Add one computer opponent?'") && helpSource.includes('announcePrompt(startContent.textContent)'), 'RS-style reminder question text is missing.');
 assert(helpSource.includes("yesButton.textContent='Yes'") && helpSource.includes("noButton.textContent='No'"), 'RS-style Yes/No setup labels are missing.');
 assert(helpSource.includes('function handlePromptKeys(event,isKeyup=false)'), 'Shared Y/N prompt handler is missing.');
@@ -42,6 +44,6 @@ assert(helpSource.includes("function afterKeys(){ask('options')}"), 'Monopoly mu
 assert(helpSource.includes("startStage='ready'") && helpSource.includes("if(startStage==='ready')"), 'Every host must stay in the RS-style setup flow until Enter starts the game.');
 assert(helpSource.includes("const startButton=document.getElementById('start')") && helpSource.includes("if(startButton&&!startButton.hidden&&!startButton.disabled)"), 'Enter-to-start must wait for the visible host start button before triggering the game start.');
 assert(monopolySource.includes('<main id="game" tabindex="-1" role="application" aria-label="Monopoly game">'), 'Monopoly gameplay must remain in screen-reader application mode after setup.');
-assert(accessibilitySource.includes('function installGameplayApplicationMode()') && accessibilitySource.includes("document.body.setAttribute('role', 'application')") && accessibilitySource.includes("game.setAttribute('role', 'application')"), 'Every complete game window must enter screen-reader application mode during gameplay.');
+assert(accessibilitySource.includes('function installGameplayApplicationMode()') && accessibilitySource.includes('function syncGameplayChromeAccessibility()') && accessibilitySource.includes("document.body.setAttribute('role', 'application')") && accessibilitySource.includes("document.body.setAttribute('aria-roledescription', 'game window')") && accessibilitySource.includes("game.setAttribute('role', 'application')") && accessibilitySource.includes("game.setAttribute('aria-roledescription', 'game surface')") && accessibilitySource.includes("node.setAttribute('aria-hidden', hideChrome ? 'true' : 'false')"), 'Every complete game window must enter screen-reader application mode and hide the desktop chrome during accessible gameplay.');
 
 console.log('Prompt coverage checks passed for all game pages.');

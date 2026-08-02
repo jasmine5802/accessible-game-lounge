@@ -108,6 +108,14 @@ function renderPlayers() {
   }));
 }
 
+function waitingAnnouncementText() {
+  const names = (room?.players || []).map(player => player.name).filter(Boolean);
+  if (names.length > 1) {
+    return `Waiting for the host to start Duck Race. Players at this table: ${names.join(', ')}.`;
+  }
+  return 'Waiting for the host to start Duck Race.';
+}
+
 function waitingGame() {
   return {
     boardSize: 40,
@@ -116,7 +124,7 @@ function waitingGame() {
     status: 'waiting',
     turnPlayerId: null,
     winnerId: null,
-    announcement: 'Waiting for the host to start Duck\'s Race.',
+    announcement: waitingAnnouncementText(),
     sequence: 0,
     players: (room?.players || []).map(player => ({
       ...player,
@@ -437,15 +445,14 @@ socket.on('lobby-updated', updated => {
 });
 socket.on('table-player-joined', data => {
   if (!data?.message) return;
-  const isCurrentPlayer = data.playerId === playerId;
   if (game?.status === 'waiting') {
     game = waitingGame();
     render();
+    syncAccessibilityState();
   }
   announcePolite(data.message);
-  if (!isCurrentPlayer) {
-    elements.announcement.textContent = data.message;
-  }
+  window.LoungeAccessibility?.speak?.(data.message);
+  elements.announcement.textContent = data.message;
 });
 socket.on('ducks-race-state', receiveState);
 socket.on('disconnect', () => { elements.connection.textContent = 'Connection lost. Trying to reconnect…'; });
