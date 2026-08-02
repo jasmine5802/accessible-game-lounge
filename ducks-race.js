@@ -274,13 +274,14 @@ function render() {
   if (!game) return;
   const me = game.players.find(player => player.id === playerId);
   const myTurn = game.status === 'playing' && game.turnPlayerId === playerId;
+  const hostView = room?.hostId === playerId;
   actionButtons.splice(0, actionButtons.length, ...Array.from(document.querySelectorAll('.action-option')));
   actionButtons.forEach((button, index) => {
     button.classList.toggle('action-selected', index === actionIndex);
     button.disabled = button.id === 'roll' ? !myTurn : false;
     if (button.id === 'start') button.hidden = room?.hostId !== playerId || game.status !== 'waiting';
   });
-  elements.start.hidden = room?.hostId !== playerId || game.status !== 'waiting';
+  elements.start.hidden = !hostView || game.status !== 'waiting';
   elements.roll.disabled = !myTurn;
   elements.turn.textContent = game.status === 'finished'
     ? `${game.players.find(player => player.id === game.winnerId)?.name || 'A player'} won the race.`
@@ -380,11 +381,12 @@ elements.board.addEventListener('keydown', event => {
   elements.board.children[boardIndex]?.focus();
 });
 document.addEventListener('keydown', event => {
-  if (event.target.matches('input, textarea')) return;
+  if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
   if (accessibility?.handleKey(event)) return;
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
     event.preventDefault();
     elements.start.click();
+    announcePolite('Starting Duck Race.');
     return;
   }
   if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
@@ -426,10 +428,23 @@ document.addEventListener('keydown', event => {
 socket.on('connect', connectToGame);
 socket.on('lobby-updated', updated => {
   room = updated;
+  playerId = playerId || resolvePlayerId(room, playerName, sessionStorage.getItem('loungeUsername') || '');
   if (!game || game.status === 'waiting') {
     game = waitingGame();
     render();
     syncAccessibilityState();
+  }
+});
+socket.on('table-player-joined', data => {
+  if (!data?.message) return;
+  const isCurrentPlayer = data.playerId === playerId;
+  if (game?.status === 'waiting') {
+    game = waitingGame();
+    render();
+  }
+  announcePolite(data.message);
+  if (!isCurrentPlayer) {
+    elements.announcement.textContent = data.message;
   }
 });
 socket.on('ducks-race-state', receiveState);

@@ -335,10 +335,19 @@ socket.on('skipbo-state', payload => {
 
 socket.on('lobby-updated', updated => {
   room = updated;
+  playerId = playerId || room.players.find(p => p.name === username)?.id || null;
   if (!game || game.status === 'waiting') {
     game = room.skipbo || null;
     render();
   }
+});
+socket.on('table-player-joined', data => {
+  if (!data?.message) return;
+  if (game?.status === 'waiting') {
+    game = room.skipbo || null;
+    render();
+  }
+  announce(data.message);
 });
 
 socket.on('connect', connect);

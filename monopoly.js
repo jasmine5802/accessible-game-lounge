@@ -188,4 +188,13 @@ document.addEventListener('keydown', event => {
   if (key==='h') { event.preventDefault(); elements.roomState.click(); }
   if (key==='y' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(true); } if (key==='n' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(false); }
 });
-socket.on('connect', connectToGame); socket.on('lobby-updated', syncWaitingRoom); socket.on('monopoly-state', receiveState); socket.on('disconnect',()=>{elements.connection.textContent='Connection lost. Trying to reconnect…';});
+socket.on('connect', connectToGame); socket.on('lobby-updated', syncWaitingRoom); socket.on('table-player-joined', data => {
+  if (!data?.message) return;
+  if (!game || game.status === 'waiting') {
+    game = { edition: room?.monopolyEdition, board: MonopolyBoards.boards[room?.monopolyEdition], status: 'waiting', players: room?.players?.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })) || [], owners: {}, announcement: `Waiting to start ${room?.monopolyEdition} Monopoly.`, sequence: 0 };
+    render();
+    renderTokenChoices();
+  }
+  announcePolite(data.message);
+  elements.announcement.textContent = data.message;
+}); socket.on('monopoly-state', receiveState); socket.on('disconnect',()=>{elements.connection.textContent='Connection lost. Trying to reconnect…';});
