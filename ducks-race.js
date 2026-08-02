@@ -249,6 +249,9 @@ function playCue(cue) {
 
 function receiveState(payload) {
   game = payload.game;
+  if (game.status === 'playing') {
+    window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));
+  }
   render();
   if (game.sequence !== lastSequence) {
     lastSequence = game.sequence;

@@ -320,6 +320,9 @@ function connect() {
 
 socket.on('skipbo-state', payload => {
   game = payload.game;
+  if (game.status === 'playing') {
+    window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));
+  }
   cue(payload.cue?.type);
   render();
   say(game.announcement);
