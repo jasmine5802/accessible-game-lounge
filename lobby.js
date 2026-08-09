@@ -121,21 +121,10 @@ function cancelSetupPrompts(){
 function handleSetupChoice(isYes){
   if(!setupState.active || !setupState.room)return;
   const gameTitle=currentGameTitle(setupState.room);
-  const help=currentHelp(setupState.room);
   if(setupState.step==='ACCESSIBLE'){
     setAccessibleGameplayMode(isYes);
     setupState.useAccessibleMode=isYes;
-    setupState.step='INSTRUCTIONS';
-    showSetupPrompt(`${isYes ? 'Accessible mode enabled.' : 'Visual mode enabled.'} Would you like to hear the instructions for ${gameTitle}? Press Y for yes or N for no.`);
-    return;
-  }
-  if(setupState.step==='INSTRUCTIONS'){
-    setupState.step='KEYBOARD';
-    showSetupPrompt(`${isYes ? help.how : 'Skipping instructions.'} Would you like to hear the keyboard commands for ${gameTitle}? Press Y for yes or N for no.`);
-    return;
-  }
-  if(setupState.step==='KEYBOARD'){
-    announce(isYes ? help.keys : 'Skipping keyboard commands.');
+    announce(`${isYes ? 'Accessible mode enabled.' : 'Visual mode enabled.'} Entering ${gameTitle}.`);
     completeSetupPrompts();
   }
 }
