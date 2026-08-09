@@ -84,7 +84,7 @@ function showSetupPrompt(message){
   window.LoungeAccessibility?.speak?.(message);
   window.loungeDesktopPromptKeys?.setActive(true);
   screen='setup-prompts';
-  elements.setupPrompt.focus({preventScroll:false});
+  requestAnimationFrame(()=>elements.setupYes.focus({preventScroll:false}));
 }
 function beginSetupPrompts(room){
   setupState.active=true;

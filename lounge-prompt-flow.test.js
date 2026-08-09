@@ -19,6 +19,7 @@ assert(multiplayerLobby.includes('function beginSetupPrompts(room)') && multipla
 assert(multiplayerLobby.includes('function handleSetupChoice(isYes)') && multiplayerLobby.includes("Accessible mode enabled.") && multiplayerLobby.includes("Visual mode enabled."), 'Multiplayer lobby accessible/visual mode branch is missing.');
 assert(multiplayerLobby.includes("if(screen==='setup-prompts')") && multiplayerLobby.includes("if(key==='y'||key==='n')") && multiplayerLobby.includes('window.loungeDesktopPromptKeys?.onKey'), 'Multiplayer lobby Y/N key handling is missing.');
 assert(multiplayerLobby.includes('window.answerLoungeSetupPrompt=answerLoungeSetupPrompt') && multiplayerLobbyHtml.includes('id="setup-yes"') && multiplayerLobbyHtml.includes('id="setup-no"'), 'Multiplayer lobby must expose direct Y/N handling and accessible button fallbacks.');
+assert(multiplayerLobbyHtml.includes('id="setup-prompt" class="panel" hidden tabindex="-1" role="application"') && multiplayerLobby.includes('elements.setupYes.focus'), 'Multiplayer lobby prompts must enter application mode and focus the Yes button so screen readers pass through answer keys.');
 assert(gameHelp.includes("if(startStage==='how'){if(answerYes)speak") && gameHelp.includes("else ask('keys')"), 'Per-game Y-read/N-skip instructions flow is missing.');
 assert(gameHelp.includes("optionsForm.addEventListener('keydown'") && gameHelp.includes("event.key!=='Enter'") && gameHelp.includes('submitOptionSelection(true,control)'), 'Enter-to-save-and-advance option handling is missing.');
 
