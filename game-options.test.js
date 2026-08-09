@@ -105,7 +105,7 @@ async function set(socket, data, label) {
     await roomWithTwo('skip-bo');
     await set(sockets[0], { type:pace, secondary:'Standard rules' }, `Skip-Bo ${pace}`);
     const started = await call(sockets[0], 'start-skipbo');
-    const expected = 30;
+    const expected = pace === 'Quick game' ? 10 : 30;
     const total = started.game?.players.reduce((sum, player) => sum + player.stockCount, 0);
     if (!started.ok || started.game.players.length !== 2 || started.game.players.some(player => player.stockCount !== expected) || total !== expected * 2) throw new Error(`Skip-Bo ${pace} did not save/start correctly.`);
   }
@@ -115,8 +115,8 @@ async function set(socket, data, label) {
   await set(sockets[0], { type:'Quick game', secondary:'Standard rules' }, 'Skip-Bo Quick game with 4 players');
   const quickFour = await call(sockets[0], 'start-skipbo');
   const quickFourTotal = quickFour.game?.players.reduce((sum, player) => sum + player.stockCount, 0);
-  if (!quickFour.ok || quickFour.game.players.length !== 4 || quickFour.game.players.some(player => player.stockCount !== 20) || quickFourTotal !== 80) throw new Error('Skip-Bo stock piles did not scale to 20 cards per player for 4 players.');
-  console.log('Skip-Bo: stock piles are 30 cards for 2 players and 20 cards for 3 or more players.');
+  if (!quickFour.ok || quickFour.game.players.length !== 4 || quickFour.game.players.some(player => player.stockCount !== 10) || quickFourTotal !== 40) throw new Error('Quick Skip-Bo stock piles did not use 10 cards per player for 4 players.');
+  console.log('Skip-Bo: Standard stock piles scale by player count and Quick games use 10 cards per player.');
 
   for (const challenge of ['Standard shopping list','Quick shopping list']) {
     await roomWithTwo('mall-madness');
