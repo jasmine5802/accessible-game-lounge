@@ -75,9 +75,11 @@ async function createWindow() {
       ? 'y'
       : keyName === 'n' || code === 'keyn' || keyCode === 78
         ? 'n'
-        : '';
-    if (key !== 'y' && key !== 'n') return;
-    // Always forward Y/N to the focused renderer. The renderer accepts these
+        : keyName === 'enter' || code === 'enter' || code === 'numpadenter' || keyCode === 13
+          ? 'enter'
+          : '';
+    if (!['y', 'n', 'enter'].includes(key)) return;
+    // Always forward prompt keys to the focused renderer. The renderer accepts these
     // keys only while a setup prompt is active. Keeping this independent from
     // the asynchronous prompt-mode flag prevents a missed IPC update from
     // making an otherwise visible prompt unresponsive.
