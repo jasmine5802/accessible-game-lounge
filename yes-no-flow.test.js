@@ -32,7 +32,7 @@ assert(source.includes("if(!isKeyup&&event.key==='Enter'&&startStage===null"), '
 assert(source.includes("startStage='ready'") && source.includes('Setup complete. Press Enter to start the game.'), 'Hosts must remain in the setup prompt until Enter starts the game.');
 assert(source.includes("if(startStage==='ready')") && source.includes('startGameFromPrompt()'), 'The ready prompt must start the game with Enter.');
 assert(source.includes("yesButton.textContent='Start Game'") && source.includes("startStage==='ready'?startGameFromPrompt():answer(true)"), 'The host ready prompt must expose a focused Start Game button for screen-reader Enter activation.');
-assert(source.includes("if(startEvent&&typeof socket!=='undefined'&&socket?.connected){socket.emit(startEvent") && source.includes("else{if(startDialog.open)startDialog.close();start.click()}"), 'Direct server starts must keep the dialog open until confirmation, closing it only for the hidden-button fallback.');
+assert(source.includes("if(startDialog.open)startDialog.close();start.focus({preventScroll:true});start.click()"), 'Enter must close the modal, focus the real page Start button, and activate its proven game-specific handler.');
 assert(source.includes('function reopenReadyPrompt(message)') && source.includes("if(startStage==='starting')reopenReadyPrompt('The server did not confirm the game start."), 'A failed or unconfirmed start must restore the ready prompt.');
 assert(source.includes("if(startStage==='how'){if(answerYes)"), 'Missing instructions stage decision branch.');
 assert(source.includes("else ask('keys')"), 'Missing N->bypass behavior from instructions to keyboard commands.');
