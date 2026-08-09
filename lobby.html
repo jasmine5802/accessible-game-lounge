@@ -85,7 +85,11 @@
   <section id="setup-prompt" class="panel" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="setup-prompt-title" aria-describedby="setup-prompt-description">
     <h2 id="setup-prompt-title">Game Setup</h2>
     <p id="setup-prompt-description"></p>
-    <p class="hint">This prompt uses direct keyboard choices. Buttons are intentionally not used.</p>
+    <p class="hint">Press Y for Yes or N for No. You can also use the buttons below.</p>
+    <div class="actions" role="group" aria-label="Game setup answer">
+      <button id="setup-yes" type="button" accesskey="y">Yes (Y)</button>
+      <button id="setup-no" type="button" accesskey="n">No (N)</button>
+    </div>
   </section>
 
   <section id="options-screen" class="panel" hidden aria-labelledby="options-title">

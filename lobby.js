@@ -15,7 +15,7 @@ const GAME_HELP = {
   'Mall Madness': { how:'Move around the mall, visit stores on your private shopping list, manage cash, and complete the list before the other shoppers.', keys:'S presses the electronic director. Arrow Keys move. Enter swipes or uses an ATM. L reads the shopping list. C reports position. O reads opponents.' },
   'The Game of Life': { how:'Spin and follow the branching path through careers, family events, investments, and retirement. The player with the strongest final result wins.', keys:'S or Enter spins. C describes the current tile and card. H reports player statistics. Left and Right choose a path at a fork.' }
 };
-const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','waiting-table','waiting-title','table-summary','table-settings','waiting-players','host-instruction','status','logout','setup-prompt','setup-prompt-description'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['auth-screen','auth-form','auth-status','username','password','lobby','game-menu','table-picker','tables-title','table-menu','waiting-table','waiting-title','table-summary','table-settings','waiting-players','host-instruction','status','logout','setup-prompt','setup-prompt-description','setup-yes','setup-no'].map(id => [id.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()), document.getElementById(id)]));
 let screen = 'auth';
 let gameIndex = 0;
 let tableIndex = 0;
@@ -133,6 +133,16 @@ function handleSetupChoice(isYes){
     completeSetupPrompts();
   }
 }
+function answerLoungeSetupPrompt(key){
+  if(screen!=='setup-prompts')return false;
+  const normalized=String(key||'').toLowerCase();
+  if(normalized!=='y'&&normalized!=='n')return false;
+  handleSetupChoice(normalized==='y');
+  return true;
+}
+window.answerLoungeSetupPrompt=answerLoungeSetupPrompt;
+elements.setupYes.addEventListener('click',()=>answerLoungeSetupPrompt('y'));
+elements.setupNo.addEventListener('click',()=>answerLoungeSetupPrompt('n'));
 function chooseGame(title){ selectedGame=title; swipeSound(); socket.emit('get-game-tables',{category:GAME_CATEGORIES[title]},result=>{if(!result.ok)return announce(result.error);tables=result.tables;tableIndex=0;elements.lobby.hidden=true;elements.tablePicker.hidden=false;elements.tablesTitle.textContent=`${title}: Create or Join a Game`;screen='tables';renderTables();announce(`${title}. ${tables.length} open game${tables.length===1?'':'s'}. No room code is needed. Create Game selected. Use Up and Down Arrow, then Enter.`);}); }
 function openSetup(){
   announce(`Creating ${selectedGame}. Game options will be offered after entering the game.`);createTable();
@@ -165,7 +175,7 @@ document.addEventListener('keydown',event=>{
     const key=String(event.key||'').toLowerCase();
     if(key==='y'||key==='n'){
       event.preventDefault();
-      handleSetupChoice(key==='y');
+      answerLoungeSetupPrompt(key);
       return;
     }
     if(event.key==='Escape'){
@@ -192,7 +202,5 @@ socket.on('game-started',data=>{startSound(data.cue);announce(data.message);setT
 socket.on('connect',()=>{socket.emit('get-active-rooms');const token=sessionStorage.getItem('loungeSessionToken');if(!token){elements.username.focus();return;}socket.emit('authenticate-token',{token},result=>result.ok?enterLobby(result):(sessionStorage.clear(),elements.username.focus()));});
 socket.on('disconnect',()=>announce('Connection lost. Trying to reconnect.'));
 window.loungeDesktopPromptKeys?.onKey(key=>{
-  if(screen!=='setup-prompts')return;
-  if(key!=='y'&&key!=='n')return;
-  handleSetupChoice(key==='y');
+  answerLoungeSetupPrompt(key);
 });
