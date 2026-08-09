@@ -25,6 +25,8 @@ let currentRoom = null;
 let myUsername = sessionStorage.getItem('loungeUsername') || '';
 let audioContext;
 const setupState = { active:false, room:null, step:'ACCESSIBLE' };
+let lastSetupAnswerKey='';
+let lastSetupAnswerTime=0;
 
 function announce(message) {
   elements.status.textContent = '';
@@ -137,6 +139,10 @@ function answerLoungeSetupPrompt(key){
   if(screen!=='setup-prompts')return false;
   const normalized=String(key||'').toLowerCase();
   if(normalized!=='y'&&normalized!=='n')return false;
+  const now=performance.now();
+  if(normalized===lastSetupAnswerKey&&now-lastSetupAnswerTime<200)return true;
+  lastSetupAnswerKey=normalized;
+  lastSetupAnswerTime=now;
   handleSetupChoice(normalized==='y');
   return true;
 }
