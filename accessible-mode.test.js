@@ -7,10 +7,13 @@ const assert = require('assert');
 
 const lounge = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
 const accessibility = fs.readFileSync(path.join(__dirname, 'lounge-accessibility.js'), 'utf8');
+const gameHelp = fs.readFileSync(path.join(__dirname, 'game-help.js'), 'utf8');
 
 assert(lounge.includes('Would you like to use accessible mode for'), 'Accessible-mode selection prompt is missing from the lobby flow.');
 assert(accessibility.includes('Accessible Mode: On (F4)') && accessibility.includes('Accessible Mode: Off (F4)'), 'Accessible-mode toggle labels are missing.');
 assert(accessibility.includes('toggleAccessibleMode') && accessibility.includes('setAccessibleMode'), 'Accessible-mode toggle API is missing.');
+assert(gameHelp.includes('lounge-accessible-command-surface') && gameHelp.includes('Accessible Play') && gameHelp.includes('Keyboard commands:') && gameHelp.includes('Players:'), 'Accessible mode must expose a compact text-first game surface with status, players, and keyboard commands.');
+assert(gameHelp.includes("['announcement','turn','turn-status','status','players']") && gameHelp.includes('new MutationObserver(syncAccessibleSurface)'), 'The accessible game surface must update live as turns, announcements, and players change.');
 
 process.env.LOUNGE_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'lounge-accessible-mode-'));
 
