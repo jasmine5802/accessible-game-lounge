@@ -1921,7 +1921,7 @@
 			"args": [
 				"-NoProfile",
 				"-Command",
-				"$p = Join-Path (Resolve-Path './dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'; if (Test-Path $p) { Get-Item $p | Select-Object FullName,Length,LastWriteTime | Format-List } else { Write-Error \"Installer not found: $p\"; exit 1 }"
+				"$installer = Get-ChildItem -Path './dist' -Filter 'AccessibleGameLounge Setup *.exe' -File | Where-Object { $_.Name -notlike '*__uninstaller*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($null -eq $installer) { Write-Error 'Installer not found in ./dist'; exit 1 }; $installer | Select-Object FullName,Length,LastWriteTime | Format-List"
 			],
 			"isBackground": false
 		},
@@ -1937,7 +1937,14 @@
 		{
 			"label": "confirm-shareable-installer-2",
 			"type": "shell",
-			"command": "$p = Join-Path (Resolve-Path './dist').Path 'AccessibleGameLounge Setup 1.0.21.exe'; if (Test-Path $p) { Get-Item $p | Select-Object FullName,Length,LastWriteTime | Format-List } else { Write-Error \"Installer not found: $p\"; exit 1 }",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"$installer = Get-ChildItem -Path './dist' -Filter 'AccessibleGameLounge Setup *.exe' -File | Where-Object { $_.Name -notlike '*__uninstaller*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($null -eq $installer) { Write-Error 'Installer not found in ./dist'; exit 1 }; $installer | Select-Object FullName,Length,LastWriteTime | Format-List"
+			],
 			"isBackground": false
 		},
 		{
@@ -2194,7 +2201,7 @@
 			"args": [
 				"-NoProfile",
 				"-Command",
-				"$ErrorActionPreference='SilentlyContinue'; Write-Host 'dist:'; Get-ChildItem dist | Select-Object Name,Length,LastWriteTime; Write-Host ''; Write-Host 'installer-dist:'; Get-ChildItem installer-dist | Select-Object Name,Length,LastWriteTime"
+				"$ErrorActionPreference='SilentlyContinue'; Write-Host \"dist:\"; Get-ChildItem dist | Select-Object Name,Length,LastWriteTime; Write-Host \"\"; Write-Host \"installer-dist:\"; Get-ChildItem installer-dist | Select-Object Name,Length,LastWriteTime"
 			],
 			"isBackground": false
 		},
@@ -2217,6 +2224,39 @@
 				"start",
 				"\"\"",
 				"dist"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-stage-current-fix",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Remove-Item -Force -ErrorAction SilentlyContinue 'release-win-latest.log'; git add lobby.js lounge-prompt-flow.test.js; git status --short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-commit-current-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Fix multiplayer setup prompts and spoken join announcements"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "deploy-push-current-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
 			],
 			"isBackground": false
 		}

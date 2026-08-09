@@ -1,8 +1,8 @@
-version: 1.0.36
+version: 1.0.56
 files:
-  - url: AccessibleGameLounge-Setup-1.0.36.exe
-    sha512: j5bIpTSpvoYoiOXElMUzIijOrQNZN9NGODL2D4Nl3T9rLdtkR9k9xoH6CjGzNXj7InXsTwbaGcqJqCNL53+gBw==
-    size: 77288015
-path: AccessibleGameLounge-Setup-1.0.36.exe
-sha512: j5bIpTSpvoYoiOXElMUzIijOrQNZN9NGODL2D4Nl3T9rLdtkR9k9xoH6CjGzNXj7InXsTwbaGcqJqCNL53+gBw==
-releaseDate: '2026-08-09T02:11:18.001Z'
+  - url: AccessibleGameLounge-Setup-1.0.56.exe
+    sha512: Ao4EGvnMpweLE80BppJRNiJMViuTQUDqt+V7JkyXyPJHVFdwMgiLlOq2s0OD7/j5opDfVTQpT1jPH9ycoVczHA==
+    size: 77294695
+path: AccessibleGameLounge-Setup-1.0.56.exe
+sha512: Ao4EGvnMpweLE80BppJRNiJMViuTQUDqt+V7JkyXyPJHVFdwMgiLlOq2s0OD7/j5opDfVTQpT1jPH9ycoVczHA==
+releaseDate: '2026-08-09T21:05:00.714Z'
