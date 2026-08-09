@@ -19,6 +19,7 @@ const sharedPromptSource = fs.readFileSync(path.join(__dirname, 'game-help.js'),
 assert(sharedPromptSource.includes("if(!isKeyup&&event.key==='Enter'&&startStage===null"), 'Enter must be routed to the shared start flow after setup completes.');
 assert(sharedPromptSource.includes("start.click()"), 'The ready prompt must activate the visible Start button for the host.');
 assert(sharedPromptSource.includes("'/ducks-race.html':'start-ducks-race'") && sharedPromptSource.includes("'/mallmadness.html':'start-mall'") && sharedPromptSource.includes('socket.emit(startEvent'), 'The ready prompt must send each game start request directly to the server instead of depending only on a hidden page button.');
+assert(sharedPromptSource.includes("else{if(startDialog.open)startDialog.close();start.click()}"), 'The modal must remain open during direct server starts so Enter cannot fall through to the Settings button.');
 assert(!sharedPromptSource.includes("start.click();window.dispatchEvent(new CustomEvent('lounge-gameplay-started'))"), 'The shared start flow must wait for the server game-state event instead of faking a successful start.');
 assert(sharedPromptSource.includes('Please wait for server confirmation.') && sharedPromptSource.includes('The server did not confirm the game start.'), 'The host must receive server-confirmation and retry feedback.');
 assert(sharedPromptSource.includes('function ensurePromptVisible()'), 'The shared prompt flow must keep the ready prompt visible for the first player after setup.');
