@@ -325,7 +325,7 @@ function publicMonopolyGame(room) {
   if (!room.monopoly) return null;
   const game = room.monopoly;
   return {
-    edition: game.edition, currency: MonopolyBoards.currencies[game.edition], board: game.board, status: game.status,
+    edition: game.edition, currency: MonopolyBoards.currencies[game.edition], board: game.board, status: game.status, winnerId: game.winnerId || null,
     turnPlayerId: game.turnOrder[game.turnIndex] || null,
     owners: { ...game.owners }, pendingPurchase: game.pendingPurchase ? { ...game.pendingPurchase } : null,
     pendingTrade: game.pendingTrade ? { ...game.pendingTrade } : null,
@@ -341,7 +341,9 @@ function monopolyMoney(game, amount) { return MonopolyBoards.formatMoney(game.ed
 
 function beginMonopoly(room) {
   const turnOrder = [...room.players.keys()];
-  const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, token: room.monopolyTokens.get(id), balance: 1500, position: 0, inJail: false }]));
+  const configuredTestBalance = process.env.NODE_ENV === 'test' ? Number(process.env.LOUNGE_TEST_MONOPOLY_BALANCE) : 0;
+  const startingBalance = Number.isFinite(configuredTestBalance) && configuredTestBalance > 0 ? configuredTestBalance : 1500;
+  const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, token: room.monopolyTokens.get(id), balance: startingBalance, position: 0, inJail: false }]));
   room.monopoly = { edition: room.monopolyEdition, board: MonopolyBoards.createBoard(room.monopolyEdition), status: 'playing', turnOrder, turnIndex: 0, players, owners: {}, pendingPurchase: null, pendingTrade: null, sequence: 1, announcement: `Monopoly ${room.monopolyEdition} has started. ${players.get(turnOrder[0]).name} goes first.` };
 }
 
@@ -354,6 +356,24 @@ function advanceMonopolyTurn(game) {
   game.pendingPurchase = null;
   game.turnIndex = (game.turnIndex + 1) % game.turnOrder.length;
   return game.players.get(game.turnOrder[game.turnIndex]);
+}
+
+function removeBankruptMonopolyPlayer(game, playerId) {
+  const player = game.players.get(playerId);
+  if (!player || player.balance >= 0) return { bankrupt: false };
+  const removedIndex = game.turnOrder.indexOf(playerId);
+  for (const [spaceIndex, ownerId] of Object.entries(game.owners)) if (ownerId === playerId) delete game.owners[spaceIndex];
+  game.players.delete(playerId);
+  if (removedIndex >= 0) game.turnOrder.splice(removedIndex, 1);
+  game.pendingPurchase = null;
+  game.pendingTrade = null;
+  if (game.turnOrder.length <= 1) {
+    game.status = 'finished';
+    game.winnerId = game.turnOrder[0] || null;
+    return { bankrupt: true, player, finished: true, winner: game.players.get(game.winnerId) || null };
+  }
+  game.turnIndex = Math.min(Math.max(0, removedIndex), game.turnOrder.length - 1);
+  return { bankrupt: true, player, finished: false, next: game.players.get(game.turnOrder[game.turnIndex]) };
 }
 
 function publicUnoGame(room, viewerId) {
@@ -375,7 +395,7 @@ function publicLifeGame(room, viewerId) {
   if (!room.life) return null;
   const game = room.life; const viewer = game.players.get(viewerId);
   return {
-    theme: game.theme, board: game.board, status: game.status, turnPlayerId: game.turnOrder[game.turnIndex] || null,
+    theme: game.theme, board: game.board, status: game.status, turnPlayerId: game.turnOrder[game.turnIndex] || null, winnerId: game.winnerId || null,
     announcement: game.announcement, sequence: game.sequence,
     pendingChoice: game.pendingChoice ? { playerId: game.pendingChoice.playerId, options: game.pendingChoice.options.map(index => game.board[index]) } : null,
     myPrivateAssets: viewer ? viewer.privateAssets.map(asset => ({ ...asset })) : [],
@@ -389,7 +409,7 @@ function publicLifeGame(room, viewerId) {
 function beginLife(room) {
   const turnOrder = [...room.players.keys()]; const definition = LifeThemes.definitions[room.lifeTheme];
   const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, position: 0, career: 'Undecided', careerLevel: -1, salary: 0, pegs: 1, cash: definition.salary, house: null, properties: [], privateAssets: [], finished: false }]));
-  room.life = { theme: room.lifeTheme, board: LifeThemes.createBoard(room.lifeTheme), status: 'playing', turnOrder, turnIndex: 0, players, pendingChoice: null, sequence: 1, announcement: `${room.lifeTheme} Life has started. ${players.get(turnOrder[0]).name} goes first. Press S or Enter to spin.` };
+  room.life = { theme: room.lifeTheme, board: LifeThemes.createBoard(room.lifeTheme), status: 'playing', turnOrder, turnIndex: 0, players, pendingChoice: null, winnerId: null, sequence: 1, announcement: `${room.lifeTheme} Life has started. ${players.get(turnOrder[0]).name} goes first. Press S or Enter to spin.` };
 }
 
 function emitLifeState(room, cue = null) {
@@ -398,7 +418,12 @@ function emitLifeState(room, cue = null) {
 
 function advanceLifeTurn(game) {
   const active = game.turnOrder.filter(id => game.players.has(id) && !game.players.get(id).finished);
-  if (!active.length) { game.status = 'finished'; return null; }
+  if (!active.length) {
+    const standings = game.turnOrder.filter(id => game.players.has(id)).map(id => { const player=game.players.get(id),netWorth=player.cash+player.privateAssets.reduce((sum,asset)=>sum+asset.value,0);return{id,player,netWorth} }).sort((a,b)=>b.netWorth-a.netWorth);
+    game.status = 'finished'; game.winnerId = standings[0]?.id || null;
+    if (standings[0]) game.announcement += ` ${standings[0].player.name} wins The Game of Life with a final net worth of ${LifeThemes.formatMoney(game.theme, standings[0].netWorth)}.`;
+    return null;
+  }
   do game.turnIndex = (game.turnIndex + 1) % game.turnOrder.length;
   while (!game.players.has(game.turnOrder[game.turnIndex]) || game.players.get(game.turnOrder[game.turnIndex]).finished);
   return game.players.get(game.turnOrder[game.turnIndex]);
@@ -444,7 +469,7 @@ function beginDominoes(room){const turnOrder=[...room.players.keys()],deck=Domin
 function emitDominoState(room,cue=null){for(const[id,member]of room.players)if(member.socketId)io.to(member.socketId).emit('domino-state',{game:publicDominoGame(room,id),cue})}
 function publicSkipBoGame(room,viewerId){if(!room.skipbo)return null;const game=room.skipbo,viewer=game.players.get(viewerId);return{status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,buildingPiles:game.buildingPiles.map(pile=>pile.map(card=>({...card}))),myHand:viewer?viewer.hand.map(card=>({...card})):[],myStockTop:viewer?.stock.at(-1)?{...viewer.stock.at(-1)}:null,myDiscards:viewer?viewer.discards.map(pile=>pile.map(card=>({...card}))):[[],[],[],[]],players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,stockCount:player.stock.length,stockTop:player.stock.at(-1)?{...player.stock.at(-1)}:null,handCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};}
 function refillSkipBo(game,player){if(game.drawPile.length<SkipBoEngine.HAND_SIZE-player.hand.length&&game.completed.length){game.drawPile=SkipBoEngine.recycleCompleted(game.completed,game.drawPile);game.completed=[]}const result=SkipBoEngine.drawToFive(player.hand,game.drawPile);player.hand=result.hand;game.drawPile=result.drawPile;return result.drawn}
-function beginSkipBo(room){const turnOrder=[...room.players.keys()],deck=SkipBoEngine.shuffle(SkipBoEngine.createDeck()),players=new Map(turnOrder.map(id=>[id,{name:room.players.get(id).name,stock:[],hand:[],discards:[[],[],[],[]]}])),stockSize=turnOrder.length===2?30:20;for(let round=0;round<stockSize;round+=1)for(const id of turnOrder)players.get(id).stock.push(deck.pop());const game={status:'playing',turnOrder,turnIndex:0,players,buildingPiles:[[],[],[],[]],drawPile:deck,completed:[],winnerId:null,sequence:1,announcement:`${room.skipboPace} Skip-Bo has started with ${stockSize}-card stock piles. ${players.get(turnOrder[0]).name} goes first.`};refillSkipBo(game,players.get(turnOrder[0]));room.skipbo=game}
+function beginSkipBo(room){const turnOrder=[...room.players.keys()],deck=SkipBoEngine.shuffle(SkipBoEngine.createDeck()),players=new Map(turnOrder.map(id=>[id,{name:room.players.get(id).name,stock:[],hand:[],discards:[[],[],[],[]]}])),stockSize=room.skipboPace==='Quick game'?10:turnOrder.length===2?30:20;for(let round=0;round<stockSize;round+=1)for(const id of turnOrder)players.get(id).stock.push(deck.pop());const game={status:'playing',turnOrder,turnIndex:0,players,buildingPiles:[[],[],[],[]],drawPile:deck,completed:[],winnerId:null,sequence:1,announcement:`${room.skipboPace} Skip-Bo has started with ${stockSize}-card stock piles. ${players.get(turnOrder[0]).name} goes first.`};refillSkipBo(game,players.get(turnOrder[0]));room.skipbo=game}
 function emitSkipBoState(room,cue=null){for(const[id,member]of room.players)if(member.socketId)io.to(member.socketId).emit('skipbo-state',{game:publicSkipBoGame(room,id),cue})}
 function nextSkipBoTurn(game){game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;const next=game.players.get(game.turnOrder[game.turnIndex]);const drawn=refillSkipBo(game,next);return{next,drawn}}
 function publicMallGame(room,viewerId){if(!room.mall)return null;const game=room.mall,viewer=game.players.get(viewerId);return{status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,phase:game.phase,movesRemaining:game.movesRemaining,sale:game.sale?{...game.sale}:null,myShoppingList:viewer?viewer.shoppingList.map(item=>({...item})):[],players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,position:player.position,cash:player.cash,remainingItems:player.shoppingList.filter(item=>!item.bought).length,connected:Boolean(room.players.get(id)?.socketId)}})};}
@@ -871,12 +896,18 @@ io.on('connection', (socket) => {
       const rent = MonopolyBoards.rentFor(game.board, game.owners, space, ownerId);
       player.balance -= rent; game.players.get(ownerId).balance += rent;
       story += ` Paid ${monopolyMoney(game, rent)} rent to ${game.players.get(ownerId).name}.`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
+    }
+    const bankruptcy = removeBankruptMonopolyPlayer(game, playerId);
+    if (bankruptcy.bankrupt) {
+      story += ` ${bankruptcy.player.name} is bankrupt and leaves the game.`;
+      if (bankruptcy.finished) story += bankruptcy.winner ? ` ${bankruptcy.winner.name} wins Monopoly!` : ' Monopoly ends with no remaining players.';
+      else story += ` It is now ${bankruptcy.next.name}'s turn.`;
     } else if (space.price && !ownerId && player.balance >= space.price) {
       game.pendingPurchase = { playerId, spaceIndex: space.index };
       story += ` It is unowned and costs ${monopolyMoney(game, space.price)}. Press Y to buy or N to decline.`;
     }
     let next = null;
-    if (!game.pendingPurchase) next = advanceMonopolyTurn(game);
+    if (!bankruptcy.bankrupt && !game.pendingPurchase) next = advanceMonopolyTurn(game);
     if (next) story += ` It is now ${next.name}'s turn.`;
     game.announcement = story; game.sequence += 1;
     emitMonopolyState(room, cue); acknowledge(callback, { ok: true });
