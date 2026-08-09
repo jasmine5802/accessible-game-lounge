@@ -9,6 +9,7 @@ const { execFileSync } = require('child_process');
 const { io } = require('socket.io-client');
 
 const script = fs.readFileSync(path.join(__dirname, 'lounge-accessibility.js'), 'utf8');
+assert(script.includes('Date.now()<Number(window.loungeSuppressSettingsUntil||0)') && script.includes('event.stopImmediatePropagation()'), 'Settings must ignore the Enter key that just started gameplay.');
 
 function createClassList() {
   const classes = new Set();

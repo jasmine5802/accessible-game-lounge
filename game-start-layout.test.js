@@ -19,10 +19,12 @@ const sharedPromptSource = fs.readFileSync(path.join(__dirname, 'game-help.js'),
 assert(sharedPromptSource.includes("if(!isKeyup&&event.key==='Enter'&&startStage===null"), 'Enter must be routed to the shared start flow after setup completes.');
 assert(sharedPromptSource.includes("start.click()"), 'The ready prompt must activate the visible Start button for the host.');
 assert(sharedPromptSource.includes("start.focus({preventScroll:true});start.click()"), 'The ready prompt must restore the proven page start button path and focus it before clicking so Enter cannot fall through to Settings.');
+assert(sharedPromptSource.includes('window.loungeSuppressSettingsUntil=Date.now()+1500'), 'Starting a game must suppress the same Enter key from opening Settings as the setup dialog closes.');
 assert(!sharedPromptSource.includes("start.click();window.dispatchEvent(new CustomEvent('lounge-gameplay-started'))"), 'The shared start flow must wait for the server game-state event instead of faking a successful start.');
 assert(sharedPromptSource.includes('Please wait for server confirmation.') && sharedPromptSource.includes('The server did not confirm the game start.'), 'The host must receive server-confirmation and retry feedback.');
 assert(sharedPromptSource.includes('function ensurePromptVisible()'), 'The shared prompt flow must keep the ready prompt visible for the first player after setup.');
 assert(!sharedPromptSource.includes('main .toolbar button'), 'The shared startup styling must not force every game into the same toolbar-hidden layout.');
+assert(!sharedPromptSource.includes('.lounge-client-shell{display:none!important}') && sharedPromptSource.includes('.lounge-client-titlebar,body.rs-clean-gameplay .lounge-client-menubar{display:none!important}') && sharedPromptSource.includes('.lounge-client-workspace,body.rs-clean-gameplay main{display:block!important}'), 'Accessible gameplay must keep the desktop shell workspace and live game surface visible while hiding only decorative chrome.');
 
 const duckRaceSource = fs.readFileSync(path.join(__dirname, 'ducks-race.js'), 'utf8');
 assert(duckRaceSource.includes("function resolvePlayerId"), 'Duck Race must resolve the player ID from the joined room and stored identity so turn checks match the server.');

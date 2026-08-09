@@ -1,6 +1,6 @@
 {
   "name": "accessible-game-lounge",
-  "version": "1.0.54",
+  "version": "1.0.55",
   "description": "Playroom style accessible multiplayer game lounge",
   "main": "main.js",
   "scripts": {

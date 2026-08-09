@@ -681,7 +681,7 @@
     });
     dialog.querySelector('#lounge-test-speech').addEventListener('click', () => speak(`Speech volume is ${speechVolume} percent.`));
     dialog.querySelector('#lounge-close-settings').addEventListener('click', () => dialog.close());
-    button.addEventListener('click', () => { dialog.showModal(); requestAnimationFrame(() => sound.focus()); });
+    button.addEventListener('click', event => { if(Date.now()<Number(window.loungeSuppressSettingsUntil||0)){event.preventDefault();event.stopImmediatePropagation();return}dialog.showModal();requestAnimationFrame(() => sound.focus()); });
     dialog.addEventListener('close', () => button.focus());
     setAccessibleMode(accessibleMode);
   }
