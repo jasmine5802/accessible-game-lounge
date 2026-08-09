@@ -1,38 +1,55 @@
 'use strict';
 
 const path = require('path');
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+let electronApi;
+try {
+  electronApi = require('electron');
+} catch {
+  electronApi = null;
+}
+
+const app = electronApi?.app || null;
+const BrowserWindow = electronApi?.BrowserWindow || null;
+const dialog = electronApi?.dialog || null;
+const ipcMain = electronApi?.ipcMain || null;
 
 const PRODUCTION_SERVER_URL = 'https://accessible-game-lounge.onrender.com/';
+const LOCAL_DEVELOPMENT_URL = 'http://127.0.0.1:3000/';
 
 let mainWindow;
 let promptModeActive = false;
 
-ipcMain.on('lounge-set-prompt-mode', (event, active) => {
-  if (!mainWindow || event.sender !== mainWindow.webContents) return;
-  promptModeActive = active === true;
-});
+if (ipcMain) {
+  ipcMain.on('lounge-set-prompt-mode', (event, active) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) return;
+    promptModeActive = active === true;
+  });
+}
 
-function configuredServerUrl() {
-  const argument = process.argv.find(value => value.startsWith('--server-url='));
-  const supplied = argument?.slice('--server-url='.length) || process.env.LOUNGE_SERVER_URL;
-  if (!supplied) return null;
-  const parsed = new URL(supplied);
-  const localDevelopment = ['localhost', '127.0.0.1'].includes(parsed.hostname);
-  if (parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) {
-    throw new Error('The live lounge server must use an HTTPS URL.');
+function configuredServerUrl(argv = process.argv, env = process.env, isProduction = process.env.NODE_ENV === 'production') {
+  const argument = argv.find(value => value.startsWith('--server-url='));
+  const supplied = argument?.slice('--server-url='.length) || env.LOUNGE_SERVER_URL;
+  if (supplied) {
+    const parsed = new URL(supplied);
+    const localDevelopment = ['localhost', '127.0.0.1'].includes(parsed.hostname);
+    if (parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) {
+      throw new Error('The live lounge server must use an HTTPS URL.');
+    }
+    parsed.pathname = '/';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString();
   }
-  parsed.pathname = '/';
-  parsed.search = '';
-  parsed.hash = '';
-  return parsed.toString();
+  if (!isProduction) return LOCAL_DEVELOPMENT_URL;
+  return PRODUCTION_SERVER_URL;
 }
 
 async function createWindow() {
-  let loungeUrl = configuredServerUrl();
-  if (!loungeUrl) {
-    loungeUrl = PRODUCTION_SERVER_URL;
+  if (!app || !BrowserWindow || !dialog) {
+    throw new Error('Electron runtime is not available.');
   }
+
+  const loungeUrl = configuredServerUrl();
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -83,11 +100,15 @@ async function createWindow() {
   mainWindow.on('closed', () => { promptModeActive = false; mainWindow = null; });
 }
 
-app.whenReady().then(createWindow).catch(error => {
-  dialog.showErrorBox('Accessible Game Lounge could not start', error.message);
-  app.quit();
-});
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('activate', () => {
-  if (!mainWindow) createWindow().catch(error => dialog.showErrorBox('Accessible Game Lounge could not start', error.message));
-});
+if (app && BrowserWindow && dialog) {
+  app.whenReady().then(createWindow).catch(error => {
+    dialog.showErrorBox('Accessible Game Lounge could not start', error.message);
+    app.quit();
+  });
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+  app.on('activate', () => {
+    if (!mainWindow) createWindow().catch(error => dialog.showErrorBox('Accessible Game Lounge could not start', error.message));
+  });
+}
+
+module.exports = { configuredServerUrl, PRODUCTION_SERVER_URL, LOCAL_DEVELOPMENT_URL };

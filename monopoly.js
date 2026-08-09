@@ -197,4 +197,5 @@ socket.on('connect', connectToGame); socket.on('lobby-updated', syncWaitingRoom)
   }
   announcePolite(data.message);
   elements.announcement.textContent = data.message;
+  window.LoungeAccessibility?.speak?.(data.message);
 }); socket.on('monopoly-state', receiveState); socket.on('disconnect',()=>{elements.connection.textContent='Connection lost. Trying to reconnect…';});

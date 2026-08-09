@@ -348,6 +348,7 @@ socket.on('table-player-joined', data => {
     render();
   }
   announce(data.message);
+  window.LoungeAccessibility?.speak?.(data.message);
 });
 
 socket.on('connect', connect);

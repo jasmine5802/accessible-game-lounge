@@ -77,6 +77,13 @@ const wait = (socket, event, predicate = () => true, timeout = 6000) =>
     assert(guestHostView && guestHostView.hand.length === 0, 'Guest should not see the host Duck Race hand.');
 
     console.log('Accessible mode prompt coverage and Duck Race card privacy checks passed.');
+
+    // Leave explicitly so the server does not retain its normal 30-second
+    // reconnect grace timers after this successful integration test.
+    await Promise.all([
+      call(host, 'leave-room'),
+      call(guest, 'leave-room')
+    ]);
   } finally {
     host?.disconnect();
     guest?.disconnect();

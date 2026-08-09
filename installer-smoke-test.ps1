@@ -3,16 +3,19 @@ $ErrorActionPreference = 'Stop'
 $package = Get-Content -Raw '.\package.json' | ConvertFrom-Json
 $installer = Join-Path (Resolve-Path '.\dist').Path "AccessibleGameLounge Setup $($package.version).exe"
 if (!(Test-Path $installer)) { throw "Installer not found: $installer" }
-$shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) "Jazzy Jay's Accessible Game Lounge.lnk"
+$desktop = [Environment]::GetFolderPath('Desktop')
+if ([string]::IsNullOrWhiteSpace($desktop)) {
+  $desktop = Join-Path $env:USERPROFILE 'Desktop'
+}
+$shortcut = Join-Path $desktop "Jazzy Jay's Accessible Game Lounge.lnk"
 $shortcutExistedBefore = Test-Path $shortcut
 
-$installDir = Join-Path ([IO.Path]::GetTempPath()) 'AGLInstallSmoke'
+$installDir = Join-Path ([IO.Path]::GetTempPath()) ("AGLInstallSmoke-" + [Guid]::NewGuid().ToString('N'))
 $resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $resolvedInstallDir = [IO.Path]::GetFullPath($installDir)
 if (!$resolvedInstallDir.StartsWith($resolvedTemp, [StringComparison]::OrdinalIgnoreCase)) {
   throw "Smoke-test path must stay inside the temporary directory: $resolvedInstallDir"
 }
-if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
 Start-Process -FilePath $installer -ArgumentList '/S', "/D=$installDir" -WindowStyle Hidden -Wait
@@ -32,7 +35,9 @@ Write-Output "Uninstaller: $($uninstaller.FullName)"
 Write-Output "Desktop shortcut: $shortcut"
 
 Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -WindowStyle Hidden -Wait
-Start-Sleep -Seconds 2
+for ($attempt = 0; $attempt -lt 30 -and (Test-Path $installDir); $attempt++) {
+  Start-Sleep -Seconds 1
+}
 
 if (Test-Path $installDir) {
   Write-Output 'Install folder still exists after uninstall (leftover files/settings possible).'
