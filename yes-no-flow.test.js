@@ -33,7 +33,7 @@ assert(source.includes("startStage='ready'") && source.includes('Setup complete.
 assert(source.includes("if(startStage==='ready')") && source.includes('startGameFromPrompt()'), 'The ready prompt must start the game with Enter.');
 assert(source.includes("yesButton.textContent='Start Game'") && source.includes("startStage==='ready'?startGameFromPrompt():answer(true)"), 'The host ready prompt must expose a focused Start Game button for screen-reader Enter activation.');
 assert(source.includes("if(startDialog.open)startDialog.close();start.click()"), 'Enter must close the modal before activating the otherwise inert Start button.');
-assert(source.includes('function reopenReadyPrompt(message)') && source.includes("if(startStage==='starting'&&!start.hidden)"), 'A failed start must restore the ready prompt.');
+assert(source.includes('function reopenReadyPrompt(message)') && source.includes("if(startStage==='starting')reopenReadyPrompt('The server did not confirm the game start."), 'A failed or unconfirmed start must restore the ready prompt.');
 assert(source.includes("if(startStage==='how'){if(answerYes)"), 'Missing instructions stage decision branch.');
 assert(source.includes("else ask('keys')"), 'Missing N->bypass behavior from instructions to keyboard commands.');
 assert(source.includes("else if(startStage==='keys'){if(answerYes)"), 'Missing keyboard commands stage decision branch.');
