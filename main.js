@@ -67,10 +67,14 @@ async function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (!promptModeActive || input.type !== 'keyDown' || input.control || input.alt || input.meta) return;
+    if (input.type !== 'keyDown' || input.control || input.alt || input.meta) return;
     const key = String(input.key || '').toLowerCase();
     if (key !== 'y' && key !== 'n') return;
-    event.preventDefault();
+    // Always forward Y/N to the focused renderer. The renderer accepts these
+    // keys only while a setup prompt is active. Keeping this independent from
+    // the asynchronous prompt-mode flag prevents a missed IPC update from
+    // making an otherwise visible prompt unresponsive.
+    if (promptModeActive) event.preventDefault();
     mainWindow.webContents.send('lounge-prompt-key', key);
   });
   mainWindow.webContents.on('did-start-navigation', () => { promptModeActive = false; });
