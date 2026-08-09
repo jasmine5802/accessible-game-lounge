@@ -46,6 +46,7 @@
     #prompt-box { position: absolute; z-index: 100; top: 50%; left: 50%; width: min(550px, calc(100% - 2rem)); padding: 40px; transform: translate(-50%,-50%); border: 2px solid #00ff00; border-radius: 8px; background: #0a0a0a; box-shadow: 0 0 20px rgba(0,255,0,.4); text-align: center; }
     #prompt-box .prompt-text { margin-bottom: 20px; color: #fff; font-size: 20px; line-height: 1.5; }
     #prompt-box .key-hint { color: #00ff00; font-size: 16px; font-weight: bold; }
+    #prompt-box .prompt-actions { display:flex; justify-content:center; gap:1rem; margin-top:1rem; }
     #visual-display { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 40px; background: radial-gradient(circle, #112211 0%, #000 100%); pointer-events: none; }
     .visual-card-table, .visual-board { display: flex; gap: 25px; margin-top: 60px; }
     .visual-card { width: 150px; height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px solid #00ff00; border-radius: 12px; background: #0d1f0d; box-shadow: 0 10px 20px rgba(0,0,0,.8); color: #fff; text-align: center; transition: transform .2s ease; }
@@ -105,6 +106,10 @@
           <div id="prompt-box" class="hidden" role="application" aria-label="Game setup question" tabindex="-1">
             <p id="prompt-text" class="prompt-text">Loading game prompt...</p>
             <p class="key-hint">[ Press Y for Yes | Press N for No ]</p>
+            <div class="prompt-actions">
+              <button id="prompt-yes" type="button" accesskey="y">Yes (Y)</button>
+              <button id="prompt-no" type="button" accesskey="n">No (N)</button>
+            </div>
           </div>
           <div id="visual-display" aria-hidden="true">
             <div id="card-table" class="visual-board">

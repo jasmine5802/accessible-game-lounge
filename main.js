@@ -82,7 +82,13 @@ async function createWindow() {
     // the asynchronous prompt-mode flag prevents a missed IPC update from
     // making an otherwise visible prompt unresponsive.
     if (promptModeActive) event.preventDefault();
-    mainWindow.webContents.send('lounge-prompt-key', key);
+    mainWindow.webContents.executeJavaScript(
+      `Boolean(window.answerLoungeSetupPrompt?.(${JSON.stringify(key)}))`
+    ).then(handled => {
+      if (!handled && !mainWindow?.isDestroyed()) mainWindow.webContents.send('lounge-prompt-key', key);
+    }).catch(() => {
+      if (!mainWindow?.isDestroyed()) mainWindow.webContents.send('lounge-prompt-key', key);
+    });
   });
   mainWindow.webContents.on('did-start-navigation', () => { promptModeActive = false; });
 

@@ -140,6 +140,19 @@ function processPromptChoice(isYes) {
   if (loungeState.promptStep === 'OPTIONS') openQuickGameOptions(item, !isYes);
 }
 
+function answerLoungeSetupPrompt(key) {
+  if (loungeState.mode !== 'SETUP_PROMPTS') return false;
+  const normalized = String(key || '').toLowerCase();
+  if (!['y', 'n'].includes(normalized)) return false;
+  if (loungeState.awaitingAccessibilityChoice) handleAccessibilityChoice(normalized === 'y');
+  else processPromptChoice(normalized === 'y');
+  return true;
+}
+
+window.answerLoungeSetupPrompt = answerLoungeSetupPrompt;
+document.querySelector('#prompt-yes')?.addEventListener('click', () => answerLoungeSetupPrompt('y'));
+document.querySelector('#prompt-no')?.addEventListener('click', () => answerLoungeSetupPrompt('n'));
+
 function syncMenuVisuals(item, selectedIndex) {
   loungeState.menuIndex = selectedIndex;
   document.querySelectorAll('.visual-card').forEach((card, index) => {
@@ -168,23 +181,14 @@ window.addEventListener('keydown', event => {
     if (!['y', 'n'].includes(key)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (loungeState.awaitingAccessibilityChoice) {
-      handleAccessibilityChoice(key === 'y');
-      return;
-    }
-    processPromptChoice(key === 'y');
+    answerLoungeSetupPrompt(key);
     return;
   }
   gameMenu.handleKey(event);
 }, true);
 
 window.loungeDesktopPromptKeys?.onKey(key => {
-  if (loungeState.mode !== 'SETUP_PROMPTS' || !['y', 'n'].includes(key)) return;
-  if (loungeState.awaitingAccessibilityChoice) {
-    handleAccessibilityChoice(key === 'y');
-    return;
-  }
-  processPromptChoice(key === 'y');
+  answerLoungeSetupPrompt(key);
 });
 
 function announce(message) { elements.status.textContent = message; }
