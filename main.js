@@ -67,8 +67,15 @@ async function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown' || input.control || input.alt || input.meta) return;
-    const key = String(input.key || '').toLowerCase();
+    if (!['keyDown', 'rawKeyDown'].includes(input.type) || input.control || input.alt || input.meta) return;
+    const keyName = String(input.key || '').toLowerCase();
+    const code = String(input.code || '').toLowerCase();
+    const keyCode = Number(input.keyCode || input.which || 0);
+    const key = keyName === 'y' || code === 'keyy' || keyCode === 89
+      ? 'y'
+      : keyName === 'n' || code === 'keyn' || keyCode === 78
+        ? 'n'
+        : '';
     if (key !== 'y' && key !== 'n') return;
     // Always forward Y/N to the focused renderer. The renderer accepts these
     // keys only while a setup prompt is active. Keeping this independent from

@@ -13,7 +13,7 @@ const html = read('index.html');
 
 assert(!main.includes('globalShortcut'), 'Prompt keys must never be registered as system-wide shortcuts.');
 assert(main.includes("webContents.on('before-input-event'") && main.includes('promptModeActive'), 'Electron must capture prompt keys only in the focused lounge window.');
-assert(main.includes("input.type !== 'keyDown'") && main.includes("key !== 'y' && key !== 'n'"), 'Electron prompt capture must accept only Y/N key-down input.');
+assert(main.includes("['keyDown', 'rawKeyDown'].includes(input.type)") && main.includes("code === 'keyy'") && main.includes('keyCode === 89'), 'Electron prompt capture must recognize modern, raw, physical-code, and legacy Y/N key input.');
 assert(main.includes("webContents.send('lounge-prompt-key', key)"), 'Electron must forward a captured prompt key through the preload bridge.');
 assert(main.includes('if (promptModeActive) event.preventDefault()'), 'Electron must forward Y/N even if prompt-mode IPC is delayed, while suppressing DOM input only in confirmed prompt mode.');
 assert(preload.includes("contextBridge.exposeInMainWorld('loungeDesktopPromptKeys'") && preload.includes("ipcRenderer.send('lounge-set-prompt-mode'"), 'Secure prompt-key preload bridge is missing.');
