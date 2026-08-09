@@ -49,7 +49,7 @@ async function createWindow() {
     throw new Error('Electron runtime is not available.');
   }
 
-  const loungeUrl = configuredServerUrl();
+  const loungeUrl = configuredServerUrl(process.argv, process.env, app.isPackaged);
 
   mainWindow = new BrowserWindow({
     width: 1280,
