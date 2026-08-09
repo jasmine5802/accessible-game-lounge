@@ -85,7 +85,7 @@ async function createWindow() {
     // making an otherwise visible prompt unresponsive.
     if (promptModeActive) event.preventDefault();
     mainWindow.webContents.executeJavaScript(
-      `Boolean(window.answerLoungeSetupPrompt?.(${JSON.stringify(key)}))`
+      `Boolean(window.answerLoungeSetupPrompt?.(${JSON.stringify(key)}) || window.startLoungeGameFromPrompt?.(${JSON.stringify(key)}))`
     ).then(handled => {
       if (!handled && !mainWindow?.isDestroyed()) mainWindow.webContents.send('lounge-prompt-key', key);
     }).catch(() => {
