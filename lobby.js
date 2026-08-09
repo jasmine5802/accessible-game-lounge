@@ -24,7 +24,7 @@ let tables = [];
 let currentRoom = null;
 let myUsername = sessionStorage.getItem('loungeUsername') || '';
 let audioContext;
-const setupState = { active:false, room:null, step:'ACCESSIBLE' };
+const setupState = { active:false, room:null, step:'ACCESSIBLE', useAccessibleMode:null };
 let lastSetupAnswerKey='';
 let lastSetupAnswerTime=0;
 
@@ -83,7 +83,7 @@ function showSetupPrompt(message){
   elements.setupPrompt.hidden=false;
   elements.setupPromptDescription.textContent=message;
   announce(message);
-  window.LoungeAccessibility?.speak?.(message);
+  if(setupState.useAccessibleMode===false)window.LoungeAccessibility?.speak?.(message);
   window.loungeDesktopPromptKeys?.setActive(true);
   screen='setup-prompts';
   requestAnimationFrame(()=>elements.setupYes.focus({preventScroll:false}));
@@ -92,6 +92,7 @@ function beginSetupPrompts(room){
   setupState.active=true;
   setupState.room=room;
   setupState.step='ACCESSIBLE';
+  setupState.useAccessibleMode=null;
   selectedGame=currentGameTitle(room);
   showSetupPrompt(`Would you like to use accessible mode for ${selectedGame}? Press Y for yes or N for no.`);
 }
@@ -100,6 +101,7 @@ function completeSetupPrompts(){
   setupState.active=false;
   setupState.room=null;
   setupState.step='ACCESSIBLE';
+  setupState.useAccessibleMode=null;
   window.loungeDesktopPromptKeys?.setActive(false);
   elements.setupPrompt.hidden=true;
   if(room)enterGame(room);
@@ -108,6 +110,7 @@ function cancelSetupPrompts(){
   setupState.active=false;
   setupState.room=null;
   setupState.step='ACCESSIBLE';
+  setupState.useAccessibleMode=null;
   window.loungeDesktopPromptKeys?.setActive(false);
   elements.setupPrompt.hidden=true;
   elements.tablePicker.hidden=false;
@@ -121,6 +124,7 @@ function handleSetupChoice(isYes){
   const help=currentHelp(setupState.room);
   if(setupState.step==='ACCESSIBLE'){
     setAccessibleGameplayMode(isYes);
+    setupState.useAccessibleMode=isYes;
     setupState.step='INSTRUCTIONS';
     showSetupPrompt(`${isYes ? 'Accessible mode enabled.' : 'Visual mode enabled.'} Would you like to hear the instructions for ${gameTitle}? Press Y for yes or N for no.`);
     return;
