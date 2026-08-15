@@ -171,10 +171,11 @@ function renderCards() {
   elements.cards.replaceChildren(...me.hand.map((card, index) => {
     const item = document.createElement('li');
     item.className = `card${index === selectedCardIndex ? ' selected-card' : ''}`;
-    item.tabIndex = -1;
+    item.setAttribute('role', 'option');
+    item.tabIndex = index === selectedCardIndex ? 0 : -1;
     item.dataset.cardIndex = index;
     item.setAttribute('aria-label', cardStatus(card, me));
-    if (index === selectedCardIndex) item.setAttribute('aria-current', 'true');
+    item.setAttribute('aria-selected', String(index === selectedCardIndex));
     const heading = document.createElement('h3'); heading.textContent = `${card} — card ${index + 1}`;
     const text = document.createElement('p'); text.textContent = cardStatus(card, me);
     item.append(heading, text);
@@ -244,10 +245,11 @@ function renderTargets() {
   elements.targets.replaceChildren(...opponents.map((player, index) => {
     const item = document.createElement('li');
     item.className = `card${index === selectedTargetIndex ? ' selected-card' : ''}`;
-    item.tabIndex = -1;
+    item.setAttribute('role', 'option');
+    item.tabIndex = index === selectedTargetIndex ? 0 : -1;
     item.dataset.targetIndex = index;
     item.setAttribute('aria-label', `${player.name}. Space ${player.square}. ${player.feathers} feathers. Press Enter to target this duck.`);
-    if (index === selectedTargetIndex) item.setAttribute('aria-current', 'true');
+    item.setAttribute('aria-selected', String(index === selectedTargetIndex));
     item.textContent = `${player.name}: Space ${player.square}, ${player.feathers} feathers`;
     return item;
   }));

@@ -140,6 +140,8 @@ function render() {
       ? hand.map((card, index) => {
           const li = document.createElement('li');
           li.role = 'option';
+          li.tabIndex = selection.source === 'hand' && selection.index === index ? 0 : -1;
+          li.setAttribute('aria-label', `Hand card ${index + 1} of ${hand.length}, ${label(card)}`);
           li.setAttribute('aria-selected', selection.source === 'hand' && selection.index === index ? 'true' : 'false');
           li.append(cardNode(card, `Hand card ${index + 1}, ${label(card)}`, selection.source === 'hand' && selection.index === index));
           return li;
@@ -192,6 +194,7 @@ function select(source, index = 0) {
   targetMode = false;
   pendingTarget = null;
   render();
+  if (source === 'hand') el.hand.children[index]?.focus();
   say(`${source}${source === 'discard' ? ` ${index + 1}` : ''} selected: ${label(selectedCard())}.`);
 }
 

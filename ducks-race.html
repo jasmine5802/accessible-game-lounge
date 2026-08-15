@@ -89,12 +89,12 @@
       <aside class="qcp-side">
         <section id="cards-panel" class="panel" hidden aria-labelledby="cards-title">
           <h2 id="cards-title" tabindex="-1">Your cards</h2>
-          <p>Use Up or Down to pick a card, then press Enter to play.</p>
-          <ul id="cards" class="cards"><li>No cards available.</li></ul>
+          <p id="cards-help">Use Up or Down to pick a card, then press Enter to play.</p>
+          <ul id="cards" class="cards" role="listbox" aria-label="Your cards" aria-describedby="cards-help"><li>No cards available.</li></ul>
           <div id="target-menu" hidden aria-labelledby="target-title">
             <h3 id="target-title" tabindex="-1">Select target</h3>
             <p>Use Up or Down to choose a duck and Enter to cast.</p>
-            <ul id="targets" class="cards" aria-label="Card targets"></ul>
+            <ul id="targets" class="cards" role="listbox" aria-label="Card targets"></ul>
             <button id="cancel-target" type="button" class="secondary">Cancel Target Selection</button>
           </div>
         </section>
