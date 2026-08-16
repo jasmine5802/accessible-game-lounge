@@ -9,6 +9,7 @@ const { version: appVersion, name: packageName } = require('./package.json');
 const express = require('express');
 const { Server } = require('socket.io');
 const MonopolyBoards = require('./monopoly-boards');
+const MonopolyJackpot = require('./monopoly-jackpot');
 const UnoRules = require('./uno-rules');
 const LifeThemes = require('./life-themes');
 const DerbyEngine = require('./horserace-engine');
@@ -231,6 +232,7 @@ function publicRoom(room) {
     maxPlayers: lobbyEntry?.[1].maxPlayers || 6,
     status: room.mall?.status || room.skipbo?.status || room.dominoes?.status || room.derby?.status || room.life?.status || room.uno?.status || room.monopoly?.status || room.ducksRace?.status || 'waiting',
     monopolyEdition: room.monopolyEdition || null,
+    freeParkingJackpot: room.freeParkingJackpot !== false,
     boardSpaces: BOARD_SPACES,
     players: [...room.players.entries()].map(([id, player]) => ({ id, name: player.name, connected: Boolean(player.socketId), monopolyToken: room.monopolyTokens?.get(id) || null })),
     gameState: room.gameState,
@@ -326,6 +328,7 @@ function publicMonopolyGame(room) {
   const game = room.monopoly;
   return {
     edition: game.edition, currency: MonopolyBoards.currencies[game.edition], board: game.board, status: game.status, winnerId: game.winnerId || null,
+    freeParkingJackpot: game.freeParkingJackpot, freeParkingPot: game.freeParkingPot,
     turnPlayerId: game.turnOrder[game.turnIndex] || null,
     owners: { ...game.owners }, pendingPurchase: game.pendingPurchase ? { ...game.pendingPurchase } : null,
     pendingTrade: game.pendingTrade ? { ...game.pendingTrade } : null,
@@ -344,7 +347,7 @@ function beginMonopoly(room) {
   const configuredTestBalance = process.env.NODE_ENV === 'test' ? Number(process.env.LOUNGE_TEST_MONOPOLY_BALANCE) : 0;
   const startingBalance = Number.isFinite(configuredTestBalance) && configuredTestBalance > 0 ? configuredTestBalance : 1500;
   const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, token: room.monopolyTokens.get(id), balance: startingBalance, position: 0, inJail: false }]));
-  room.monopoly = { edition: room.monopolyEdition, board: MonopolyBoards.createBoard(room.monopolyEdition), status: 'playing', turnOrder, turnIndex: 0, players, owners: {}, pendingPurchase: null, pendingTrade: null, sequence: 1, announcement: `Monopoly ${room.monopolyEdition} has started. ${players.get(turnOrder[0]).name} goes first.` };
+  room.monopoly = { edition: room.monopolyEdition, board: MonopolyBoards.createBoard(room.monopolyEdition), freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status: 'playing', turnOrder, turnIndex: 0, players, owners: {}, pendingPurchase: null, pendingTrade: null, sequence: 1, announcement: `Monopoly ${room.monopolyEdition} has started. Free Parking jackpot is ${room.freeParkingJackpot !== false ? 'on' : 'off'}. ${players.get(turnOrder[0]).name} goes first.` };
 }
 
 function emitMonopolyState(room, cue = null) {
@@ -585,7 +588,7 @@ io.on('connection', (socket) => {
     const unoVariant=UnoRules.VARIANTS.includes(data.unoVariant)?data.unoVariant:(lobbyDefinition?.unoVariant || 'Classic Uno');
     const lifeTheme=LifeThemes.themes.includes(data.lifeTheme)?data.lifeTheme:'Classic 1960';
     const dominoSet=Object.hasOwn(DominoesEngine.SETS,data.dominoSet)?data.dominoSet:'Double-Six',dominoMode=DominoesEngine.MODES.includes(data.dominoMode)?data.dominoMode:'Draw Game';
-    const room = { code, hostId: playerId, game: requestedGame, displayGame: requestedDisplayGame, raceSelections:new Map(), raceSettings:{startingCards:3,startingFeathers:5}, monopolyEdition: requestedGame === 'Monopoly Multi-Edition' ? edition : null, monopolyTokens: requestedGame === 'Monopoly Multi-Edition' ? new Map() : null, unoVariant: requestedGame === 'Accessible Uno & Dos Lounge' ? unoVariant : null, lifeTheme: requestedGame === 'The Game of Life Lounge' ? lifeTheme : null, dominoSet: requestedGame === 'Accessible Dominoes Lounge' ? dominoSet : null, dominoMode: requestedGame === 'Accessible Dominoes Lounge' ? dominoMode : null, skipboPace: requestedGame === 'Accessible Skip-Bo Lounge' ? 'Standard game' : null, mallChallenge: requestedGame === 'Accessible Mall Madness Lounge' ? 'Standard shopping list' : null, players: new Map(), gameState: {}, ducksRace: null, monopoly: null, uno: null, life: null, derby: null, dominoes: null, skipbo: null, mall: null };
+    const room = { code, hostId: playerId, game: requestedGame, displayGame: requestedDisplayGame, raceSelections:new Map(), raceSettings:{startingCards:3,startingFeathers:5}, monopolyEdition: requestedGame === 'Monopoly Multi-Edition' ? edition : null, freeParkingJackpot: requestedGame === 'Monopoly Multi-Edition' ? String(data.freeParkingJackpot || 'on').toLowerCase() !== 'off' : null, monopolyTokens: requestedGame === 'Monopoly Multi-Edition' ? new Map() : null, unoVariant: requestedGame === 'Accessible Uno & Dos Lounge' ? unoVariant : null, lifeTheme: requestedGame === 'The Game of Life Lounge' ? lifeTheme : null, dominoSet: requestedGame === 'Accessible Dominoes Lounge' ? dominoSet : null, dominoMode: requestedGame === 'Accessible Dominoes Lounge' ? dominoMode : null, skipboPace: requestedGame === 'Accessible Skip-Bo Lounge' ? 'Standard game' : null, mallChallenge: requestedGame === 'Accessible Mall Madness Lounge' ? 'Standard shopping list' : null, players: new Map(), gameState: {}, ducksRace: null, monopoly: null, uno: null, life: null, derby: null, dominoes: null, skipbo: null, mall: null };
     rooms.set(code, room);
     joinSocketToRoom(socket, room, playerId, socket.data.username);
     acknowledge(callback, { ok: true, room: publicRoom(room), playerId });
@@ -888,10 +891,17 @@ io.on('connection', (socket) => {
     if (space.type === 'Go to Jail') {
       player.position = 10; player.inJail = true; story += ' Go directly to Jail.'; cue.secondary = { type: 'jail' };
     } else if (space.type === 'Tax') {
-      player.balance -= space.amount; story += ` Paid ${monopolyMoney(game, space.amount)} in tax.`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
+      player.balance -= space.amount;
+      MonopolyJackpot.collect(game, space.amount);
+      story += ` Paid ${monopolyMoney(game, space.amount)} in tax.${game.freeParkingJackpot ? ` The Free Parking jackpot is now ${monopolyMoney(game, game.freeParkingPot)}.` : ''}`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
     } else if (space.type === 'Chance' || space.type === 'Community Chest') {
       const amount = Math.random() < 0.5 ? 100 : -50; player.balance += amount;
-      story += amount > 0 ? ` Received ${monopolyMoney(game, amount)}.` : ` Paid ${monopolyMoney(game, Math.abs(amount))}.`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
+      if (amount < 0) MonopolyJackpot.collect(game, Math.abs(amount));
+      story += amount > 0 ? ` Received ${monopolyMoney(game, amount)}.` : ` Paid ${monopolyMoney(game, Math.abs(amount))}.${game.freeParkingJackpot ? ` The Free Parking jackpot is now ${monopolyMoney(game, game.freeParkingPot)}.` : ''}`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
+    } else if (space.type === 'Free Parking' && game.freeParkingJackpot) {
+      const winnings = MonopolyJackpot.award(game, player);
+      story += winnings > 0 ? ` Collected the Free Parking jackpot of ${monopolyMoney(game, winnings)}. The jackpot resets to zero.` : ' The Free Parking jackpot is empty.';
+      cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
     } else if (space.price && ownerId && ownerId !== playerId) {
       const rent = MonopolyBoards.rentFor(game.board, game.owners, space, ownerId);
       player.balance -= rent; game.players.get(ownerId).balance += rent;

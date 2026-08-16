@@ -73,9 +73,14 @@ async function set(socket, data, label) {
     await set(sockets[0], { type:edition, secondary:tokens[0].id }, `Monopoly ${edition} host`);
     await set(sockets[1], { type:edition, secondary:tokens[1].id }, `Monopoly ${edition} second player`);
     const started = await call(sockets[0], 'start-monopoly');
-    if (!started.ok || started.game.edition !== edition || started.game.board.length !== 40 || started.game.players.length !== 2 || started.game.players.some(player => !player.token)) throw new Error(`Monopoly ${edition} did not save/start correctly.`);
+    if (!started.ok || started.game.edition !== edition || started.game.board.length !== 40 || started.game.players.length !== 2 || started.game.players.some(player => !player.token) || started.game.freeParkingJackpot !== true || started.game.freeParkingPot !== 0) throw new Error(`Monopoly ${edition} did not save/start correctly.`);
   }
-  console.log(`Monopoly: all ${MonopolyBoards.editions.length} boards and unique tokens saved and started with 2 players.`);
+  await roomWithTwo('monopoly', { edition:'Classic', freeParkingJackpot:'off' });
+  await set(sockets[0], { type:'Classic', secondary:MonopolyBoards.tokens.Classic[0].id }, 'Monopoly jackpot-off host');
+  await set(sockets[1], { type:'Classic', secondary:MonopolyBoards.tokens.Classic[1].id }, 'Monopoly jackpot-off second player');
+  const jackpotOff = await call(sockets[0], 'start-monopoly');
+  if (!jackpotOff.ok || jackpotOff.game.freeParkingJackpot !== false || jackpotOff.game.freeParkingPot !== 0) throw new Error('Monopoly Free Parking jackpot off option did not save/start correctly.');
+  console.log(`Monopoly: all ${MonopolyBoards.editions.length} boards, unique tokens, and both Free Parking jackpot options saved and started with 2 players.`);
 
   for (const variant of UnoRules.VARIANTS) {
     await roomWithTwo('uno-classic');

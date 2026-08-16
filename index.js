@@ -224,7 +224,7 @@ function updateCurrentGame(room) {
   loungeState.mode = 'IN_GAME';
   sessionStorage.setItem('loungeGameId', room.id);
   elements.currentGame.hidden = false;
-  elements.currentSummary.textContent = `${room.game}${room.monopolyEdition ? `, ${room.monopolyEdition} edition` : ''}${room.unoVariant ? `, ${room.unoVariant}` : ''}${room.lifeTheme ? `, ${room.lifeTheme}` : ''}${room.dominoMode ? `, ${room.dominoSet}, ${room.dominoMode}` : ''}, hosted by ${room.players.find(player => player.id === room.hostId)?.name || 'a player'}.`;
+  elements.currentSummary.textContent = `${room.game}${room.monopolyEdition ? `, ${room.monopolyEdition} edition, Free Parking jackpot ${room.freeParkingJackpot===false?'off':'on'}` : ''}${room.unoVariant ? `, ${room.unoVariant}` : ''}${room.lifeTheme ? `, ${room.lifeTheme}` : ''}${room.dominoMode ? `, ${room.dominoSet}, ${room.dominoMode}` : ''}, hosted by ${room.players.find(player => player.id === room.hostId)?.name || 'a player'}.`;
   elements.players.replaceChildren(...room.players.map(player => {
     const item = document.createElement('li');
     item.textContent = `${player.name}${player.id === room.hostId ? ' (host)' : ''}${player.connected ? '' : ' (reconnecting)'}`;

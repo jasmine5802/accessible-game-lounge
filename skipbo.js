@@ -12,6 +12,7 @@ const el = {
   buildings: document.querySelector('#buildings'),
   start: document.querySelector('#start'),
   play: document.querySelector('#play'),
+  targetOptions: document.querySelector('#target-options'),
   selection: document.querySelector('#selection'),
   hand: document.querySelector('#hand'),
   privatePiles: document.querySelector('#private-piles'),
@@ -93,11 +94,21 @@ function say(message, urgent = false) {
 function label(card) { return SkipBoEngine.cardLabel(card); }
 function me() { return game?.players.find(player => player.id === playerId); }
 
-function cardNode(card, name, selected = false) {
+function cardNode(card, name, selected = false, onActivate = null) {
   const item = document.createElement('div');
   item.className = 'card' + (card?.value === SkipBoEngine.WILD ? ' wild' : '') + (selected ? ' selected' : '');
   item.textContent = card?.value === SkipBoEngine.WILD ? 'WILD' : card?.value ?? '—';
   item.setAttribute('aria-label', name);
+  if (card && onActivate) {
+    item.setAttribute('role', 'button');
+    item.tabIndex = 0;
+    item.addEventListener('click', onActivate);
+    item.addEventListener('keydown', event => {
+      if (!['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      onActivate();
+    });
+  }
   return item;
 }
 
@@ -143,6 +154,7 @@ function render() {
           li.tabIndex = selection.source === 'hand' && selection.index === index ? 0 : -1;
           li.setAttribute('aria-label', `Hand card ${index + 1} of ${hand.length}, ${label(card)}`);
           li.setAttribute('aria-selected', selection.source === 'hand' && selection.index === index ? 'true' : 'false');
+          li.addEventListener('click', () => select('hand', index));
           li.append(cardNode(card, `Hand card ${index + 1}, ${label(card)}`, selection.source === 'hand' && selection.index === index));
           return li;
         })
@@ -154,7 +166,7 @@ function render() {
     const slot = document.createElement('div');
     slot.className = 'slot';
     slot.append(
-      cardNode(game?.myStockTop, `Stock top ${label(game?.myStockTop)}`, selection.source === 'stock'),
+      cardNode(game?.myStockTop, `Stock top ${label(game?.myStockTop)}`, selection.source === 'stock', () => select('stock', 0)),
       document.createTextNode(`Stock: ${mine?.stockCount ?? 0} cards`)
     );
     return slot;
@@ -165,7 +177,7 @@ function render() {
     const slot = document.createElement('div');
     slot.className = 'slot';
     slot.append(
-      cardNode(top, `Discard ${index + 1}, top ${label(top)}`, selection.source === 'discard' && selection.index === index),
+      cardNode(top, `Discard ${index + 1}, top ${label(top)}`, selection.source === 'discard' && selection.index === index, () => select('discard', index)),
       document.createTextNode(`Discard ${index + 1}: ${label(top)}`)
     );
     privatePiles.push(slot);
@@ -184,6 +196,20 @@ function render() {
   el.selection.textContent = chosen
     ? `${selection.source} ${selection.index + 1}: ${label(chosen)} selected.${targetMode ? ' Choose B1 through B4 or D1 through D4.' : ' Press Enter or Space to choose a target.'}`
     : 'No playable card selected.';
+
+  el.targetOptions.hidden = !targetMode;
+  const targets = targetMode ? [
+    ...Array.from({ length: 4 }, (_, index) => ({ type: 'building', index, label: `Play on building pile ${index + 1}` })),
+    ...(selection.source === 'hand' ? Array.from({ length: 4 }, (_, index) => ({ type: 'discard', index, label: `Discard to personal pile ${index + 1}` })) : [])
+  ] : [];
+  el.targetOptions.replaceChildren(...targets.map(target => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'target-option';
+    button.textContent = target.label;
+    button.addEventListener('click', () => play(target.type, target.index));
+    return button;
+  }));
 
   syncAccessibilityState();
 }
@@ -205,6 +231,7 @@ function confirm() {
   pendingTarget = null;
   render();
   say('Target mode. Press B then 1 through 4 for a building pile, or D then 1 through 4 for a personal discard pile.');
+  el.targetOptions.firstElementChild?.focus();
 }
 
 function play(targetType, targetIndex) {
@@ -261,6 +288,12 @@ document.addEventListener('keydown', event => {
   }
   if (['arrowup', 'arrowdown'].includes(key)) {
     event.preventDefault();
+    if (targetMode && document.activeElement?.classList?.contains('target-option')) {
+      const options = [...el.targetOptions.children];
+      const current = Math.max(0, options.indexOf(document.activeElement));
+      options[(current + (key === 'arrowdown' ? 1 : -1) + options.length) % options.length]?.focus();
+      return;
+    }
     const hand = game?.myHand || [];
     if (!hand.length) return;
     handIndex = (handIndex + (key === 'arrowdown' ? 1 : -1) + hand.length) % hand.length;
@@ -282,6 +315,10 @@ document.addEventListener('keydown', event => {
 
   if (key === 'enter' || key === ' ') {
     event.preventDefault();
+    if (targetMode && document.activeElement?.classList?.contains('target-option')) {
+      document.activeElement.click();
+      return;
+    }
     confirm();
     return;
   }

@@ -4,7 +4,7 @@ const socket = io();
 const gameId = new URLSearchParams(location.search).get('game') || sessionStorage.getItem('loungeGameId');
 const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
-const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','offer-panel','offer-title','offer-details','buy','decline','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','offer-panel','offer-title','offer-details','buy','decline','free-parking-status','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null; let lastOfferKey = null; let gameplayStarted = false;
 const accessibility = window.LoungeAccessibility?.createGameStateController({
   mode: 'GAME',
@@ -32,7 +32,8 @@ function spaceDetails(space) {
   const cost = space.price ? money(space.price) : 'Not purchasable';
   const group = space.group ? space.group.replace('-', ' ') : 'No color group';
   const occupants = game?.players.filter(player => player.position === space.index).map(player => `${player.name}, ${playerToken(player)?.name || 'token not selected'}`) || [];
-  return `Type: ${space.type}. ${space.description} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
+  const jackpot = space.type === 'Free Parking' && game?.freeParkingJackpot ? ` Current jackpot: ${money(game.freeParkingPot || 0)}.` : '';
+  return `Type: ${space.type}. ${space.description}${jackpot} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
 }
 function spaceLabel(space) { return `${space.name}. ${spaceDetails(space)}`; }
 function groupLabel(group) { return group.replace('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
@@ -105,6 +106,7 @@ function render() {
   if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(()=>elements.buy.focus());}
   if(!offerKey)lastOfferKey=null;
   elements.start.hidden = game.status !== 'waiting' || room?.hostId !== playerId;
+  elements.freeParkingStatus.textContent = game.freeParkingJackpot ? `Free Parking jackpot: ${money(game.freeParkingPot || 0)}. Taxes and negative Chance or Community Chest payments go into the pot.` : 'Free Parking jackpot is off.';
   elements.tokenPicker.hidden = game.status !== 'waiting';
   const winner = game.players.find(player => player.id === game.winnerId);
   elements.turnStatus.textContent = game.status === 'finished' ? (winner ? `${winner.name} won Monopoly.` : 'Monopoly has ended.') : game.status === 'waiting' ? 'Waiting for the room creator to start.' : myTurn ? (purchase ? 'Property purchase decision required. Press Y to buy or N to decline.' : incomingTrade ? 'Trade decision required. Press Y to accept or N to decline.' : 'It is your turn. Press Enter to roll.') : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name}.`;
@@ -137,7 +139,7 @@ function syncWaitingRoom(updated) {
   if (!game || game.status === 'waiting') {
     game = game?.status === 'waiting'
       ? { ...game, players: room.players.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })) }
-      : { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], status: 'waiting', players: room.players.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })), owners: {}, announcement: `Waiting to start ${room.monopolyEdition} Monopoly.`, sequence: 0 };
+      : { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status: 'waiting', players: room.players.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })), owners: {}, announcement: `Waiting to start ${room.monopolyEdition} Monopoly.`, sequence: 0 };
     render();
     renderTokenChoices();
   }
@@ -161,7 +163,7 @@ function connectToGame() {
     socket.emit('join-game', { gameId }, result => {
       if (!result.ok) { elements.connection.textContent = result.error; return; }
       room = result.room; playerId = room.players.find(player => player.name === username)?.id || room.players.find(player => player.name === auth.username)?.id;
-      game = room.monopoly || { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], status:'waiting', players:room.players.map(player => ({...player,balance:1500,position:0})), owners:{}, announcement:`Waiting to start ${room.monopolyEdition} Monopoly.`, sequence:0 };
+      game = room.monopoly || { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status:'waiting', players:room.players.map(player => ({...player,balance:1500,position:0})), owners:{}, announcement:`Waiting to start ${room.monopolyEdition} Monopoly.`, sequence:0 };
       elements.connection.textContent = `Connected to room ${room.code}.`; render(); renderTokenChoices();
     });
   });
@@ -174,7 +176,7 @@ elements.trade.addEventListener('click',()=>{elements.tradeForm.hidden=!elements
 elements.tradeForm.addEventListener('submit',event=>{event.preventDefault();socket.emit('monopoly-trade-offer',{toId:elements.tradePlayer.value,propertyIndex:Number(elements.tradeProperty.value),amount:Number(elements.tradeAmount.value)},result=>{if(result.ok)elements.tradeForm.hidden=true;else announcePolite(result.error);});});
 elements.balance.addEventListener('click', () => announcePolite(`Your ${game?.edition === 'Electronic Banking' ? 'banking balance' : 'balance'} is ${money(me()?.balance ?? 0)}.`));
 elements.properties.addEventListener('click', () => announcePolite(ownershipReport()));
-elements.roomState.addEventListener('click',()=>announcePolite(`Current room state. ${game?.players.map(player=>`${player.name} is using ${playerToken(player)?.name||'no token'}, has ${money(player.balance)}, and is on space ${player.position+1}${player.id===game.turnPlayerId?', with the current turn':''}`).join('. ')}.`));
+elements.roomState.addEventListener('click',()=>announcePolite(`Current room state. ${game?.freeParkingJackpot ? `Free Parking jackpot is ${money(game.freeParkingPot || 0)}. ` : 'Free Parking jackpot is off. '}${game?.players.map(player=>`${player.name} is using ${playerToken(player)?.name||'no token'}, has ${money(player.balance)}, and is on space ${player.position+1}${player.id===game.turnPlayerId?', with the current turn':''}`).join('. ')}.`));
 elements.tokenPicker.addEventListener('click',()=>{renderTokenChoices();elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())});
 elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOptions.value;if(!tokenId)return announcePolite('No token is available.');socket.emit('monopoly-select-token',{tokenId},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()})});
 elements.tokenCancel.addEventListener('click',()=>{elements.tokenDialog.close();elements.tokenPicker.focus()});
@@ -192,7 +194,7 @@ document.addEventListener('keydown', event => {
 socket.on('connect', connectToGame); socket.on('lobby-updated', syncWaitingRoom); socket.on('table-player-joined', data => {
   if (!data?.message) return;
   if (!game || game.status === 'waiting') {
-    game = { edition: room?.monopolyEdition, board: MonopolyBoards.boards[room?.monopolyEdition], status: 'waiting', players: room?.players?.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })) || [], owners: {}, announcement: `Waiting to start ${room?.monopolyEdition} Monopoly.`, sequence: 0 };
+    game = { edition: room?.monopolyEdition, board: MonopolyBoards.boards[room?.monopolyEdition], freeParkingJackpot: room?.freeParkingJackpot !== false, freeParkingPot: 0, status: 'waiting', players: room?.players?.map(player => ({ ...player, token: player.monopolyToken, balance: 1500, position: 0 })) || [], owners: {}, announcement: `Waiting to start ${room?.monopolyEdition} Monopoly.`, sequence: 0 };
     render();
     renderTokenChoices();
   }

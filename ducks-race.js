@@ -251,6 +251,7 @@ function renderTargets() {
     item.setAttribute('aria-label', `${player.name}. Space ${player.square}. ${player.feathers} feathers. Press Enter to target this duck.`);
     item.setAttribute('aria-selected', String(index === selectedTargetIndex));
     item.textContent = `${player.name}: Space ${player.square}, ${player.feathers} feathers`;
+    item.addEventListener('click', () => { selectedTargetIndex = index; activateSelectedTarget(); });
     return item;
   }));
 }
@@ -414,7 +415,7 @@ document.addEventListener('keydown', event => {
     if (targetingCard && elements.targets.contains(document.activeElement)) {
       event.preventDefault();
       activateSelectedTarget();
-    } else if (elements.cards.contains(document.activeElement)) {
+    } else if (elements.cards.contains(document.activeElement) && document.activeElement?.tagName !== 'BUTTON') {
       event.preventDefault();
       activateSelectedCard();
     } else if (document.activeElement?.classList?.contains('action-option')) {

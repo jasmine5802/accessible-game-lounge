@@ -156,7 +156,7 @@ function updateWaiting(room){
   const roster=rosterNames(room);
   elements.waitingTitle.textContent=`${room.displayGame||selectedGame} Table`;
   elements.tableSummary.textContent=`Hosted by ${hostName}. ${room.players.length} of ${room.maxPlayers} players. Players at this table: ${roster}.`;
-  elements.tableSettings.textContent=[room.monopolyEdition&&`Board: ${room.monopolyEdition}`,room.unoVariant&&`Rules: ${room.unoVariant}`,room.lifeTheme&&`Board: ${room.lifeTheme}`,room.dominoSet&&`${room.dominoSet}, ${room.dominoMode}`].filter(Boolean).join('. ');
+  elements.tableSettings.textContent=[room.monopolyEdition&&`Board: ${room.monopolyEdition}`,room.monopolyEdition&&`Free Parking jackpot: ${room.freeParkingJackpot===false?'off':'on'}`,room.unoVariant&&`Rules: ${room.unoVariant}`,room.lifeTheme&&`Board: ${room.lifeTheme}`,room.dominoSet&&`${room.dominoSet}, ${room.dominoMode}`].filter(Boolean).join('. ');
   elements.waitingPlayers.replaceChildren(...room.players.map(player=>{const li=document.createElement('li');li.textContent=`${player.name}${player.id===room.hostId?' (host)':''}${player.connected?'':' (reconnecting)'}`;return li;}));
   const amHost=room.players.find(player=>player.id===room.hostId)?.name===myUsername;
   elements.hostInstruction.textContent=amHost?'Press Enter to continue to game setup. Press Escape to leave the table.':`Waiting for ${hostName} to continue to game setup. Press Escape to leave the table.`;
