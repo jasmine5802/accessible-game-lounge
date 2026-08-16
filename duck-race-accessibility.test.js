@@ -27,5 +27,10 @@ assert(skipBoHtml.includes('id="target-options"') && skipBo.includes("button.cla
 assert(skipBo.includes("li.addEventListener('click', () => select('hand', index))") && skipBo.includes("item.addEventListener('keydown', event =>"), 'Skip-Bo cards and private piles must be selectable by mouse and keyboard.');
 assert(horseRace.includes("el.target.addEventListener('keydown',event=>") && horseRace.includes('el.confirmTarget.click()'), 'Horse Race opponent choices must submit with Enter.');
 assert(dominoes.includes("button.addEventListener('click',playSelected)") && dominoes.includes('function playSelected()'), 'Domino tiles must play with Enter or click.');
+assert(source.includes("if (elements.cards.contains(document.activeElement))") && source.includes("document.activeElement.closest('[data-card-index]')"), 'Duck Race Enter must activate a focused card instead of rolling.');
+assert(horseRace.includes("b.addEventListener('keydown',event=>") && horseRace.includes('event.stopPropagation();selected=index;playSelected()'), 'Horse Race Enter must activate the focused card without reaching global shortcuts.');
+assert(dominoes.includes("button.addEventListener('keydown',event=>") && dominoes.includes('event.stopPropagation();selected=index;playSelected()'), 'Domino Enter must activate the focused tile without reaching global shortcuts.');
+assert(uno.includes("li.addEventListener('keydown',event=>") && uno.includes('event.stopPropagation();selected=index;playOrDraw()'), 'UNO and DOS Enter must activate the focused card without reaching global shortcuts.');
+assert(skipBo.includes('event.stopPropagation();\n      onActivate();'), 'Skip-Bo card activation must not bubble into a second global action.');
 
 console.log('Card-hand and player-target accessibility checks passed for every card game.');

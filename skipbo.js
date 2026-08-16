@@ -106,6 +106,7 @@ function cardNode(card, name, selected = false, onActivate = null) {
     item.addEventListener('keydown', event => {
       if (!['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
+      event.stopPropagation();
       onActivate();
     });
   }

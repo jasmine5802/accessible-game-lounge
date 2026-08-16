@@ -412,12 +412,14 @@ document.addEventListener('keydown', event => {
     return;
   }
   if (event.key === 'Enter') {
-    if (targetingCard && elements.targets.contains(document.activeElement)) {
+    if (elements.cards.contains(document.activeElement)) {
+      event.preventDefault();
+      const cardItem = document.activeElement.closest('[data-card-index]');
+      if (cardItem) selectedCardIndex = Number(cardItem.dataset.cardIndex);
+      activateSelectedCard();
+    } else if (targetingCard && elements.targets.contains(document.activeElement)) {
       event.preventDefault();
       activateSelectedTarget();
-    } else if (elements.cards.contains(document.activeElement) && document.activeElement?.tagName !== 'BUTTON') {
-      event.preventDefault();
-      activateSelectedCard();
     } else if (document.activeElement?.classList?.contains('action-option')) {
       event.preventDefault();
       document.activeElement.click();
