@@ -10,6 +10,7 @@ const skipBo = fs.readFileSync(path.join(__dirname, 'skipbo.js'), 'utf8');
 const horseRace = fs.readFileSync(path.join(__dirname, 'horserace.js'), 'utf8');
 const dominoes = fs.readFileSync(path.join(__dirname, 'dominoes.js'), 'utf8');
 const uno = fs.readFileSync(path.join(__dirname, 'uno.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 const skipBoHtml = fs.readFileSync(path.join(__dirname, 'skipbo.html'), 'utf8');
 
 assert.match(html, /id="cards"[^>]*role="listbox"[^>]*aria-label="Your cards"/, 'The Duck Race hand must be exposed as a named listbox.');
@@ -37,5 +38,14 @@ assert(uno.includes("li.addEventListener('keydown',event=>") && uno.includes('ev
 assert(skipBo.includes('event.stopPropagation();\n      onActivate();'), 'Skip-Bo card activation must not bubble into a second global action.');
 assert(source.includes("elements.cards.addEventListener('keydown', event =>") && source.includes('event.stopImmediatePropagation()'), 'Duck Race must resolve Enter inside the hand before global roll shortcuts.');
 assert(horseRace.includes("el.hand.addEventListener('keydown',event=>") && uno.includes("el.hand.addEventListener('keydown',event=>") && dominoes.includes("el.hand.addEventListener('keydown',event=>") && skipBo.includes("el.hand.addEventListener('keydown', event =>"), 'Every card game must handle Enter at the hand before document-wide shortcuts.');
+assert(source.includes("card === 'Mud Puddle'") && source.includes('targetingSquareCard') && source.includes("playCard(card, null, square)"), 'Duck Race must support selecting a board square for a placed trap card.');
+assert(horseRace.includes("pendingCard==='Mud Sling'") && horseRace.includes('targetSquare:Number(el.targetSquare.value)'), 'Horse Race Mud Sling must expose an exact lane-square choice.');
+assert(server.includes("'Mud Puddle'") && server.includes('placedHazards') && server.includes('targetSquare = Number(data.targetSquare)'), 'The server must store and trigger placed Duck Race board cards.');
+assert(server.includes('requested=Number(data.targetSquare)') && server.includes('target.mudHazards.add(hazard)'), 'The server must honor a selected Horse Race Mud Sling square.');
+assert(server.includes("'Pond Shortcut'") && server.includes("'Feather Find'") && server.includes("'Trade Places'"), 'Duck Race must offer movement, resource, and position-swap action cards.');
+assert(fs.readFileSync(path.join(__dirname, 'horserace-engine.js'), 'utf8').includes("'Backstretch Burst'") && server.includes("cardName==='Position Swap'"), 'Horse Race must offer additional movement and opponent action cards.');
+assert(server.includes('RACE_MINI_GAMES') && server.includes("socket.on('ducks-race-mini-answer'") && server.includes("socket.on('derby-mini-answer'"), 'Both race games must provide synchronized multiplayer mini-games.');
+assert(html.includes('id="mini-options"') && fs.readFileSync(path.join(__dirname, 'horserace.html'), 'utf8').includes('id="mini-options"'), 'Both race games must expose keyboard and visual mini-game answer controls.');
+assert(source.includes('function renderMiniGame()') && horseRace.includes('function renderMiniGame()'), 'Both race clients must render and focus accessible mini-game choices.');
 
 console.log('Card-hand and player-target accessibility checks passed for every card game.');

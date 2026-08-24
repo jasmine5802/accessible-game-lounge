@@ -20,7 +20,10 @@
     Gallop:Object.freeze({name:'Gallop',move:3,target:false,description:'Move forward 3 spaces.'}),
     'High Jump':Object.freeze({name:'High Jump',move:2,target:false,jumpsHurdle:true,description:'Clear a Hurdle and move forward 2 spaces.'}),
     'Spur of the Moment':Object.freeze({name:'Spur of the Moment',move:5,target:false,discardHand:true,description:'Move forward 5 spaces, then discard the rest of your hand.'}),
+    'Backstretch Burst':Object.freeze({name:'Backstretch Burst',move:4,target:false,description:'Charge forward 4 spaces.'}),
+    'Home Stretch':Object.freeze({name:'Home Stretch',move:6,target:false,description:'Sprint forward 6 spaces.'}),
     Lasso:Object.freeze({name:'Lasso',move:0,target:true,sabotage:true,description:'Pull one opponent back 3 spaces.'}),
+    'Position Swap':Object.freeze({name:'Position Swap',move:0,target:true,sabotage:true,description:'Swap track positions with one opponent.'}),
     'Mud Sling':Object.freeze({name:'Mud Sling',move:0,target:true,sabotage:true,description:'Place a one-use Deep Turf hazard on the next normal space in an opponent’s lane.'})
   });
   const CARD_NAMES=Object.freeze(Object.keys(CARDS));const HAND_LIMIT=4;

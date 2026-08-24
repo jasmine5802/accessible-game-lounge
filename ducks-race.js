@@ -13,6 +13,7 @@ const elements = {
   showCards: document.querySelector('#show-cards'), feathers: document.querySelector('#feathers'),
   cardsPanel: document.querySelector('#cards-panel'), cardsTitle: document.querySelector('#cards-title'), cards: document.querySelector('#cards'),
   targetMenu: document.querySelector('#target-menu'), targets: document.querySelector('#targets'), cancelTarget: document.querySelector('#cancel-target'),
+  miniGame: document.querySelector('#mini-game'), miniTitle: document.querySelector('#mini-title'), miniPrompt: document.querySelector('#mini-prompt'), miniOptions: document.querySelector('#mini-options'),
   players: document.querySelector('#players'), board: document.querySelector('#board'), polite: document.querySelector('#polite-announcer')
 };
 
@@ -40,6 +41,7 @@ gameplayLayoutStyle.textContent = 'body.rs-clean-gameplay .lounge-client-shell{d
 document.head.appendChild(gameplayLayoutStyle);
 let selectedCardIndex = -1;
 let targetingCard = null;
+let targetingSquareCard = null;
 let selectedTargetIndex = 0;
 let lastSequence = -1;
 let actionIndex = 0;
@@ -71,7 +73,8 @@ function announcePolite(text) {
 function squareDescription(square) {
   const racers = game?.players.filter(player => player.square === square).map(player => player.name) || [];
   const space = game?.boardSpaces?.[square - 1] || { name: 'Board Space', description: 'No effect information is available.' };
-  return `Space ${square}: ${space.name}. ${space.description} ${racers.length ? `Occupied by ${racers.join(' and ')}.` : 'Empty.'}`;
+  const placed = game?.placedHazards?.some(hazard => hazard.square === square);
+  return `Space ${square}: ${space.name}. ${space.description}${placed ? ' A Mud Puddle card is placed here.' : ''} ${racers.length ? `Occupied by ${racers.join(' and ')}.` : 'Empty.'}`;
 }
 
 function renderBoard() {
@@ -80,7 +83,8 @@ function renderBoard() {
     const square = index + 1;
     const item = document.createElement('li');
     const space = game?.boardSpaces?.[index] || { name: 'Board Space', effect: 'safe' };
-    item.className = `square ${space.effect}${space.effect === 'mud' ? ' trap' : ''}`;
+    const placed = game?.placedHazards?.some(hazard => hazard.square === square);
+    item.className = `square ${space.effect}${space.effect === 'mud' || placed ? ' trap' : ''}`;
     item.tabIndex = index === boardIndex ? 0 : -1;
     item.dataset.square = square;
     item.setAttribute('aria-label', squareDescription(square));
@@ -141,11 +145,15 @@ function waitingGame() {
 function cardDescription(card) {
   if (card === 'Wind Gust') return 'Push another player back 3 spaces.';
   if (card === 'Shield') return 'Protect yourself from the next hazard.';
+  if (card === 'Mud Puddle') return 'Place a one-use trap card on a board square. An opponent who lands there loses 1 feather.';
+  if (card === 'Pond Shortcut') return 'Spend 2 feathers to move yourself forward 4 spaces before rolling.';
+  if (card === 'Feather Find') return 'Gain 2 feathers at no cost.';
+  if (card === 'Trade Places') return 'Spend 2 feathers to swap board positions with another duck.';
   return 'Steal 1 feather from another player.';
 }
 
 function cardCost(card) {
-  return game?.cardCosts?.[card] ?? { 'Wind Gust': 1, Shield: 2, Pluck: 1 }[card] ?? 0;
+  return game?.cardCosts?.[card] ?? { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2 }[card] ?? 0;
 }
 
 function cardStatus(card, player) {
@@ -154,9 +162,9 @@ function cardStatus(card, player) {
   return `${card}. Costs ${cost} feathers. You have ${player.feathers} feathers. ${ready ? 'Ready to play.' : 'Insufficient feathers.'} ${cardDescription(card)}`;
 }
 
-function playCard(card, targetId) {
+function playCard(card, targetId, targetSquare) {
   closeTargetMenu();
-  socket.emit('ducks-race-play-card', { card, targetId }, result => {
+  socket.emit('ducks-race-play-card', { card, targetId, targetSquare }, result => {
     if (!result.ok) { window.playErrorBuzzer?.(); announcePolite(result.error); }
   });
 }
@@ -197,6 +205,16 @@ function renderCards() {
   elements.cards.replaceChildren(rollItem, ...cardItems);
 }
 
+function renderMiniGame() {
+  const mini=game?.pendingMiniGame;
+  elements.miniGame.hidden=!mini;
+  if(!mini)return elements.miniOptions.replaceChildren();
+  elements.miniTitle.textContent=mini.name;
+  elements.miniPrompt.textContent=mini.isMine?`${mini.prompt} Choose an answer.`:`${mini.name} is waiting for the active player.`;
+  elements.miniOptions.replaceChildren(...(mini.isMine?mini.options.map((option,index)=>{const button=document.createElement('button');button.type='button';button.textContent=option;button.addEventListener('click',()=>socket.emit('ducks-race-mini-answer',{choice:index},result=>{if(!result.ok)announcePolite(result.error)}));button.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const buttons=[...elements.miniOptions.querySelectorAll('button')],direction=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;buttons[(index+direction+buttons.length)%buttons.length]?.focus()});return button}):[]));
+  if(mini.isMine)requestAnimationFrame(()=>elements.miniOptions.firstElementChild?.focus());
+}
+
 function cycleCard(direction) {
   const me = game?.players.find(player => player.id === playerId);
   const handCount = me?.hand.length || 0;
@@ -228,9 +246,14 @@ function activateSelectedCard() {
     window.playErrorBuzzer?.();
     return announcePolite('Cannot play. You need more feathers.');
   }
-  if (card === 'Shield') {
-    announcePolite('You played Shield! You are protected from the next hazard.');
+  if (['Shield', 'Pond Shortcut', 'Feather Find'].includes(card)) {
+    announcePolite(`You played ${card}.`);
     playCard(card);
+  } else if (card === 'Mud Puddle') {
+    targetingSquareCard = card;
+    boardIndex = Math.max(1, boardIndex);
+    announcePolite('Choose a board square with Left or Right Arrow, then press Enter to place the Mud Puddle card.');
+    elements.board.children[boardIndex]?.focus();
   } else {
     openTargetMenu(card);
   }
@@ -318,7 +341,7 @@ function render() {
     elements.cardsPanel.hidden = false;
     elements.showCards.setAttribute('aria-expanded', 'true');
   }
-  renderPlayers(); renderCards(); renderBoard();
+  renderPlayers(); renderCards(); renderBoard(); renderMiniGame();
   syncAccessibilityState();
 }
 
@@ -410,6 +433,16 @@ elements.cards.addEventListener('keydown', event => {
 }, true);
 elements.board.addEventListener('keydown', event => {
   const moves = { ArrowRight: 1, ArrowLeft: -1 };
+  if (event.key === 'Enter' && targetingSquareCard) {
+    event.preventDefault();
+    event.stopPropagation();
+    const square = boardIndex + 1;
+    const card = targetingSquareCard;
+    targetingSquareCard = null;
+    announcePolite(`Placing ${card} on square ${square}.`);
+    playCard(card, null, square);
+    return;
+  }
   if (!(event.key in moves)) return;
   event.preventDefault();
   boardIndex = (boardIndex + moves[event.key] + 40) % 40;
@@ -444,6 +477,9 @@ document.addEventListener('keydown', event => {
     } else if (targetingCard && elements.targets.contains(document.activeElement)) {
       event.preventDefault();
       activateSelectedTarget();
+    } else if (selectedCardIndex >= 0 && !elements.cardsPanel.hidden) {
+      event.preventDefault();
+      activateSelectedCard();
     } else if (document.activeElement?.classList?.contains('action-option')) {
       event.preventDefault();
       document.activeElement.click();
@@ -456,6 +492,12 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && targetingCard) {
     event.preventDefault();
     elements.cancelTarget.click();
+    return;
+  }
+  if (event.key === 'Escape' && targetingSquareCard) {
+    event.preventDefault();
+    targetingSquareCard = null;
+    announcePolite('Board square selection cancelled.');
     return;
   }
   if (event.key.toLowerCase() === 'c') elements.showCards.click();

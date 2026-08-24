@@ -75,6 +75,8 @@
           <div id="target-panel" hidden>
             <label for="target">Choose opponent</label>
             <select id="target"></select>
+            <label id="target-square-label" for="target-square" hidden>Choose square for Mud Sling</label>
+            <select id="target-square" hidden></select>
             <button id="confirm-target">Play on Selected Opponent</button>
             <button id="cancel-target">Cancel</button>
           </div>
@@ -96,6 +98,11 @@
           <h2 id="hand-title">Race hand</h2>
           <p id="hand-help">Use Up or Down to choose Roll the Dice or a card, then press Enter to activate it.</p>
           <ul id="hand" class="hand" role="listbox" aria-describedby="hand-help"><li>No cards.</li></ul>
+        </section>
+        <section id="mini-game" class="panel" hidden aria-labelledby="mini-title">
+          <h2 id="mini-title">Track Mini-Game</h2>
+          <p id="mini-prompt"></p>
+          <div id="mini-options" class="toolbar" role="group" aria-label="Mini-game answers"></div>
         </section>
       </aside>
     </section>
