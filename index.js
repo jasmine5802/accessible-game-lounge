@@ -170,7 +170,7 @@ const gameMenu = window.LoungeAccessibility.createGameStateController({
   emptyScoresText: 'Join or create a game before checking scores.',
   emptyPlayersText: 'Join or create a game before checking connected players.',
   helpText: 'Game menu help. Press Up or Down Arrow to choose a menu item and Enter to select it. Press S for current scores, P for connected players, and H for help.',
-  shouldIgnoreKeyEvent: () => elements.lounge.hidden || loungeState.mode === 'SETUP_PROMPTS' || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt')),
+  shouldIgnoreKeyEvent: () => elements.lounge.hidden || loungeState.mode === 'SETUP_PROMPTS' || Boolean(document.querySelector('dialog[open], #lounge-quit-prompt:not([hidden])')),
   onCurrentItemChange: syncMenuVisuals,
   onSelect: handleMenuSelection
 });

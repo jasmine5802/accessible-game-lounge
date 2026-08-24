@@ -149,10 +149,19 @@
         node.className = `menu-item ${index === state.menuIndex ? 'focused' : ''}`;
         node.setAttribute('role', 'option');
         node.setAttribute('aria-selected', index === state.menuIndex ? 'true' : 'false');
+        node.tabIndex = index === state.menuIndex ? 0 : -1;
         node.textContent = item.label;
         node.addEventListener('click', () => {
           state.menuIndex = index;
           announceCurrentItem();
+          node.focus();
+        });
+        node.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' || event.defaultPrevented) return;
+          event.preventDefault();
+          event.stopPropagation();
+          state.menuIndex = index;
+          selectMenuItem();
         });
         node.addEventListener('dblclick', () => {
           state.menuIndex = index;
@@ -170,6 +179,7 @@
         const focused = index === state.menuIndex;
         node.classList.toggle('focused', focused);
         node.setAttribute('aria-selected', focused ? 'true' : 'false');
+        node.tabIndex = focused ? 0 : -1;
       });
     }
 

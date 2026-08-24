@@ -7,8 +7,15 @@ $desktop = [Environment]::GetFolderPath('Desktop')
 if ([string]::IsNullOrWhiteSpace($desktop)) {
   $desktop = Join-Path $env:USERPROFILE 'Desktop'
 }
-$shortcut = Join-Path $desktop "Jazzy Jay's Accessible Game Lounge.lnk"
-$shortcutExistedBefore = Test-Path $shortcut
+$shortcutName = "Jazzy Jay's Accessible Game Lounge.lnk"
+$shortcutCandidates = @(
+  (Join-Path $desktop $shortcutName),
+  (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) $shortcutName)
+) | Select-Object -Unique
+$shortcutStateBefore = @{}
+foreach ($candidate in $shortcutCandidates) {
+  $shortcutStateBefore[$candidate] = Test-Path -LiteralPath $candidate
+}
 
 $installDir = Join-Path ([IO.Path]::GetTempPath()) ("AGLInstallSmoke-" + [Guid]::NewGuid().ToString('N'))
 $resolvedTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
@@ -28,7 +35,8 @@ if (-not $exe) { throw 'Installed app executable not found.' }
 
 $uninstaller = Get-ChildItem -Path $installDir -Filter '*Uninstall*.exe' | Select-Object -First 1
 if (-not $uninstaller) { throw 'Uninstaller executable not found.' }
-if (!(Test-Path $shortcut)) { throw "Desktop shortcut was not created: $shortcut" }
+$shortcut = $shortcutCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (!$shortcut) { throw "Desktop shortcut was not created in a personal or shared Desktop location: $($shortcutCandidates -join ', ')" }
 
 Write-Output "Installed executable: $($exe.FullName)"
 Write-Output "Uninstaller: $($uninstaller.FullName)"
@@ -45,6 +53,8 @@ if (Test-Path $installDir) {
 } else {
   Write-Output 'Install folder removed after uninstall.'
 }
-if (!$shortcutExistedBefore -and (Test-Path $shortcut)) {
-  throw "Desktop shortcut remains after uninstall: $shortcut"
+foreach ($candidate in $shortcutCandidates) {
+  if (!$shortcutStateBefore[$candidate] -and (Test-Path -LiteralPath $candidate)) {
+    throw "Desktop shortcut remains after uninstall: $candidate"
+  }
 }
