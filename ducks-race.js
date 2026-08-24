@@ -73,8 +73,8 @@ function announcePolite(text) {
 function squareDescription(square) {
   const racers = game?.players.filter(player => player.square === square).map(player => player.name) || [];
   const space = game?.boardSpaces?.[square - 1] || { name: 'Board Space', description: 'No effect information is available.' };
-  const placed = game?.placedHazards?.some(hazard => hazard.square === square);
-  return `Space ${square}: ${space.name}. ${space.description}${placed ? ' A Mud Puddle card is placed here.' : ''} ${racers.length ? `Occupied by ${racers.join(' and ')}.` : 'Empty.'}`;
+  const placed = game?.placedHazards?.find(hazard => hazard.square === square);
+  return `Space ${square}: ${space.name}. ${space.description}${placed ? ` A ${placed.card || 'Mud Puddle'} card is placed here.` : ''} ${racers.length ? `Occupied by ${racers.join(' and ')}.` : 'Empty.'}`;
 }
 
 function renderBoard() {
@@ -146,6 +146,8 @@ function cardDescription(card) {
   if (card === 'Wind Gust') return 'Push another player back 3 spaces.';
   if (card === 'Shield') return 'Protect yourself from the next hazard.';
   if (card === 'Mud Puddle') return 'Place a one-use trap card on a board square. An opponent who lands there loses 1 feather.';
+  if (card === 'Tailwind Tile') return 'Drop a one-use tailwind on a square. The next duck to land there moves forward 3 spaces.';
+  if (card === 'Feather Cache') return 'Drop a one-use feather cache on a square. The next duck to land there gains 2 feathers.';
   if (card === 'Pond Shortcut') return 'Spend 2 feathers to move yourself forward 4 spaces before rolling.';
   if (card === 'Feather Find') return 'Gain 2 feathers at no cost.';
   if (card === 'Trade Places') return 'Spend 2 feathers to swap board positions with another duck.';
@@ -153,7 +155,7 @@ function cardDescription(card) {
 }
 
 function cardCost(card) {
-  return game?.cardCosts?.[card] ?? { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2 }[card] ?? 0;
+  return game?.cardCosts?.[card] ?? { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2 }[card] ?? 0;
 }
 
 function cardStatus(card, player) {
@@ -249,10 +251,10 @@ function activateSelectedCard() {
   if (['Shield', 'Pond Shortcut', 'Feather Find'].includes(card)) {
     announcePolite(`You played ${card}.`);
     playCard(card);
-  } else if (card === 'Mud Puddle') {
+  } else if (['Mud Puddle', 'Tailwind Tile', 'Feather Cache'].includes(card)) {
     targetingSquareCard = card;
     boardIndex = Math.max(1, boardIndex);
-    announcePolite('Choose a board square with Left or Right Arrow, then press Enter to place the Mud Puddle card.');
+    announcePolite(`Choose a board square with Left or Right Arrow, then press Enter to place the ${card} card.`);
     elements.board.children[boardIndex]?.focus();
   } else {
     openTargetMenu(card);

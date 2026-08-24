@@ -82,7 +82,8 @@ const wait = (socket, event, predicate = () => true, timeout = 6000) =>
           'ducks-race-state',
           payload => payload.game.sequence >= 3 && payload.game.turnPlayerId === created.room.hostId
         );
-        await call(host, 'ducks-race-roll');
+        const rolled = await call(host, 'ducks-race-roll');
+        if (rolled.miniGame) await call(host, 'ducks-race-mini-answer', { choice: 0 });
         await returned;
         console.log('ducks-race: computer completed an automatic turn');
       }
