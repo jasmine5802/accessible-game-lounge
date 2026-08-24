@@ -163,12 +163,22 @@ function playCard(card, targetId) {
 
 function renderCards() {
   const me = game?.players.find(player => player.id === playerId);
-  if (!me?.hand.length) {
-    selectedCardIndex = -1;
-    const item = document.createElement('li'); item.textContent = 'Your hand is empty.'; elements.cards.replaceChildren(item); return;
-  }
-  if (selectedCardIndex >= me.hand.length) selectedCardIndex = me.hand.length - 1;
-  elements.cards.replaceChildren(...me.hand.map((card, index) => {
+  const hand = me?.hand || [];
+  if (selectedCardIndex >= hand.length) selectedCardIndex = hand.length - 1;
+  const rollItem = document.createElement('li');
+  rollItem.className = `card${selectedCardIndex === -1 ? ' selected-card' : ''}`;
+  rollItem.setAttribute('role', 'option');
+  rollItem.tabIndex = selectedCardIndex === -1 ? 0 : -1;
+  rollItem.dataset.handAction = 'roll';
+  rollItem.setAttribute('aria-selected', String(selectedCardIndex === -1));
+  rollItem.setAttribute('aria-label', 'Roll the Dice. Press Enter to roll.');
+  const rollHeading = document.createElement('h3'); rollHeading.textContent = 'Roll the Dice';
+  const rollText = document.createElement('p'); rollText.textContent = 'Roll and move your duck instead of playing a card.';
+  const rollButton = document.createElement('button'); rollButton.type = 'button'; rollButton.textContent = 'Roll the Dice';
+  rollButton.disabled = game?.turnPlayerId !== playerId || game?.status !== 'playing';
+  rollButton.addEventListener('click', () => { selectedCardIndex = -1; activateSelectedCard(); });
+  rollItem.append(rollHeading, rollText, rollButton);
+  const cardItems = hand.map((card, index) => {
     const item = document.createElement('li');
     item.className = `card${index === selectedCardIndex ? ' selected-card' : ''}`;
     item.setAttribute('role', 'option');
@@ -183,29 +193,34 @@ function renderCards() {
     button.disabled = game.turnPlayerId !== playerId || game.status !== 'playing';
     button.addEventListener('click', () => { selectedCardIndex = index; activateSelectedCard(); });
     item.append(button); return item;
-  }));
+  });
+  elements.cards.replaceChildren(rollItem, ...cardItems);
 }
 
 function cycleCard(direction) {
   const me = game?.players.find(player => player.id === playerId);
-  const count = me?.hand.length || 0;
-  if (!count) return announcePolite('You have no cards to select.');
-  selectedCardIndex = selectedCardIndex < 0
-    ? (direction > 0 ? 0 : count - 1)
-    : (selectedCardIndex + direction + count) % count;
+  const handCount = me?.hand.length || 0;
+  const count = handCount + 1;
+  const currentOption = selectedCardIndex + 1;
+  selectedCardIndex = (currentOption + direction + count) % count - 1;
   if (elements.cardsPanel.hidden) {
     elements.cardsPanel.hidden = false;
     elements.showCards.setAttribute('aria-expanded', 'true');
   }
   renderCards();
-  const card = elements.cards.querySelector(`[data-card-index="${selectedCardIndex}"]`);
-  card?.focus();
-  const selected = me.hand[selectedCardIndex];
-  announcePolite(cardStatus(selected, me));
+  const option = selectedCardIndex === -1
+    ? elements.cards.querySelector('[data-hand-action="roll"]')
+    : elements.cards.querySelector(`[data-card-index="${selectedCardIndex}"]`);
+  option?.focus();
+  announcePolite(selectedCardIndex === -1 ? 'Roll the Dice. Press Enter to roll.' : cardStatus(me.hand[selectedCardIndex], me));
 }
 
 function activateSelectedCard() {
-  if (selectedCardIndex < 0) return announcePolite('Use Up or Down Arrow to select a card first.');
+  if (selectedCardIndex === -1) {
+    if (elements.roll.disabled) return announcePolite('You cannot roll right now.');
+    elements.roll.click();
+    return;
+  }
   const me = game?.players.find(player => player.id === playerId);
   const card = me?.hand[selectedCardIndex];
   if (!card || game.turnPlayerId !== playerId || game.status !== 'playing') return announcePolite('That card cannot be played right now.');
@@ -378,7 +393,7 @@ elements.showCards.addEventListener('click', () => {
 elements.cancelTarget.addEventListener('click', () => {
   closeTargetMenu();
   announcePolite('Target selection cancelled.');
-  elements.cards.querySelector(`[data-card-index="${selectedCardIndex}"]`)?.focus();
+  elements.cards.querySelector(selectedCardIndex === -1 ? '[data-hand-action="roll"]' : `[data-card-index="${selectedCardIndex}"]`)?.focus();
 });
 elements.feathers.addEventListener('click', () => {
   const me = game?.players.find(player => player.id === playerId);
@@ -415,7 +430,7 @@ document.addEventListener('keydown', event => {
     if (elements.cards.contains(document.activeElement)) {
       event.preventDefault();
       const cardItem = document.activeElement.closest('[data-card-index]');
-      if (cardItem) selectedCardIndex = Number(cardItem.dataset.cardIndex);
+      selectedCardIndex = cardItem ? Number(cardItem.dataset.cardIndex) : -1;
       activateSelectedCard();
     } else if (targetingCard && elements.targets.contains(document.activeElement)) {
       event.preventDefault();
