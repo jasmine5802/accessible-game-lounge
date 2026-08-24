@@ -277,6 +277,19 @@ document.querySelector('#read-buildings').addEventListener('click', readBuilding
 document.querySelector('#read-discards').addEventListener('click', readDiscards);
 document.querySelector('#read-opponents').addEventListener('click', readOpponents);
 
+el.hand.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  const option = event.target.closest('[role="option"]');
+  if (!option || !el.hand.contains(option)) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const index = [...el.hand.children].indexOf(option);
+  if (index < 0) return;
+  selection = { source: 'hand', index };
+  handIndex = index;
+  confirm();
+}, true);
+
 document.addEventListener('keydown', event => {
   if (event.target.matches('input,select,textarea')) return;
   if (accessibility?.handleKey(event)) return;

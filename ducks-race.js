@@ -399,6 +399,15 @@ elements.feathers.addEventListener('click', () => {
   const me = game?.players.find(player => player.id === playerId);
   announcePolite(me ? `You have ${me.feathers} feathers${me.shielded ? ' and an active shield' : ''}.` : 'Your feather count is unavailable.');
 });
+elements.cards.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  const option = event.target.closest('[data-card-index], [data-hand-action="roll"]');
+  if (!option) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  selectedCardIndex = option.dataset.handAction === 'roll' ? -1 : Number(option.dataset.cardIndex);
+  activateSelectedCard();
+}, true);
 elements.board.addEventListener('keydown', event => {
   const moves = { ArrowRight: 1, ArrowLeft: -1 };
   if (!(event.key in moves)) return;

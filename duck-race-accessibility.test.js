@@ -35,5 +35,7 @@ assert(horseRace.includes("b.addEventListener('keydown',event=>") && horseRace.i
 assert(dominoes.includes("button.addEventListener('keydown',event=>") && dominoes.includes('event.stopPropagation();selected=index;playSelected()'), 'Domino Enter must activate the focused tile without reaching global shortcuts.');
 assert(uno.includes("li.addEventListener('keydown',event=>") && uno.includes('event.stopPropagation();selected=index;playOrDraw()'), 'UNO and DOS Enter must activate the focused card without reaching global shortcuts.');
 assert(skipBo.includes('event.stopPropagation();\n      onActivate();'), 'Skip-Bo card activation must not bubble into a second global action.');
+assert(source.includes("elements.cards.addEventListener('keydown', event =>") && source.includes('event.stopImmediatePropagation()'), 'Duck Race must resolve Enter inside the hand before global roll shortcuts.');
+assert(horseRace.includes("el.hand.addEventListener('keydown',event=>") && uno.includes("el.hand.addEventListener('keydown',event=>") && dominoes.includes("el.hand.addEventListener('keydown',event=>") && skipBo.includes("el.hand.addEventListener('keydown', event =>"), 'Every card game must handle Enter at the hand before document-wide shortcuts.');
 
 console.log('Card-hand and player-target accessibility checks passed for every card game.');
