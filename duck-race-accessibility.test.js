@@ -12,7 +12,9 @@ const horseEngine = fs.readFileSync(path.join(__dirname, 'horserace-engine.js'),
 const dominoes = fs.readFileSync(path.join(__dirname, 'dominoes.js'), 'utf8');
 const uno = fs.readFileSync(path.join(__dirname, 'uno.js'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+const audioSource = fs.readFileSync(path.join(__dirname, 'audio.js'), 'utf8');
 const skipBoHtml = fs.readFileSync(path.join(__dirname, 'skipbo.html'), 'utf8');
+const horseHtml = fs.readFileSync(path.join(__dirname, 'horserace.html'), 'utf8');
 
 assert.match(html, /id="cards"[^>]*role="listbox"[^>]*aria-label="Your cards"/, 'The Duck Race hand must be exposed as a named listbox.');
 assert(source.includes("item.setAttribute('role', 'option')"), 'Each Duck Race card must be exposed as an option.');
@@ -21,7 +23,7 @@ assert(source.includes("item.setAttribute('aria-selected', String(index === sele
 assert(source.includes("if (event.key === 'ArrowUp' || event.key === 'ArrowDown')") && source.includes('else cycleCard(direction)'), 'Up and Down must cycle through the hand.');
 assert(html.includes("role=\"listbox\" aria-label=\"Card targets\"") && source.includes("item.setAttribute('aria-selected', String(index === selectedTargetIndex))"), 'Duck Race player targets must expose selection to screen readers.');
 assert(skipBo.includes('li.tabIndex = selection.source === \'hand\'') && skipBo.includes('el.hand.children[index]?.focus()'), 'Skip-Bo arrows must move screen-reader focus through the hand.');
-assert(horseRace.includes("b.setAttribute('aria-label',`${cardText(name)} Card ${index+1} of ${game.myHand.length}.`)") && horseRace.includes("b.setAttribute('aria-disabled',String(!active))"), 'Horse Race cards must stay readable outside the player turn.');
+assert(horseRace.includes("b.setAttribute('aria-label',`${cardText(name)} Card ${index+1} of ${game.myHand.length}.") && horseRace.includes("b.setAttribute('aria-disabled',String(!cardActive))"), 'Horse Race cards must stay readable outside the player turn and report when the turn card was already used.');
 assert(dominoes.includes("button.setAttribute('aria-label',`${tileText(shown)}. Tile ${index+1} of ${game.myHand.length}. Press Enter to play.`)") && dominoes.includes("button.setAttribute('aria-disabled',String(!active))"), 'Domino tiles must stay readable outside the player turn.');
 assert(uno.includes("li.setAttribute('role','option')") && uno.includes('li.tabIndex=index===selected?0:-1'), 'UNO and DOS cards must expose focused listbox options.');
 assert(source.includes("item.addEventListener('click', () => { selectedTargetIndex = index; activateSelectedTarget(); })"), 'Duck Race targets must activate by click in visual mode.');
@@ -49,6 +51,9 @@ assert(horseEngine.includes("'Hay Bale'") && horseEngine.includes("'Speed Gate'"
 assert(server.includes('resolveDerbyLaneCard(player)') && server.includes('placedCards:Object.fromEntries'), 'Horse Race placed cards must synchronize and activate on landing.');
 assert(horseRace.includes('isNowMyTurn&&!wasMyTurn') && horseRace.includes("el.hand.querySelector('[data-hand-action=\"roll\"]')?.focus()"), 'A Horse Race turn handoff must restore accessible focus to Roll the Dice.');
 assert((server.match(/name: 'Race Day Trivia'/g) || []).length >= 6 && server.includes('What is a young horse called?') && server.includes('Which bird has webbed feet'), 'Duck Race and Horse Race must share a rotating multi-question trivia mini-game.');
+assert(server.includes('participantIds') && server.includes('answerOrder') && server.includes('canAnswer: isParticipant && !hasAnswered'), 'Race mini-games must include every connected player and track one answer per participant.');
+assert(source.includes('mini.canAnswer') && horseRace.includes('mini.canAnswer') && source.includes('mini.participantCount') && horseRace.includes('mini.participantCount'), 'Duck Race and Horse Race must show competitive mini-game answers and progress to every participant.');
+assert(server.includes('You already played one card this turn. Roll the dice now.') && source.includes('game.cardPlayedThisTurn') && horseRace.includes('game.cardPlayedThisTurn'), 'Both race games must enforce one optional card followed by the dice roll.');
 assert(server.includes("'Pond Shortcut'") && server.includes("'Feather Find'") && server.includes("'Trade Places'"), 'Duck Race must offer movement, resource, and position-swap action cards.');
 assert(fs.readFileSync(path.join(__dirname, 'horserace-engine.js'), 'utf8').includes("'Backstretch Burst'") && server.includes("cardName==='Position Swap'"), 'Horse Race must offer additional movement and opponent action cards.');
 assert(['Quick Paddle','Feather Bonanza','Big Splash','Lucky Lily Pad'].every(card=>server.includes(`'${card}'`)&&source.includes(card)), 'Duck Race must include every expanded action card on both client and server.');
@@ -56,5 +61,12 @@ assert(['Steady Trot','Rocket Saddle','Headwind','Trip Wire'].every(card=>horseE
 assert(server.includes('RACE_MINI_GAMES') && server.includes("socket.on('ducks-race-mini-answer'") && server.includes("socket.on('derby-mini-answer'"), 'Both race games must provide synchronized multiplayer mini-games.');
 assert(html.includes('id="mini-options"') && fs.readFileSync(path.join(__dirname, 'horserace.html'), 'utf8').includes('id="mini-options"'), 'Both race games must expose keyboard and visual mini-game answer controls.');
 assert(source.includes('function renderMiniGame()') && horseRace.includes('function renderMiniGame()'), 'Both race clients must render and focus accessible mini-game choices.');
+assert(['playDuckSplash','playFeatherRustle','playMudSquelch','playHorseHoofbeats','playHorseNeigh','playRaceChallenge'].every(name=>audioSource.includes(`window.${name}`)), 'Shared audio must expose distinct duck, horse, terrain, feather, and mini-game sounds.');
+assert(source.includes('playDuckSplash') && source.includes('playDuckQuack') && source.includes('playFeatherRustle') && source.includes('playMudSquelch'), 'Duck Race must sound duck, water, feather, and mud actions.');
+assert(horseRace.includes('playHorseHoofbeats') && horseRace.includes('playHorseNeigh') && horseRace.includes('playRaceChallenge'), 'Horse Race must sound movement, finishes, and shared mini-game challenges.');
+assert(server.includes("miniGame:true") && server.includes('cue.miniGame = true'), 'Both race servers must send a synchronized mini-game sound cue.');
+assert(html.includes('<script src="audio.js"></script>') && horseHtml.includes('<script src="audio.js"></script>'), 'Duck Race and Horse Race must load their synchronized animal and action sound library.');
+assert(fs.readFileSync(path.join(__dirname, 'monopoly.js'), 'utf8').includes('playMonopolyEditionCue') && fs.readFileSync(path.join(__dirname, 'uno.js'), 'utf8').includes('playUnoCardSlide'), 'Monopoly editions and UNO variants must retain their tailored theme and card sounds.');
+assert(dominoes.includes('function sound(cue)') && skipBo.includes('cue(payload.cue?.type)') && fs.readFileSync(path.join(__dirname, 'life.js'), 'utf8').includes('spinnerSound') && fs.readFileSync(path.join(__dirname, 'mallmadness.js'), 'utf8').includes('function sound(cue,message)'), 'Dominoes, Skip-Bo, Life, and Mall Madness must retain distinct action sound systems.');
 
 console.log('Card-hand and player-target accessibility checks passed for every card game.');

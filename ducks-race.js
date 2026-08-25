@@ -172,6 +172,11 @@ function playCard(card, targetId, targetSquare) {
   closeTargetMenu();
   socket.emit('ducks-race-play-card', { card, targetId, targetSquare }, result => {
     if (!result.ok) { window.playErrorBuzzer?.(); announcePolite(result.error); }
+    else {
+      selectedCardIndex = -1;
+      renderCards();
+      requestAnimationFrame(() => elements.cards.querySelector('[data-hand-action="roll"]')?.focus());
+    }
   });
 }
 
@@ -204,7 +209,7 @@ function renderCards() {
     const text = document.createElement('p'); text.textContent = cardStatus(card, me);
     item.append(heading, text);
     const button = document.createElement('button'); button.type = 'button'; button.textContent = `Play ${card}`;
-    button.disabled = game.turnPlayerId !== playerId || game.status !== 'playing';
+    button.disabled = game.turnPlayerId !== playerId || game.status !== 'playing' || game.cardPlayedThisTurn;
     button.addEventListener('click', () => { selectedCardIndex = index; activateSelectedCard(); });
     item.append(button); return item;
   });
@@ -216,9 +221,9 @@ function renderMiniGame() {
   elements.miniGame.hidden=!mini;
   if(!mini)return elements.miniOptions.replaceChildren();
   elements.miniTitle.textContent=mini.name;
-  elements.miniPrompt.textContent=mini.isMine?`${mini.prompt} Choose an answer.`:`${mini.name} is waiting for the active player.`;
-  elements.miniOptions.replaceChildren(...(mini.isMine?mini.options.map((option,index)=>{const button=document.createElement('button');button.type='button';button.textContent=option;button.addEventListener('click',()=>socket.emit('ducks-race-mini-answer',{choice:index},result=>{if(!result.ok)announcePolite(result.error)}));button.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const buttons=[...elements.miniOptions.querySelectorAll('button')],direction=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;buttons[(index+direction+buttons.length)%buttons.length]?.focus()});return button}):[]));
-  if(mini.isMine)requestAnimationFrame(()=>elements.miniOptions.firstElementChild?.focus());
+  elements.miniPrompt.textContent=mini.canAnswer?`${mini.prompt} Choose your answer. ${mini.answeredCount} of ${mini.participantCount} players have answered.`:`${mini.prompt} Your answer is locked in. ${mini.answeredCount} of ${mini.participantCount} players have answered.`;
+  elements.miniOptions.replaceChildren(...mini.options.map((option,index)=>{const button=document.createElement('button');button.type='button';button.textContent=option;button.disabled=!mini.canAnswer;button.setAttribute('aria-label',`${option}. Answer ${index+1} of ${mini.options.length}${mini.canAnswer?'. Press Enter to answer.':'. Your answer is already locked in.'}`);button.addEventListener('click',()=>socket.emit('ducks-race-mini-answer',{choice:index},result=>{if(!result.ok)announcePolite(result.error)}));button.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const buttons=[...elements.miniOptions.querySelectorAll('button:not(:disabled)')],current=buttons.indexOf(button),direction=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;if(buttons.length)buttons[(current+direction+buttons.length)%buttons.length]?.focus()});return button}));
+  if(mini.canAnswer)requestAnimationFrame(()=>elements.miniOptions.firstElementChild?.focus());
 }
 
 function cycleCard(direction) {
@@ -248,6 +253,7 @@ function activateSelectedCard() {
   const me = game?.players.find(player => player.id === playerId);
   const card = me?.hand[selectedCardIndex];
   if (!card || game.turnPlayerId !== playerId || game.status !== 'playing') return announcePolite('That card cannot be played right now.');
+  if (game.cardPlayedThisTurn) return announcePolite('You already played one card this turn. Roll the dice now.');
   if (me.feathers < cardCost(card)) {
     window.playErrorBuzzer?.();
     return announcePolite('Cannot play. You need more feathers.');
@@ -338,7 +344,7 @@ function render() {
   elements.roll.disabled = !myTurn;
   elements.turn.textContent = game.status === 'finished'
     ? `${game.players.find(player => player.id === game.winnerId)?.name || 'A player'} won the race.`
-    : myTurn ? 'It is your turn. Use Up or Down Arrow to choose a card, or press Enter outside the card list to roll.'
+    : myTurn ? game.cardPlayedThisTurn ? 'You played one card. Roll the dice now.' : 'It is your turn. You may play one card, or choose Roll the Dice.'
       : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name || 'the host'}.`;
   elements.feathers.disabled = !me;
   if (game.status === 'playing' && me?.hand?.length && elements.cardsPanel.hidden) {
@@ -356,9 +362,12 @@ function panForSquare(square) {
 function playCue(cue) {
   if (!cue) return;
   const pan = panForSquare(cue.square);
-  if (cue.type === 'dice') window.playDiceRoll?.();
+  if (cue.type === 'dice') { window.playDiceRoll?.(); setTimeout(() => cue.effect === 'feathers' ? window.playFeatherRustle?.(pan) : cue.effect === 'mud' ? window.playMudSquelch?.(pan) : window.playDuckSplash?.(pan), 320); }
   else if (cue.type === 'quack') window.playDuckQuack?.(pan);
-  else if (cue.type === 'card' || cue.type === 'magic') window.playCardSlide?.(pan);
+  else if (cue.type === 'card' || cue.type === 'magic') { window.playCardSlide?.(pan); if (/Feather|Lily/.test(cue.card || '')) setTimeout(() => window.playFeatherRustle?.(pan), 180); if (/Mud|Splash/.test(cue.card || '')) setTimeout(() => cue.card === 'Big Splash' ? window.playDuckSplash?.(pan) : window.playMudSquelch?.(pan), 180); }
+  else if (cue.type === 'success' || cue.type === 'victory') { window.playSuccessChime?.(); window.playDuckQuack?.(pan); }
+  else if (cue.type === 'error') window.playErrorBuzzer?.();
+  if (cue.miniGame) setTimeout(() => window.playRaceChallenge?.(), 620);
   if (cue.secondary) setTimeout(() => playCue(cue.secondary), 260);
 }
 

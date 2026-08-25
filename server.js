@@ -204,6 +204,7 @@ function publicDuckGame(room, viewerId) {
     status: game.status,
     turnPlayerId: game.turnOrder[game.turnIndex] || null,
     winnerId: game.winnerId,
+    cardPlayedThisTurn: Boolean(game.cardPlayedThisTurn),
     announcement: game.announcement,
     sequence: game.sequence,
     players: game.turnOrder.filter(id => game.ducks.has(id)).map(id => {
@@ -300,14 +301,17 @@ const RACE_MINI_GAMES = Object.freeze([
   { name: 'Race Day Trivia', prompt: 'What do riders usually place on a horse’s back?', options: ['Saddle', 'Anchor', 'Paddle'], correctIndex: 0 },
   { name: 'Race Day Trivia', prompt: 'Which season comes after spring?', options: ['Summer', 'Winter', 'Autumn'], correctIndex: 0 }
 ]);
-function createRaceMiniGame(playerId, square) {
+function createRaceMiniGame(room, playerId, square) {
   const challenge = RACE_MINI_GAMES[Math.floor(Math.random() * RACE_MINI_GAMES.length)];
-  return { ...challenge, playerId, square };
+  const participantIds = [...room.players.entries()].filter(([, member]) => member.socketId).map(([id]) => id);
+  if (!participantIds.includes(playerId)) participantIds.push(playerId);
+  return { ...challenge, playerId, square, participantIds, answers: {}, answerOrder: [] };
 }
 function publicMiniGame(game, viewerId) {
   const mini = game?.pendingMiniGame;
   if (!mini) return null;
-  return { name: mini.name, prompt: mini.prompt, options: [...mini.options], playerId: mini.playerId, square: mini.square, isMine: mini.playerId === viewerId };
+  const isParticipant = mini.participantIds.includes(viewerId), hasAnswered = Object.hasOwn(mini.answers, viewerId);
+  return { name: mini.name, prompt: mini.prompt, options: [...mini.options], playerId: mini.playerId, square: mini.square, isMine: mini.playerId === viewerId, isParticipant, hasAnswered, canAnswer: isParticipant && !hasAnswered, answeredCount: mini.answerOrder.length, participantCount: mini.participantIds.length };
 }
 
 function makeDuck(name, appearance = {}, settings = {}) {
@@ -321,7 +325,7 @@ function beginDucksRace(room) {
   const ducks = new Map(turnOrder.map(id => [id, makeDuck(room.players.get(id).name, room.raceSelections?.get(id), room.raceSettings)]));
   const firstName = room.players.get(turnOrder[0])?.name || 'the first player';
   room.ducksRace = {
-    status: 'playing', turnOrder, turnIndex: 0, ducks, placedHazards: [], winnerId: null, sequence: 1,
+    status: 'playing', turnOrder, turnIndex: 0, ducks, placedHazards: [], cardPlayedThisTurn: false, winnerId: null, sequence: 1,
     announcement: `Duck Race has started. ${firstName} goes first. Press Enter to roll.`
   };
 }
@@ -475,7 +479,7 @@ function applyLifeLanding(game, playerId) {
 function publicDerbyGame(room, viewerId) {
   if (!room.derby) return null;
   const game=room.derby,viewer=game.players.get(viewerId);
-  return { pendingMiniGame:publicMiniGame(game,viewerId),track:DerbyEngine.TRACK,totalLaps:DerbyEngine.TOTAL_LAPS,activeLap:game.activeLap,lapEvent:DerbyEngine.LAP_EVENTS[game.activeLap-1],lapHazards:game.lapHazards,sabotagePlays:viewerId===game.turnOrder[game.turnIndex]?game.sabotagePlays:0,status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,myHand:viewer?[...viewer.hand]:[],hazards:Object.fromEntries(game.turnOrder.filter(id=>game.players.has(id)).map(id=>[id,[...game.players.get(id).mudHazards].sort((a,b)=>a-b)])),placedCards:Object.fromEntries(game.turnOrder.filter(id=>game.players.has(id)).map(id=>[id,[...(game.players.get(id).laneCards||[])]])),players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,horseType:player.horseType,color:player.color,position:player.position,completedLaps:player.completedLaps,lap:Math.min(DerbyEngine.TOTAL_LAPS,player.completedLaps+1),cardCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};
+  return { pendingMiniGame:publicMiniGame(game,viewerId),track:DerbyEngine.TRACK,totalLaps:DerbyEngine.TOTAL_LAPS,activeLap:game.activeLap,lapEvent:DerbyEngine.LAP_EVENTS[game.activeLap-1],lapHazards:game.lapHazards,sabotagePlays:0,cardPlayedThisTurn:Boolean(game.cardPlayedThisTurn),status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,myHand:viewer?[...viewer.hand]:[],hazards:Object.fromEntries(game.turnOrder.filter(id=>game.players.has(id)).map(id=>[id,[...game.players.get(id).mudHazards].sort((a,b)=>a-b)])),placedCards:Object.fromEntries(game.turnOrder.filter(id=>game.players.has(id)).map(id=>[id,[...(game.players.get(id).laneCards||[])]])),players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,horseType:player.horseType,color:player.color,position:player.position,completedLaps:player.completedLaps,lap:Math.min(DerbyEngine.TOTAL_LAPS,player.completedLaps+1),cardCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};
 }
 
 function dealDerbyCard(game) {
@@ -485,12 +489,12 @@ function dealDerbyCard(game) {
 
 function beginDerby(room) {
   const turnOrder=[...room.players.keys()],deck=DerbyEngine.createDeck(),players=new Map(turnOrder.map(id=>{const choice=room.raceSelections?.get(id)||{};return[id,{name:room.players.get(id).name,horseType:choice.type||'Full-size Thoroughbred',color:choice.color||'Bay',position:0,completedLaps:0,hand:[],mudHazards:new Set(),laneCards:[]}]}));
-  room.derby={status:'playing',turnOrder,turnIndex:0,players,deck,activeLap:1,lapHazards:DerbyEngine.createLapHazards(1),sabotagePlays:0,winnerId:null,sequence:1,announcement:`Horse Race has started. Lap 1 of 6: The Gates Open. Standard, clean track. ${players.get(turnOrder[0]).name} goes first.`};
+  room.derby={status:'playing',turnOrder,turnIndex:0,players,deck,activeLap:1,lapHazards:DerbyEngine.createLapHazards(1),sabotagePlays:0,cardPlayedThisTurn:false,winnerId:null,sequence:1,announcement:`Horse Race has started. Lap 1 of 6: The Gates Open. Standard, clean track. ${players.get(turnOrder[0]).name} goes first.`};
   const startingCards=[2,3,5].includes(room.raceSettings?.startingCards)?room.raceSettings.startingCards:3;for(let round=0;round<startingCards;round+=1)for(const id of turnOrder)players.get(id).hand.push(dealDerbyCard(room.derby));
 }
 
 function emitDerbyState(room,cue=null){for(const[id,member]of room.players)if(member.socketId)io.to(member.socketId).emit('derby-state',{game:publicDerbyGame(room,id),cue})}
-function advanceDerbyTurn(game){game.sabotagePlays=0;game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;return game.players.get(game.turnOrder[game.turnIndex])}
+function advanceDerbyTurn(game){game.sabotagePlays=0;game.cardPlayedThisTurn=false;game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;return game.players.get(game.turnOrder[game.turnIndex])}
 function advanceDerbyLap(game,player){if(!player||player.completedLaps<game.activeLap||game.activeLap>=DerbyEngine.TOTAL_LAPS)return null;game.activeLap+=1;game.lapHazards=DerbyEngine.createLapHazards(game.activeLap);if(game.activeLap===6)for(const racer of game.players.values())racer.mudHazards.clear();return DerbyEngine.LAP_EVENTS[game.activeLap-1]}
 function resolveDerbyLaneCard(player){const index=player.laneCards.findIndex(card=>card.square===player.position+1);if(index<0)return'';const[placed]=player.laneCards.splice(index,1);if(placed.card==='Hay Bale'){player.position=Math.max(0,player.position-2);return`Hay Bale sent the horse back 2 spaces to space ${player.position+1}.`;}if(placed.card==='Trip Wire'){player.position=Math.max(0,player.position-4);return`Trip Wire sent the horse back 4 spaces to space ${player.position+1}.`;}if(placed.card==='Speed Gate'){const boosted=player.position+3;if(boosted>=25)player.completedLaps+=1;player.position=boosted%25;return`Speed Gate moved the horse forward 3 spaces to space ${player.position+1}.`;}return'';}
 
@@ -862,9 +866,9 @@ io.on('connection', (socket) => {
     }
 
     if ([5,10,15,20].includes(player.position + 1)) {
-      game.pendingMiniGame=createRaceMiniGame(playerId,player.position+1);
+      game.pendingMiniGame=createRaceMiniGame(room,playerId,player.position+1);
       game.announcement=`${story} Mini-game: ${game.pendingMiniGame.name}. ${game.pendingMiniGame.prompt}`;
-      game.sequence+=1;emitDerbyState(room,{type:'card',terrain,activeLap:game.activeLap});return acknowledge(callback,{ok:true,roll,miniGame:true});
+      game.sequence+=1;emitDerbyState(room,{type:'card',terrain,activeLap:game.activeLap,miniGame:true});return acknowledge(callback,{ok:true,roll,miniGame:true});
     }
     const next = advanceDerbyTurn(game);
     game.announcement = `${story} ${next.name} now has the turn.`;
@@ -873,10 +877,11 @@ io.on('connection', (socket) => {
     acknowledge(callback, { ok: true, roll });
   });
 
-  socket.on('derby-mini-answer',(data={},callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,mini=game?.pendingMiniGame,playerId=socket.data.playerId;if(!mini||mini.playerId!==playerId)return acknowledge(callback,{ok:false,error:'No Horse Race mini-game is waiting for you.'});const player=game.players.get(playerId),correct=Number(data.choice)===mini.correctIndex;if(correct&&player.hand.length<DerbyEngine.HAND_LIMIT)player.hand.push(dealDerbyCard(game));game.pendingMiniGame=null;const next=advanceDerbyTurn(game);game.announcement=`${player.name} ${correct?'completed':'missed'} ${mini.name}.${correct?' Won an Action Card.':''} ${next.name} now has the turn.`;game.sequence+=1;emitDerbyState(room,{type:correct?'draw':'error',activeLap:game.activeLap});acknowledge(callback,{ok:true,correct})});
+  socket.on('derby-mini-answer',(data={},callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,mini=game?.pendingMiniGame,playerId=socket.data.playerId;if(!mini||!mini.participantIds.includes(playerId))return acknowledge(callback,{ok:false,error:'No Horse Race mini-game is waiting for you.'});if(Object.hasOwn(mini.answers,playerId))return acknowledge(callback,{ok:false,error:'You already answered this mini-game.'});const choice=Number(data.choice);if(!Number.isInteger(choice)||choice<0||choice>=mini.options.length)return acknowledge(callback,{ok:false,error:'Choose one of the available answers.'});mini.answers[playerId]=choice;mini.answerOrder.push(playerId);if(mini.answerOrder.length<mini.participantIds.length){game.announcement=`${game.players.get(playerId)?.name||'A player'} locked in an answer for ${mini.name}. ${mini.answerOrder.length} of ${mini.participantIds.length} players have answered.`;game.sequence+=1;emitDerbyState(room,{type:'card',activeLap:game.activeLap});return acknowledge(callback,{ok:true,waiting:true})}const correctIds=mini.answerOrder.filter(id=>mini.answers[id]===mini.correctIndex);for(const id of correctIds){const racer=game.players.get(id);if(racer&&racer.hand.length<DerbyEngine.HAND_LIMIT)racer.hand.push(dealDerbyCard(game))}const winner=game.players.get(correctIds[0]),trigger=game.players.get(mini.playerId);game.pendingMiniGame=null;const next=advanceDerbyTurn(game);game.announcement=correctIds.length?`${winner.name} answered correctly first in ${mini.name}. ${correctIds.length} player${correctIds.length===1?'':'s'} answered correctly and received an Action Card when hand space was available. ${next.name} now has the turn.`:`Everyone missed ${mini.name}. ${trigger?.name||'The active player'} finishes the challenge. ${next.name} now has the turn.`;game.sequence+=1;emitDerbyState(room,{type:correctIds.length?'draw':'error',activeLap:game.activeLap});acknowledge(callback,{ok:true,correct:mini.answers[playerId]===mini.correctIndex,winnerId:correctIds[0]||null})});
 
   socket.on('derby-play', (data={}, callback) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,playerId=socket.data.playerId,validationError=turnError(game,playerId,game?.turnOrder[game.turnIndex],'Horse Race');if(validationError)return acknowledge(callback,{ok:false,error:validationError});const player=game.players.get(playerId),cardIndex=Number(data.cardIndex);if(!Number.isInteger(cardIndex)||cardIndex<0||cardIndex>=player.hand.length)return acknowledge(callback,{ok:false,error:'Choose a card from your private hand.'});const cardName=player.hand[cardIndex],card=DerbyEngine.CARDS[cardName];if(game.sabotagePlays>0&&!card.sabotage)return acknowledge(callback,{ok:false,error:'The optional second play must be another Sabotage card. Otherwise, end the turn.'});let story='',cue={type:'move',terrain:'Normal Turf'};
+    if(game.cardPlayedThisTurn)return acknowledge(callback,{ok:false,error:'You already played one card this turn. Roll the dice now.'});
     try{
       if(card.target){
         const targetId=String(data.targetId||''),target=game.players.get(targetId);
@@ -888,7 +893,7 @@ io.on('connection', (socket) => {
       }
       else{const leader=Math.max(...game.turnOrder.map(id=>game.players.get(id).position)),result=DerbyEngine.move(player.position,cardName,leader,[...player.mudHazards],game.activeLap,game.lapHazards);player.position=result.position;if(result.consumedMud)player.mudHazards.delete(result.consumedMud);if(result.crossedFinish)player.completedLaps+=1;const laneCardEffect=resolveDerbyLaneCard(player);story=`${player.name} played ${cardName} and reached space ${player.position+1}, ${result.landing.terrain}. ${result.effects.join(' ')} ${laneCardEffect}${result.crossedFinish?` Completed lap ${player.completedLaps} of ${DerbyEngine.TOTAL_LAPS}.`:''}`.trim();cue={type:'move',terrain:result.effects.some(effect=>effect.startsWith('Deep Turf'))?'Deep Turf':result.landing.terrain};}
     }catch(error){return acknowledge(callback,{ok:false,error:error.message})}
-    player.hand.splice(cardIndex,1);if(card.discardHand)player.hand=[];if(player.completedLaps>=DerbyEngine.TOTAL_LAPS){game.status='finished';game.winnerId=playerId;game.announcement=`${story} ${player.name} wins the six-lap Horse Race!`;game.sequence+=1;emitDerbyState(room,{...cue,type:'finish',lapComplete:true,activeLap:game.activeLap});broadcastGames();return acknowledge(callback,{ok:true})}const newEvent=advanceDerbyLap(game,player);if(newEvent){story+=` ${player.name} is first across the line! Lap ${game.activeLap} of 6 begins: ${newEvent.name}. ${newEvent.description}`;cue={...cue,lapComplete:true,activeLap:game.activeLap,lapEvent:newEvent.name}}if(game.activeLap===6&&card.sabotage){game.sabotagePlays+=1;const canSabotageAgain=game.sabotagePlays<2&&player.hand.some(name=>DerbyEngine.CARDS[name].sabotage);if(canSabotageAgain){game.announcement=`${story} ${player.name} may play one more Sabotage card or end the turn.`;game.sequence+=1;emitDerbyState(room,cue);return acknowledge(callback,{ok:true,extraSabotage:true})}}const next=advanceDerbyTurn(game);game.announcement=`${story} ${next.name} now has the turn.`;game.sequence+=1;emitDerbyState(room,cue);acknowledge(callback,{ok:true});
+    player.hand.splice(cardIndex,1);if(card.discardHand)player.hand=[];game.cardPlayedThisTurn=true;if(player.completedLaps>=DerbyEngine.TOTAL_LAPS){game.status='finished';game.winnerId=playerId;game.announcement=`${story} ${player.name} wins the six-lap Horse Race!`;game.sequence+=1;emitDerbyState(room,{...cue,type:'finish',lapComplete:true,activeLap:game.activeLap});broadcastGames();return acknowledge(callback,{ok:true})}const newEvent=advanceDerbyLap(game,player);if(newEvent){story+=` ${player.name} is first across the line! Lap ${game.activeLap} of 6 begins: ${newEvent.name}. ${newEvent.description}`;cue={...cue,lapComplete:true,activeLap:game.activeLap,lapEvent:newEvent.name}}game.announcement=`${story} ${player.name} played one card and may now roll the dice.`;game.sequence+=1;emitDerbyState(room,cue);acknowledge(callback,{ok:true,mustRoll:true});
   });
 
   socket.on('derby-end-turn', (_data, callback) => {const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,playerId=socket.data.playerId,validationError=turnError(game,playerId,game?.turnOrder[game.turnIndex],'Horse Race');if(validationError)return acknowledge(callback,{ok:false,error:validationError});if(game.activeLap!==6||game.sabotagePlays<1)return acknowledge(callback,{ok:false,error:'There is no extra Sabotage action to end.'});const player=game.players.get(playerId),next=advanceDerbyTurn(game);game.announcement=`${player.name} ended the Sabotage turn. ${next.name} now has the turn.`;game.sequence+=1;emitDerbyState(room,{type:'move',activeLap:game.activeLap});acknowledge(callback,{ok:true})});
@@ -1091,7 +1096,7 @@ io.on('connection', (socket) => {
     needsQuack ||= opponentOnFinalSpace;
     let announcement = `${duck.name} rolled ${roll}. ${duck.name} landed on Space ${landingSquare}: ${landedSpace.name}! ${effectStory}${movementStory}`;
     let localAnnouncement = `You rolled a ${roll}. You landed on Space ${landingSquare}: ${landedSpace.name}! ${effectStory}${movementStory}`;
-    const cue = { type: 'dice', square: duck.square, actorId: playerId, localAnnouncement };
+    const cue = { type: 'dice', square: duck.square, effect: landedSpace.effect, actorId: playerId, localAnnouncement };
     if (needsQuack) cue.secondary = { type: 'quack', square: duck.square };
 
     if (duck.distance >= BOARD_SIZE) {
@@ -1104,14 +1109,16 @@ io.on('connection', (socket) => {
     }
 
     if (game.status === 'playing' && [6,16,26,36].includes(duck.square)) {
-      game.pendingMiniGame = createRaceMiniGame(playerId, duck.square);
+      game.pendingMiniGame = createRaceMiniGame(room, playerId, duck.square);
       const miniStory = ` Mini-game: ${game.pendingMiniGame.name}. ${game.pendingMiniGame.prompt}`;
       announcement += miniStory;
       localAnnouncement += `${miniStory} Use Up or Down Arrow to choose an answer, then press Enter.`;
       cue.localAnnouncement = localAnnouncement;
+      cue.miniGame = true;
     }
 
     if (game.status === 'playing' && !game.pendingMiniGame) {
+      game.cardPlayedThisTurn = false;
       game.turnIndex = (game.turnIndex + 1) % game.turnOrder.length;
       const next = game.ducks.get(game.turnOrder[game.turnIndex]);
       const turnStory = ` It is now ${next.name}'s turn.`;
@@ -1127,12 +1134,13 @@ io.on('connection', (socket) => {
 
   socket.on('ducks-race-mini-answer', (data = {}, callback) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.ducksRace,mini=game?.pendingMiniGame,playerId=socket.data.playerId;
-    if(!mini||mini.playerId!==playerId)return acknowledge(callback,{ok:false,error:'No Duck Race mini-game is waiting for you.'});
-    const duck=game.ducks.get(playerId),correct=Number(data.choice)===mini.correctIndex;
-    if(correct)duck.feathers+=2;
-    game.pendingMiniGame=null;game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;const next=game.ducks.get(game.turnOrder[game.turnIndex]);
-    game.announcement=`${duck.name} ${correct?'completed':'missed'} ${mini.name}.${correct?' Gained 2 feathers.':''} It is now ${next.name}'s turn.`;game.sequence+=1;
-    emitDuckState(room,{type:correct?'success':'error',square:duck.square});acknowledge(callback,{ok:true,correct});
+    if(!mini||!mini.participantIds.includes(playerId))return acknowledge(callback,{ok:false,error:'No Duck Race mini-game is waiting for you.'});
+    if(Object.hasOwn(mini.answers,playerId))return acknowledge(callback,{ok:false,error:'You already answered this mini-game.'});
+    const choice=Number(data.choice);if(!Number.isInteger(choice)||choice<0||choice>=mini.options.length)return acknowledge(callback,{ok:false,error:'Choose one of the available answers.'});mini.answers[playerId]=choice;mini.answerOrder.push(playerId);
+    if(mini.answerOrder.length<mini.participantIds.length){game.announcement=`${game.ducks.get(playerId)?.name||'A player'} locked in an answer for ${mini.name}. ${mini.answerOrder.length} of ${mini.participantIds.length} players have answered.`;game.sequence+=1;emitDuckState(room,{type:'card',square:mini.square});return acknowledge(callback,{ok:true,waiting:true});}
+    const correctIds=mini.answerOrder.filter(id=>mini.answers[id]===mini.correctIndex);for(const id of correctIds){const racer=game.ducks.get(id);if(racer)racer.feathers+=2}const winner=game.ducks.get(correctIds[0]);if(winner)winner.feathers+=1;game.pendingMiniGame=null;game.cardPlayedThisTurn=false;game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;const next=game.ducks.get(game.turnOrder[game.turnIndex]);
+    game.announcement=correctIds.length?`${winner.name} answered correctly first in ${mini.name} and gained 1 bonus feather. ${correctIds.length} player${correctIds.length===1?'':'s'} answered correctly and gained 2 feathers. It is now ${next.name}'s turn.`:`Everyone missed ${mini.name}. It is now ${next.name}'s turn.`;game.sequence+=1;
+    emitDuckState(room,{type:correctIds.length?'success':'error',square:mini.square});acknowledge(callback,{ok:true,correct:mini.answers[playerId]===mini.correctIndex,winnerId:correctIds[0]||null});
   });
 
   socket.on('ducks-race-play-card', (data = {}, callback) => {
@@ -1142,6 +1150,7 @@ io.on('connection', (socket) => {
     if (!game || game.status !== 'playing') return acknowledge(callback, { ok: false, error: 'The race has not started.' });
     const playerId = socket.data.playerId;
     if (game.turnOrder[game.turnIndex] !== playerId) return acknowledge(callback, { ok: false, error: 'You can only play a card on your turn.' });
+    if (game.cardPlayedThisTurn) return acknowledge(callback, { ok: false, error: 'You already played one card this turn. Roll the dice now.' });
     const card = CARD_TYPES.includes(data.card) ? data.card : null;
     const duck = game.ducks.get(playerId);
     const handIndex = duck.hand.indexOf(card);
@@ -1160,8 +1169,9 @@ io.on('connection', (socket) => {
     }
     duck.feathers -= cost;
     duck.hand.splice(handIndex, 1);
+    game.cardPlayedThisTurn = true;
     let announcement;
-    let cue = { type: 'magic', square: duck.square };
+    let cue = { type: 'magic', square: duck.square, card };
     if (card === 'Shield') {
       duck.shielded = true;
       announcement = `${duck.name} played Shield! ${duck.name} is protected from the next hazard.`;
@@ -1169,12 +1179,12 @@ io.on('connection', (socket) => {
       game.placedHazards.push({ square: targetSquare, ownerId: playerId, card });
       const effect=card==='Mud Puddle'?'lose 1 feather':card==='Tailwind Tile'?'move forward 3 spaces':card==='Lucky Lily Pad'?'gain 3 feathers':'gain 2 feathers';
       announcement = `${duck.name} placed a ${card} card on square ${targetSquare}. The next eligible duck to land there will ${effect}.`;
-      cue = { type: 'magic', square: targetSquare };
+      cue = { type: 'magic', square: targetSquare, card };
     } else if (card === 'Pond Shortcut') {
       duck.distance += 4;
       duck.square = (duck.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Pond Shortcut, spent 2 feathers, and moved ahead 4 spaces to square ${duck.square}.`;
-      cue = { type: 'magic', square: duck.square };
+      cue = { type: 'magic', square: duck.square, card };
     } else if (card === 'Feather Find') {
       duck.feathers += 2;
       announcement = `${duck.name} played Feather Find and gained 2 feathers.`;
@@ -1182,7 +1192,7 @@ io.on('connection', (socket) => {
       duck.distance += 2;
       duck.square = (duck.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Quick Paddle and moved forward 2 spaces to square ${duck.square}.`;
-      cue = { type: 'magic', square: duck.square };
+      cue = { type: 'magic', square: duck.square, card };
     } else if (card === 'Feather Bonanza') {
       duck.feathers += 3;
       announcement = `${duck.name} played Feather Bonanza and gained 3 feathers.`;
@@ -1191,23 +1201,23 @@ io.on('connection', (socket) => {
       duck.distance = target.distance; duck.square = target.square;
       target.distance = distance; target.square = square;
       announcement = `${duck.name} played Trade Places on ${target.name}. ${duck.name} moved to square ${duck.square}, and ${target.name} moved to square ${target.square}.`;
-      cue = { type: 'magic', square: duck.square, secondary: { type: 'quack', square: target.square } };
+      cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
     } else if (card === 'Wind Gust') {
       target.distance = Math.max(0, target.distance - 3);
       target.square = (target.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Wind Gust on ${target.name}, spent 1 feather, and pushed them back 3 spaces to square ${target.square}.`;
-      cue = { type: 'magic', square: duck.square, secondary: { type: 'quack', square: target.square } };
+      cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
     } else if (card === 'Big Splash') {
       target.distance = Math.max(0, target.distance - 5);
       target.square = (target.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Big Splash on ${target.name} and pushed them back 5 spaces to square ${target.square}.`;
-      cue = { type: 'magic', square: duck.square, secondary: { type: 'quack', square: target.square } };
+      cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
     } else {
       const stolen = target.feathers > 0 ? 1 : 0;
       target.feathers -= stolen;
       duck.feathers += stolen;
       announcement = `${duck.name} played Pluck on ${target.name}, spent 1 feather, and stole ${stolen} feather${stolen === 1 ? '' : 's'}.`;
-      cue = { type: 'magic', square: duck.square, secondary: { type: 'quack', square: target.square } };
+      cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
     }
     if (duck.distance >= BOARD_SIZE) {
       game.status = 'finished';

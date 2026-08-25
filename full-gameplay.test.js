@@ -30,7 +30,7 @@ function mallDirection(from,target){
  return null;
 }
 async function act(socket,definition,game,hostId){
- if(definition.category==='ducks-race')return game.pendingMiniGame?.isMine?call(socket,'ducks-race-mini-answer',{choice:0}):call(socket,'ducks-race-roll');
+ if(definition.category==='ducks-race')return game.pendingMiniGame?.canAnswer?call(socket,'ducks-race-mini-answer',{choice:0}):call(socket,'ducks-race-roll');
  if(definition.category==='monopoly')return game.pendingPurchase?.playerId===hostId?call(socket,'monopoly-purchase-response',{accept:true}):call(socket,'monopoly-roll');
  if(definition.category.startsWith('uno-')){
   const attempts=[];
@@ -40,7 +40,7 @@ async function act(socket,definition,game,hostId){
   return call(socket,'uno-draw');
  }
  if(definition.category==='life')return game.pendingChoice?.playerId===hostId?call(socket,'life-choose',{choice:0}):call(socket,'life-spin');
- if(definition.category==='horse-race')return game.pendingMiniGame?.isMine?call(socket,'derby-mini-answer',{choice:0}):call(socket,'derby-roll');
+ if(definition.category==='horse-race')return game.pendingMiniGame?.canAnswer?call(socket,'derby-mini-answer',{choice:0}):call(socket,'derby-roll');
  if(definition.category==='dominoes'){
   for(const tile of game.myHand)for(const end of ['left','right'])for(const flipped of [false,true]){try{Dominoes.placeTile(game.board,tile,end,flipped)}catch{continue}return call(socket,'domino-play',{tileId:tile.id,end,flipped})}
   return call(socket,'domino-draw');
@@ -71,7 +71,7 @@ async function act(socket,definition,game,hostId){
   const started=await call(socket,definition.start);if(!started.ok)throw Error(`${definition.name}: ${started.error}`);latest=started.game;
   let actions=0,lastActedSequence=-1;const deadline=Date.now()+120000;
   while(latest?.status==='playing'&&Date.now()<deadline){
-   if(latest.turnPlayerId===hostId&&latest.sequence!==lastActedSequence){lastActedSequence=latest.sequence;const result=await act(socket,definition,latest,hostId);actions++;if(!result?.ok)throw Error(`${definition.name} action ${actions}: ${result?.error}`)}
+   if((latest.pendingMiniGame?.canAnswer||latest.turnPlayerId===hostId)&&latest.sequence!==lastActedSequence){lastActedSequence=latest.sequence;const result=await act(socket,definition,latest,hostId);actions++;if(!result?.ok)throw Error(`${definition.name} action ${actions}: ${result?.error}`)}
    await pause(2);
   }
   socket.off(definition.event,receive);

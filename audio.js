@@ -443,6 +443,38 @@ function playDuckQuack(panValue = 0) {
   });
 }
 
+function playDuckSplash(panValue = 0) {
+  const context = audioContext(); if (!context) return;
+  const now = context.currentTime, source = context.createBufferSource(), filter = context.createBiquadFilter(), gain = context.createGain(), panner = context.createStereoPanner();
+  source.buffer = makeNoiseBuffer(context, .48); filter.type = 'lowpass'; filter.frequency.setValueAtTime(2600, now); filter.frequency.exponentialRampToValueAtTime(320, now + .46); gain.gain.setValueAtTime(.0001, now); gain.gain.exponentialRampToValueAtTime(.2, now + .025); gain.gain.exponentialRampToValueAtTime(.0001, now + .48); panner.pan.value = clampPan(panValue); source.connect(filter).connect(gain).connect(panner).connect(context.destination); source.start(now); source.stop(now + .5);
+}
+
+function playFeatherRustle(panValue = 0) {
+  const context = audioContext(); if (!context) return;
+  const now = context.currentTime, source = context.createBufferSource(), filter = context.createBiquadFilter(), gain = context.createGain(), panner = context.createStereoPanner();
+  source.buffer = makeNoiseBuffer(context, .55); filter.type = 'highpass'; filter.frequency.value = 2800; gain.gain.setValueAtTime(.0001, now); gain.gain.exponentialRampToValueAtTime(.07, now + .06); gain.gain.exponentialRampToValueAtTime(.0001, now + .55); panner.pan.setValueAtTime(clampPan(panValue) - .15, now); panner.pan.linearRampToValueAtTime(clampPan(panValue) + .15, now + .5); source.connect(filter).connect(gain).connect(panner).connect(context.destination); source.start(now); source.stop(now + .56);
+}
+
+function playMudSquelch(panValue = 0) {
+  const context = audioContext(); if (!context) return;
+  const now = context.currentTime, oscillator = context.createOscillator(), gain = context.createGain(), panner = context.createStereoPanner();
+  oscillator.type = 'sawtooth'; oscillator.frequency.setValueAtTime(115, now); oscillator.frequency.exponentialRampToValueAtTime(48, now + .38); gain.gain.setValueAtTime(.16, now); gain.gain.exponentialRampToValueAtTime(.0001, now + .42); panner.pan.value = clampPan(panValue); oscillator.connect(gain).connect(panner).connect(context.destination); oscillator.start(now); oscillator.stop(now + .43);
+}
+
+function playHorseHoofbeats(panValue = 0) {
+  const context = audioContext(); if (!context) return;
+  const now = context.currentTime;
+  [0, .1, .23, .33].forEach((offset, index) => { const oscillator = context.createOscillator(), gain = context.createGain(), panner = context.createStereoPanner(); oscillator.type = 'triangle'; oscillator.frequency.value = index % 2 ? 92 : 118; gain.gain.setValueAtTime(.16, now + offset); gain.gain.exponentialRampToValueAtTime(.0001, now + offset + .075); panner.pan.value = clampPan(panValue); oscillator.connect(gain).connect(panner).connect(context.destination); oscillator.start(now + offset); oscillator.stop(now + offset + .08); });
+}
+
+function playHorseNeigh(panValue = 0) {
+  const context = audioContext(); if (!context) return;
+  const now = context.currentTime, oscillator = context.createOscillator(), filter = context.createBiquadFilter(), gain = context.createGain(), panner = context.createStereoPanner();
+  oscillator.type = 'sawtooth'; oscillator.frequency.setValueAtTime(310, now); oscillator.frequency.exponentialRampToValueAtTime(520, now + .18); oscillator.frequency.exponentialRampToValueAtTime(190, now + .72); filter.type = 'bandpass'; filter.frequency.value = 900; filter.Q.value = 3; gain.gain.setValueAtTime(.0001, now); gain.gain.exponentialRampToValueAtTime(.12, now + .04); gain.gain.exponentialRampToValueAtTime(.0001, now + .76); panner.pan.value = clampPan(panValue); oscillator.connect(filter).connect(gain).connect(panner).connect(context.destination); oscillator.start(now); oscillator.stop(now + .78);
+}
+
+function playRaceChallenge() { playToneSequence([523, 659, 784], 'triangle', .09, .24, .1); }
+
 window.playSuccessChime = playSuccessChime;
 window.playErrorBuzzer = playErrorBuzzer;
 window.playDiceRoll = playDiceRoll;
@@ -457,6 +489,12 @@ window.playUnoFlip = playUnoFlip;
 window.playUnoWarning = playUnoWarning;
 window.playUnoLauncher = playUnoLauncher;
 window.playDuckQuack = playDuckQuack;
+window.playDuckSplash = playDuckSplash;
+window.playFeatherRustle = playFeatherRustle;
+window.playMudSquelch = playMudSquelch;
+window.playHorseHoofbeats = playHorseHoofbeats;
+window.playHorseNeigh = playHorseNeigh;
+window.playRaceChallenge = playRaceChallenge;
 
 // Prime audio after the first user gesture so later synchronized remote cues can play.
 function unlockAudio() { audioContext(); }
