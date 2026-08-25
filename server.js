@@ -65,10 +65,10 @@ const BOARD_SPACES = [
   { name: 'Whirlpool', effect: 'backward', description: 'One last whirlpool drags you back 3 spaces.' },
   { name: 'Safe Pond', effect: 'safe', description: 'The finish pond sparkles just ahead. No effect.' }
 ];
-const CARD_TYPES = ['Wind Gust', 'Shield', 'Pluck', 'Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Pond Shortcut', 'Feather Find', 'Trade Places'];
-const CARD_COSTS = { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2 };
-const DUCK_PLACED_CARDS = new Set(['Mud Puddle', 'Tailwind Tile', 'Feather Cache']);
-const DUCK_TARGET_CARDS = new Set(['Wind Gust', 'Pluck', 'Trade Places']);
+const CARD_TYPES = ['Wind Gust', 'Shield', 'Pluck', 'Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Pond Shortcut', 'Feather Find', 'Trade Places', 'Quick Paddle', 'Feather Bonanza', 'Big Splash', 'Lucky Lily Pad'];
+const CARD_COSTS = { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2, 'Quick Paddle': 1, 'Feather Bonanza': 1, 'Big Splash': 2, 'Lucky Lily Pad': 1 };
+const DUCK_PLACED_CARDS = new Set(['Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Lucky Lily Pad']);
+const DUCK_TARGET_CARDS = new Set(['Wind Gust', 'Pluck', 'Trade Places', 'Big Splash']);
 const rooms = new Map();
 const sessions = new Map();
 const computerSecrets = new Map();
@@ -292,7 +292,13 @@ const RACE_MINI_GAMES = Object.freeze([
   { name: 'Pond Sound Match', prompt: 'Which sound belongs to a frog?', options: ['Ribbit', 'Neigh', 'Bell'], correctIndex: 0 },
   { name: 'Lily Pad Memory', prompt: 'Remember the pattern: Left, Right, Left. Which answer matches?', options: ['Left, Right, Left', 'Right, Left, Right', 'Left, Left, Right'], correctIndex: 0 },
   { name: 'Quick Count', prompt: 'Three ducks join two ducks. How many ducks are there?', options: ['Four', 'Five', 'Six'], correctIndex: 1 },
-  { name: 'Track Signal', prompt: 'The starter says ready, set... what comes next?', options: ['Stop', 'Go', 'Sleep'], correctIndex: 1 }
+  { name: 'Track Signal', prompt: 'The starter says ready, set... what comes next?', options: ['Stop', 'Go', 'Sleep'], correctIndex: 1 },
+  { name: 'Race Day Trivia', prompt: 'Which bird has webbed feet and is known for quacking?', options: ['Duck', 'Owl', 'Eagle'], correctIndex: 0 },
+  { name: 'Race Day Trivia', prompt: 'What is a young horse called?', options: ['Calf', 'Foal', 'Cub'], correctIndex: 1 },
+  { name: 'Race Day Trivia', prompt: 'How many legs does a horse have?', options: ['Two', 'Four', 'Six'], correctIndex: 1 },
+  { name: 'Race Day Trivia', prompt: 'Which body of water is smaller than a lake?', options: ['Ocean', 'Pond', 'Sea'], correctIndex: 1 },
+  { name: 'Race Day Trivia', prompt: 'What do riders usually place on a horse’s back?', options: ['Saddle', 'Anchor', 'Paddle'], correctIndex: 0 },
+  { name: 'Race Day Trivia', prompt: 'Which season comes after spring?', options: ['Summer', 'Winter', 'Autumn'], correctIndex: 0 }
 ]);
 function createRaceMiniGame(playerId, square) {
   const challenge = RACE_MINI_GAMES[Math.floor(Math.random() * RACE_MINI_GAMES.length)];
@@ -486,7 +492,7 @@ function beginDerby(room) {
 function emitDerbyState(room,cue=null){for(const[id,member]of room.players)if(member.socketId)io.to(member.socketId).emit('derby-state',{game:publicDerbyGame(room,id),cue})}
 function advanceDerbyTurn(game){game.sabotagePlays=0;game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;return game.players.get(game.turnOrder[game.turnIndex])}
 function advanceDerbyLap(game,player){if(!player||player.completedLaps<game.activeLap||game.activeLap>=DerbyEngine.TOTAL_LAPS)return null;game.activeLap+=1;game.lapHazards=DerbyEngine.createLapHazards(game.activeLap);if(game.activeLap===6)for(const racer of game.players.values())racer.mudHazards.clear();return DerbyEngine.LAP_EVENTS[game.activeLap-1]}
-function resolveDerbyLaneCard(player){const index=player.laneCards.findIndex(card=>card.square===player.position+1);if(index<0)return'';const[placed]=player.laneCards.splice(index,1);if(placed.card==='Hay Bale'){player.position=Math.max(0,player.position-2);return`Hay Bale sent the horse back 2 spaces to space ${player.position+1}.`;}if(placed.card==='Speed Gate'){const boosted=player.position+3;if(boosted>=25)player.completedLaps+=1;player.position=boosted%25;return`Speed Gate moved the horse forward 3 spaces to space ${player.position+1}.`;}return'';}
+function resolveDerbyLaneCard(player){const index=player.laneCards.findIndex(card=>card.square===player.position+1);if(index<0)return'';const[placed]=player.laneCards.splice(index,1);if(placed.card==='Hay Bale'){player.position=Math.max(0,player.position-2);return`Hay Bale sent the horse back 2 spaces to space ${player.position+1}.`;}if(placed.card==='Trip Wire'){player.position=Math.max(0,player.position-4);return`Trip Wire sent the horse back 4 spaces to space ${player.position+1}.`;}if(placed.card==='Speed Gate'){const boosted=player.position+3;if(boosted>=25)player.completedLaps+=1;player.position=boosted%25;return`Speed Gate moved the horse forward 3 spaces to space ${player.position+1}.`;}return'';}
 
 function publicDominoGame(room,viewerId){if(!room.dominoes)return null;const game=room.dominoes,viewer=game.players.get(viewerId);return{setName:game.setName,mode:game.mode,status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,board:game.board.map(tile=>({...tile})),boneyardCount:game.mode==='Block Game'?0:game.boneyard.length,myHand:viewer?viewer.hand.map(tile=>({...tile})):[],players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,score:player.score,tileCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};}
 function beginDominoes(room){const turnOrder=[...room.players.keys()],deck=DominoesEngine.shuffle(DominoesEngine.createDeck(room.dominoSet)),handSize=turnOrder.length===2?7:5,players=new Map(turnOrder.map(id=>[id,{name:room.players.get(id).name,score:0,hand:[]} ]));for(let round=0;round<handSize;round+=1)for(const id of turnOrder)players.get(id).hand.push(deck.pop());room.dominoes={setName:room.dominoSet,mode:room.dominoMode,status:'playing',turnOrder,turnIndex:0,players,board:[],boneyard:room.dominoMode==='Block Game'?[]:deck,passCount:0,winnerId:null,sequence:1,announcement:`${room.dominoSet} ${room.dominoMode} has started. ${players.get(turnOrder[0]).name} goes first.`}}
@@ -876,8 +882,9 @@ io.on('connection', (socket) => {
         const targetId=String(data.targetId||''),target=game.players.get(targetId);
         if(!target||targetId===playerId)return acknowledge(callback,{ok:false,error:'Choose another active horse as the target.'});
         if(cardName==='Lasso'){target.position=Math.max(0,target.position-3);story=`${player.name} played Lasso on ${target.name}, pulling that horse back to space ${target.position+1}.`;cue={type:'move',terrain:'Normal Turf'};}
+        else if(cardName==='Headwind'){target.position=Math.max(0,target.position-2);story=`${player.name} played Headwind on ${target.name}, pushing that horse back to space ${target.position+1}.`;cue={type:'move',terrain:'Wind Pocket'};}
         else if(cardName==='Position Swap'){const position=player.position,laps=player.completedLaps;player.position=target.position;player.completedLaps=target.completedLaps;target.position=position;target.completedLaps=laps;story=`${player.name} played Position Swap with ${target.name}. Their complete race positions were exchanged. ${player.name} is now on lap ${player.completedLaps+1}, space ${player.position+1}; ${target.name} is on lap ${target.completedLaps+1}, space ${target.position+1}.`;cue={type:'move',terrain:'Normal Turf'};}
-        else {const requested=Number(data.targetSquare),square=Number.isInteger(requested)&&requested>=1&&requested<25?requested:null;if(!square)return acknowledge(callback,{ok:false,error:`Choose a track square from 1 through 24 for ${cardName}.`});if(cardName==='Mud Sling'){if(DerbyEngine.terrainAt(square-1,[...target.mudHazards],game.activeLap,game.lapHazards)!=='Normal Turf')return acknowledge(callback,{ok:false,error:`Space ${square} cannot hold a Mud Sling hazard. Choose a normal turf square.`});target.mudHazards.add(square);story=`${player.name} played Mud Sling on ${target.name}. Deep Turf now waits on space ${square} of that lane.`;cue={type:'move',terrain:'Deep Turf'};}else{if(target.laneCards.some(placed=>placed.square===square))return acknowledge(callback,{ok:false,error:`Space ${square} already holds a placed card in ${target.name}'s lane.`});target.laneCards.push({card:cardName,square,ownerId:playerId});story=`${player.name} dropped ${cardName} on space ${square} in ${target.name}'s lane.`;cue={type:'card',terrain:'Normal Turf'};}}
+        else {const square=target.position+1;if(cardName==='Mud Sling'){target.mudHazards.add(square);story=`${player.name} played Mud Sling on ${target.name}. Deep Turf now waits on ${target.name}'s current square, space ${square}.`;cue={type:'move',terrain:'Deep Turf'};}else{if(target.laneCards.some(placed=>placed.square===square))return acknowledge(callback,{ok:false,error:`Space ${square} already holds a placed card in ${target.name}'s lane.`});target.laneCards.push({card:cardName,square,ownerId:playerId});story=`${player.name} dropped ${cardName} on ${target.name}'s current square, space ${square}.`;cue={type:'card',terrain:'Normal Turf'};}}
       }
       else{const leader=Math.max(...game.turnOrder.map(id=>game.players.get(id).position)),result=DerbyEngine.move(player.position,cardName,leader,[...player.mudHazards],game.activeLap,game.lapHazards);player.position=result.position;if(result.consumedMud)player.mudHazards.delete(result.consumedMud);if(result.crossedFinish)player.completedLaps+=1;const laneCardEffect=resolveDerbyLaneCard(player);story=`${player.name} played ${cardName} and reached space ${player.position+1}, ${result.landing.terrain}. ${result.effects.join(' ')} ${laneCardEffect}${result.crossedFinish?` Completed lap ${player.completedLaps} of ${DerbyEngine.TOTAL_LAPS}.`:''}`.trim();cue={type:'move',terrain:result.effects.some(effect=>effect.startsWith('Deep Turf'))?'Deep Turf':result.landing.terrain};}
     }catch(error){return acknowledge(callback,{ok:false,error:error.message})}
@@ -1067,6 +1074,9 @@ io.on('connection', (socket) => {
       } else if (hazard.card === 'Feather Cache') {
         duck.feathers += 2;
         effectStory += ` ${owner?.name || 'A player'}'s Feather Cache gave you 2 feathers.`;
+      } else if (hazard.card === 'Lucky Lily Pad') {
+        duck.feathers += 3;
+        effectStory += ` ${owner?.name || 'A player'}'s Lucky Lily Pad gave you 3 feathers.`;
       } else if (duck.shielded) {
         duck.shielded = false;
         effectStory += ` ${owner?.name || 'Another duck'}'s Mud Puddle sprung, but your Shield protected you.`;
@@ -1142,8 +1152,7 @@ io.on('connection', (socket) => {
     let target = null;
     let targetSquare = null;
     if (DUCK_PLACED_CARDS.has(card)) {
-      targetSquare = Number(data.targetSquare);
-      if (!Number.isInteger(targetSquare) || targetSquare < 2 || targetSquare > BOARD_SIZE) return acknowledge(callback, { ok: false, error: 'Choose a board square from 2 through 40.' });
+      targetSquare = duck.square;
       if (game.placedHazards.some(hazard => hazard.square === targetSquare)) return acknowledge(callback, { ok: false, error: `Square ${targetSquare} already has a placed card.` });
     } else if (DUCK_TARGET_CARDS.has(card)) {
       target = game.ducks.get(String(data.targetId || ''));
@@ -1158,7 +1167,7 @@ io.on('connection', (socket) => {
       announcement = `${duck.name} played Shield! ${duck.name} is protected from the next hazard.`;
     } else if (DUCK_PLACED_CARDS.has(card)) {
       game.placedHazards.push({ square: targetSquare, ownerId: playerId, card });
-      const effect=card==='Mud Puddle'?'lose 1 feather':card==='Tailwind Tile'?'move forward 3 spaces':'gain 2 feathers';
+      const effect=card==='Mud Puddle'?'lose 1 feather':card==='Tailwind Tile'?'move forward 3 spaces':card==='Lucky Lily Pad'?'gain 3 feathers':'gain 2 feathers';
       announcement = `${duck.name} placed a ${card} card on square ${targetSquare}. The next eligible duck to land there will ${effect}.`;
       cue = { type: 'magic', square: targetSquare };
     } else if (card === 'Pond Shortcut') {
@@ -1169,6 +1178,14 @@ io.on('connection', (socket) => {
     } else if (card === 'Feather Find') {
       duck.feathers += 2;
       announcement = `${duck.name} played Feather Find and gained 2 feathers.`;
+    } else if (card === 'Quick Paddle') {
+      duck.distance += 2;
+      duck.square = (duck.distance % BOARD_SIZE) + 1;
+      announcement = `${duck.name} played Quick Paddle and moved forward 2 spaces to square ${duck.square}.`;
+      cue = { type: 'magic', square: duck.square };
+    } else if (card === 'Feather Bonanza') {
+      duck.feathers += 3;
+      announcement = `${duck.name} played Feather Bonanza and gained 3 feathers.`;
     } else if (card === 'Trade Places') {
       const distance = duck.distance, square = duck.square;
       duck.distance = target.distance; duck.square = target.square;
@@ -1179,6 +1196,11 @@ io.on('connection', (socket) => {
       target.distance = Math.max(0, target.distance - 3);
       target.square = (target.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Wind Gust on ${target.name}, spent 1 feather, and pushed them back 3 spaces to square ${target.square}.`;
+      cue = { type: 'magic', square: duck.square, secondary: { type: 'quack', square: target.square } };
+    } else if (card === 'Big Splash') {
+      target.distance = Math.max(0, target.distance - 5);
+      target.square = (target.distance % BOARD_SIZE) + 1;
+      announcement = `${duck.name} played Big Splash on ${target.name} and pushed them back 5 spaces to square ${target.square}.`;
       cue = { type: 'magic', square: duck.square, secondary: { type: 'quack', square: target.square } };
     } else {
       const stolen = target.feathers > 0 ? 1 : 0;

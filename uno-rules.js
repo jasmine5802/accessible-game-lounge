@@ -54,7 +54,10 @@
   function face(game, selectedCard) { return game.variant === 'Uno Flip!' ? selectedCard[game.side] : selectedCard; }
   function describeCard(game, selectedCard) { const shown = face(game, selectedCard); return `${shown.color} ${shown.value}`; }
   function drawOne(game) {
-    if (!game.deck.length && game.discard?.length > 1) { const top = game.discard.pop(); game.deck = shuffle(game.discard.splice(0)); game.discard = [top]; }
+    if (!game.deck.length && game.discard?.length) {
+      if (game.variant === 'Uno Dos') game.deck = shuffle(game.discard.splice(0));
+      else if (game.discard.length > 1) { const top = game.discard.pop(); game.deck = shuffle(game.discard.splice(0)); game.discard = [top]; }
+    }
     return game.deck.pop() || null;
   }
   function drawCards(game, player, count) { for (let index = 0; index < count; index += 1) { const drawn = drawOne(game); if (drawn) player.hand.push(drawn); } }
@@ -104,6 +107,7 @@
     indexes.slice().sort((a,b)=>b-a).forEach(index => player.hand.splice(index,1));
     const bonuses = [];
     for (let count = 0; count < colorMatches && player.hand.length; count += 1) bonuses.push(player.hand.shift());
+    game.discard.push(game.centerRow[centerIndex], ...selected, ...bonuses);
     game.centerRow[centerIndex] = drawOne(game);
     const names = selected.map(item => describeCard(game,item)).join(' plus ');
     let message = `${player.name} matched ${names} to the ${target.color} ${target.value} Center Row card.`;

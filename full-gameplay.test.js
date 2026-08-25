@@ -3,7 +3,7 @@ const fs=require('fs'),os=require('os'),path=require('path');
 process.env.LOUNGE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'lounge-full-suite-'));
 process.env.NODE_ENV='test';
 process.env.LOUNGE_TEST_MONOPOLY_BALANCE='1';
-let randomState=0x5eed1234;Math.random=()=>{randomState=(Math.imul(randomState,1664525)+1013904223)>>>0;return randomState/0x100000000};
+let randomState=1;Math.random=()=>{randomState=(Math.imul(randomState,1664525)+1013904223)>>>0;return randomState/0x100000000};
 const{io}=require('socket.io-client');
 const Dominoes=require('./dominoes-engine'),SkipBo=require('./skipbo-engine'),Mall=require('./mallmadness-engine');
 const{startServer,server}=require('./server');

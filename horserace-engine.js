@@ -22,11 +22,15 @@
     'Spur of the Moment':Object.freeze({name:'Spur of the Moment',move:5,target:false,discardHand:true,description:'Move forward 5 spaces, then discard the rest of your hand.'}),
     'Backstretch Burst':Object.freeze({name:'Backstretch Burst',move:4,target:false,description:'Charge forward 4 spaces.'}),
     'Home Stretch':Object.freeze({name:'Home Stretch',move:6,target:false,description:'Sprint forward 6 spaces.'}),
+    'Steady Trot':Object.freeze({name:'Steady Trot',move:1,target:false,description:'Move forward 1 space with precise control.'}),
+    'Rocket Saddle':Object.freeze({name:'Rocket Saddle',move:8,target:false,description:'Blast forward 8 spaces.'}),
     Lasso:Object.freeze({name:'Lasso',move:0,target:true,sabotage:true,description:'Pull one opponent back 3 spaces.'}),
+    Headwind:Object.freeze({name:'Headwind',move:0,target:true,sabotage:true,description:'Push one opponent back 2 spaces.'}),
     'Position Swap':Object.freeze({name:'Position Swap',move:0,target:true,sabotage:true,description:'Swap track positions with one opponent.'}),
-    'Mud Sling':Object.freeze({name:'Mud Sling',move:0,target:true,placement:true,sabotage:true,description:'Place a one-use Deep Turf hazard on a chosen square in an opponent’s lane.'}),
-    'Hay Bale':Object.freeze({name:'Hay Bale',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use bale on a chosen opponent lane square. Landing there sends that horse back 2 spaces.'}),
-    'Speed Gate':Object.freeze({name:'Speed Gate',move:0,target:true,placement:true,description:'Drop a one-use speed gate on a chosen opponent lane square. Landing there moves that horse forward 3 spaces.'})
+    'Mud Sling':Object.freeze({name:'Mud Sling',move:0,target:true,placement:true,sabotage:true,description:'Place a one-use Deep Turf hazard on the selected opponent’s current square.'}),
+    'Hay Bale':Object.freeze({name:'Hay Bale',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use bale on the selected opponent’s current square. Landing there sends that horse back 2 spaces.'}),
+    'Speed Gate':Object.freeze({name:'Speed Gate',move:0,target:true,placement:true,description:'Drop a one-use speed gate on the selected opponent’s current square. Landing there moves that horse forward 3 spaces.'}),
+    'Trip Wire':Object.freeze({name:'Trip Wire',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use trip wire on the selected opponent’s current square. Landing there sends that horse back 4 spaces.'})
   });
   const CARD_NAMES=Object.freeze(Object.keys(CARDS));const HAND_LIMIT=4;
   function createDeck(random=Math.random){const deck=CARD_NAMES.flatMap(name=>Array.from({length:6},()=>name));for(let i=deck.length-1;i>0;i-=1){const j=Math.floor(random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}return deck}

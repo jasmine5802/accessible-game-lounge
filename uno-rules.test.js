@@ -35,6 +35,19 @@ for (const variant of rules.VARIANTS) {
   assert.match(game.announcement, /matched .* plus .* Center Row/i);
 }
 {
+  const game = rules.createGame('Uno Dos', players, () => 0.42);
+  const match = take(game, card => card.value === 2);
+  const spare = take(game, card => card.value === 9);
+  const center = take(game, card => card.value === 2);
+  const discarded = take(game, () => true);
+  game.players[0].hand = [match, spare];
+  game.centerRow[0] = center;
+  game.discard = [discarded];
+  game.deck = [];
+  rules.play(game, 'a', [0], { centerIndex: 0 });
+  assert.ok(game.centerRow[0], 'DOS must recycle matched and discarded cards when replacing an exhausted Center Row.');
+}
+{
   const game = rules.createGame("Show 'Em No Mercy", players, () => 0.42);
   const card = take(game, face => face.value === 'Draw 10');
   const color = rules.face(game, card).color;
