@@ -23,6 +23,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const BOARD_SIZE = 40;
+const DUCK_RACE_LAPS = 3;
 const BOARD_SPACES = [
   { name: 'Safe Pond', effect: 'safe', description: 'A calm, sunny pond. No effect.' },
   { name: 'Feather Nest', effect: 'feathers', description: 'A cozy nest filled with useful feathers.' },
@@ -65,10 +66,10 @@ const BOARD_SPACES = [
   { name: 'Whirlpool', effect: 'backward', description: 'One last whirlpool drags you back 3 spaces.' },
   { name: 'Safe Pond', effect: 'safe', description: 'The finish pond sparkles just ahead. No effect.' }
 ];
-const CARD_TYPES = ['Wind Gust', 'Shield', 'Pluck', 'Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Pond Shortcut', 'Feather Find', 'Trade Places', 'Quick Paddle', 'Feather Bonanza', 'Big Splash', 'Lucky Lily Pad'];
-const CARD_COSTS = { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2, 'Quick Paddle': 1, 'Feather Bonanza': 1, 'Big Splash': 2, 'Lucky Lily Pad': 1 };
-const DUCK_PLACED_CARDS = new Set(['Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Lucky Lily Pad']);
-const DUCK_TARGET_CARDS = new Set(['Wind Gust', 'Pluck', 'Trade Places', 'Big Splash']);
+const CARD_TYPES = ['Wind Gust', 'Shield', 'Pluck', 'Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Pond Shortcut', 'Feather Find', 'Trade Places', 'Quick Paddle', 'Feather Bonanza', 'Big Splash', 'Lucky Lily Pad', 'Current Boost', 'Feather Swipe', 'Counter Current', 'Deep Whirlpool', 'Feather Snare', 'Card Spring', 'Slingshot Pad'];
+const CARD_COSTS = { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2, 'Quick Paddle': 1, 'Feather Bonanza': 1, 'Big Splash': 2, 'Lucky Lily Pad': 1, 'Current Boost': 3, 'Feather Swipe': 2, 'Counter Current': 2, 'Deep Whirlpool': 4, 'Feather Snare': 2, 'Card Spring': 1, 'Slingshot Pad': 3 };
+const DUCK_PLACED_CARDS = new Set(['Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Lucky Lily Pad', 'Counter Current', 'Deep Whirlpool', 'Feather Snare', 'Card Spring', 'Slingshot Pad']);
+const DUCK_TARGET_CARDS = new Set(['Wind Gust', 'Pluck', 'Trade Places', 'Big Splash', 'Feather Swipe']);
 const rooms = new Map();
 const sessions = new Map();
 const computerSecrets = new Map();
@@ -196,6 +197,7 @@ function publicDuckGame(room, viewerId) {
   const game = room.ducksRace;
   return {
     boardSize: BOARD_SIZE,
+    totalLaps: DUCK_RACE_LAPS,
     boardSpaces: BOARD_SPACES,
     cardCosts: CARD_COSTS,
     placedHazards: [...(game.placedHazards || [])],
@@ -215,6 +217,8 @@ function publicDuckGame(room, viewerId) {
         duckType: duck.duckType,
         color: duck.color,
         square: duck.square,
+        completedLaps: Math.min(DUCK_RACE_LAPS, Math.floor(duck.distance / BOARD_SIZE)),
+        lap: Math.min(DUCK_RACE_LAPS, Math.floor(duck.distance / BOARD_SIZE) + 1),
         feathers: duck.feathers,
         hand: viewerId === id ? [...duck.hand] : [],
         handCount: duck.hand.length,
@@ -1082,6 +1086,40 @@ io.on('connection', (socket) => {
       } else if (hazard.card === 'Lucky Lily Pad') {
         duck.feathers += 3;
         effectStory += ` ${owner?.name || 'A player'}'s Lucky Lily Pad gave you 3 feathers.`;
+      } else if (hazard.card === 'Card Spring') {
+        duck.hand.push(randomCard(), randomCard());
+        effectStory += ` ${owner?.name || 'A player'}'s Card Spring gave you 2 action cards.`;
+      } else if (hazard.card === 'Slingshot Pad') {
+        duck.distance += 6;
+        duck.square = (duck.distance % BOARD_SIZE) + 1;
+        effectStory += ` ${owner?.name || 'A player'}'s Slingshot Pad launched you forward 6 spaces to square ${duck.square}.`;
+      } else if (hazard.card === 'Counter Current') {
+        if (duck.shielded) {
+          duck.shielded = false;
+          effectStory += ` ${owner?.name || 'A player'}'s Counter Current struck, but your Shield protected you.`;
+        } else {
+          duck.distance = Math.max(0, duck.distance - 3);
+          duck.square = (duck.distance % BOARD_SIZE) + 1;
+          effectStory += ` ${owner?.name || 'A player'}'s Counter Current pushed you back 3 spaces to square ${duck.square}.`;
+        }
+      } else if (hazard.card === 'Deep Whirlpool') {
+        if (duck.shielded) {
+          duck.shielded = false;
+          effectStory += ` ${owner?.name || 'A player'}'s Deep Whirlpool opened, but your Shield protected you.`;
+        } else {
+          duck.distance = Math.max(0, duck.distance - 8);
+          duck.square = (duck.distance % BOARD_SIZE) + 1;
+          effectStory += ` ${owner?.name || 'A player'}'s Deep Whirlpool dragged you back 8 spaces to square ${duck.square}.`;
+        }
+      } else if (hazard.card === 'Feather Snare') {
+        if (duck.shielded) {
+          duck.shielded = false;
+          effectStory += ` ${owner?.name || 'A player'}'s Feather Snare closed, but your Shield protected you.`;
+        } else {
+          const lost = Math.min(3, duck.feathers);
+          duck.feathers -= lost;
+          effectStory += ` ${owner?.name || 'A player'}'s Feather Snare took ${lost} feather${lost === 1 ? '' : 's'}.`;
+        }
       } else if (duck.shielded) {
         duck.shielded = false;
         effectStory += ` ${owner?.name || 'Another duck'}'s Mud Puddle sprung, but your Shield protected you.`;
@@ -1099,12 +1137,12 @@ io.on('connection', (socket) => {
     const cue = { type: 'dice', square: duck.square, effect: landedSpace.effect, actorId: playerId, localAnnouncement };
     if (needsQuack) cue.secondary = { type: 'quack', square: duck.square };
 
-    if (duck.distance >= BOARD_SIZE) {
+    if (duck.distance >= BOARD_SIZE * DUCK_RACE_LAPS) {
       game.status = 'finished';
       game.winnerId = playerId;
-      const winStory = ` ${duck.name} completed the loop and wins Duck Race!`;
+      const winStory = ` ${duck.name} completed lap ${DUCK_RACE_LAPS} and wins Duck Race!`;
       announcement += winStory;
-      localAnnouncement += ` You completed the loop and won Duck Race!`;
+      localAnnouncement += ` You completed lap ${DUCK_RACE_LAPS} and won Duck Race!`;
       cue.localAnnouncement = localAnnouncement;
     }
 
@@ -1177,7 +1215,11 @@ io.on('connection', (socket) => {
       announcement = `${duck.name} played Shield! ${duck.name} is protected from the next hazard.`;
     } else if (DUCK_PLACED_CARDS.has(card)) {
       game.placedHazards.push({ square: targetSquare, ownerId: playerId, card });
-      const effect=card==='Mud Puddle'?'lose 1 feather':card==='Tailwind Tile'?'move forward 3 spaces':card==='Lucky Lily Pad'?'gain 3 feathers':'gain 2 feathers';
+      const effect={
+        'Mud Puddle':'lose 1 feather','Tailwind Tile':'move forward 3 spaces','Feather Cache':'gain 2 feathers',
+        'Lucky Lily Pad':'gain 3 feathers','Counter Current':'move back 3 spaces','Deep Whirlpool':'move back 8 spaces',
+        'Feather Snare':'lose up to 3 feathers','Card Spring':'draw 2 action cards','Slingshot Pad':'move forward 6 spaces'
+      }[card];
       announcement = `${duck.name} placed a ${card} card on square ${targetSquare}. The next eligible duck to land there will ${effect}.`;
       cue = { type: 'magic', square: targetSquare, card };
     } else if (card === 'Pond Shortcut') {
@@ -1192,6 +1234,11 @@ io.on('connection', (socket) => {
       duck.distance += 2;
       duck.square = (duck.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Quick Paddle and moved forward 2 spaces to square ${duck.square}.`;
+      cue = { type: 'magic', square: duck.square, card };
+    } else if (card === 'Current Boost') {
+      duck.distance += 5;
+      duck.square = (duck.distance % BOARD_SIZE) + 1;
+      announcement = `${duck.name} played Current Boost and surged forward 5 spaces to square ${duck.square}.`;
       cue = { type: 'magic', square: duck.square, card };
     } else if (card === 'Feather Bonanza') {
       duck.feathers += 3;
@@ -1212,6 +1259,12 @@ io.on('connection', (socket) => {
       target.square = (target.distance % BOARD_SIZE) + 1;
       announcement = `${duck.name} played Big Splash on ${target.name} and pushed them back 5 spaces to square ${target.square}.`;
       cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
+    } else if (card === 'Feather Swipe') {
+      const stolen = Math.min(3, target.feathers);
+      target.feathers -= stolen;
+      duck.feathers += stolen;
+      announcement = `${duck.name} played Feather Swipe on ${target.name} and stole ${stolen} feather${stolen === 1 ? '' : 's'}.`;
+      cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
     } else {
       const stolen = target.feathers > 0 ? 1 : 0;
       target.feathers -= stolen;
@@ -1219,10 +1272,10 @@ io.on('connection', (socket) => {
       announcement = `${duck.name} played Pluck on ${target.name}, spent 1 feather, and stole ${stolen} feather${stolen === 1 ? '' : 's'}.`;
       cue = { type: 'magic', square: duck.square, card, secondary: { type: 'quack', square: target.square } };
     }
-    if (duck.distance >= BOARD_SIZE) {
+    if (duck.distance >= BOARD_SIZE * DUCK_RACE_LAPS) {
       game.status = 'finished';
       game.winnerId = playerId;
-      game.announcement = `${announcement} ${duck.name} completed the loop and wins Duck Race!`;
+      game.announcement = `${announcement} ${duck.name} completed lap ${DUCK_RACE_LAPS} and wins Duck Race!`;
       cue = { ...cue, type: 'victory' };
       broadcastGames();
     } else game.announcement = `${announcement} ${duck.name} may still roll.`;

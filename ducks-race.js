@@ -107,7 +107,7 @@ function renderPlayers() {
   elements.players.replaceChildren(...(game?.players || []).map(player => {
     const item = document.createElement('li');
     const turn = player.id === game.turnPlayerId ? ', current turn' : '';
-    item.textContent = `${player.name}: ${player.color} ${player.duckType}, square ${player.square}, ${player.feathers} feathers${player.shielded ? ', shield active' : ''}${turn}${player.connected ? '' : ', reconnecting'}`;
+    item.textContent = `${player.name}: ${player.color} ${player.duckType}, lap ${player.lap || 1} of ${game.totalLaps || 1}, square ${player.square}, ${player.feathers} feathers${player.shielded ? ', shield active' : ''}${turn}${player.connected ? '' : ', reconnecting'}`;
     return item;
   }));
 }
@@ -155,11 +155,18 @@ function cardDescription(card) {
   if (card === 'Feather Bonanza') return 'Spend 1 feather to gain 3 feathers.';
   if (card === 'Big Splash') return 'Spend 2 feathers to push another duck back 5 spaces.';
   if (card === 'Lucky Lily Pad') return 'Drop a one-use lucky lily pad on your current square. The next duck to land there gains 3 feathers.';
+  if (card === 'Current Boost') return 'Spend 3 feathers to move yourself forward 5 spaces before rolling.';
+  if (card === 'Feather Swipe') return 'Spend 2 feathers to steal up to 3 feathers from another player.';
+  if (card === 'Counter Current') return 'Drop a one-use current on your square. The next duck to land there moves back 3 spaces.';
+  if (card === 'Deep Whirlpool') return 'Drop a powerful trap on your square. The next duck to land there moves back 8 spaces unless shielded.';
+  if (card === 'Feather Snare') return 'Drop a trap on your square. The next duck to land there loses up to 3 feathers unless shielded.';
+  if (card === 'Card Spring') return 'Drop a reward on your square. The next duck to land there draws 2 action cards.';
+  if (card === 'Slingshot Pad') return 'Drop a boost on your square. The next duck to land there moves forward 6 spaces.';
   return 'Steal 1 feather from another player.';
 }
 
 function cardCost(card) {
-  return game?.cardCosts?.[card] ?? { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2, 'Quick Paddle': 1, 'Feather Bonanza': 1, 'Big Splash': 2, 'Lucky Lily Pad': 1 }[card] ?? 0;
+  return game?.cardCosts?.[card] ?? { 'Wind Gust': 1, Shield: 2, Pluck: 1, 'Mud Puddle': 1, 'Tailwind Tile': 1, 'Feather Cache': 1, 'Pond Shortcut': 2, 'Feather Find': 0, 'Trade Places': 2, 'Quick Paddle': 1, 'Feather Bonanza': 1, 'Big Splash': 2, 'Lucky Lily Pad': 1, 'Current Boost': 3, 'Feather Swipe': 2, 'Counter Current': 2, 'Deep Whirlpool': 4, 'Feather Snare': 2, 'Card Spring': 1, 'Slingshot Pad': 3 }[card] ?? 0;
 }
 
 function cardStatus(card, player) {
@@ -276,10 +283,10 @@ function activateSelectedCard() {
     window.playErrorBuzzer?.();
     return announcePolite('Cannot play. You need more feathers.');
   }
-  if (['Shield', 'Pond Shortcut', 'Feather Find', 'Quick Paddle', 'Feather Bonanza'].includes(card)) {
+  if (['Shield', 'Pond Shortcut', 'Feather Find', 'Quick Paddle', 'Feather Bonanza', 'Current Boost'].includes(card)) {
     announcePolite(`You played ${card}.`);
     playCard(card);
-  } else if (['Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Lucky Lily Pad'].includes(card)) {
+  } else if (['Mud Puddle', 'Tailwind Tile', 'Feather Cache', 'Lucky Lily Pad', 'Counter Current', 'Deep Whirlpool', 'Feather Snare', 'Card Spring', 'Slingshot Pad'].includes(card)) {
     announcePolite(`Placing ${card} on your current square, square ${me.square}.`);
     playCard(card, null, me.square);
   } else {
