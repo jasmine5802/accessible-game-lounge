@@ -226,6 +226,24 @@ function renderMiniGame() {
   if(mini.canAnswer)requestAnimationFrame(()=>elements.miniOptions.firstElementChild?.focus());
 }
 
+function handleMiniGameKey(event) {
+  if (!game?.pendingMiniGame?.canAnswer || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(event.key)) return false;
+  const buttons = [...elements.miniOptions.querySelectorAll('button:not(:disabled)')];
+  if (!buttons.length) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  const current = buttons.indexOf(document.activeElement);
+  if (event.key === 'Enter') {
+    (current >= 0 ? buttons[current] : buttons[0]).click();
+    return true;
+  }
+  const direction = ['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1;
+  const next = current < 0 ? 0 : (current + direction + buttons.length) % buttons.length;
+  buttons[next].focus();
+  announcePolite(`${buttons[next].textContent}. Answer ${next + 1} of ${buttons.length}. Press Enter to answer.`);
+  return true;
+}
+
 function cycleCard(direction) {
   const me = game?.players.find(player => player.id === playerId);
   const handCount = me?.hand.length || 0;
@@ -475,6 +493,7 @@ elements.board.addEventListener('keydown', event => {
 });
 document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+  if (handleMiniGameKey(event)) return;
   if (elements.miniOptions.contains(event.target)) return;
   if (accessibility?.handleKey(event)) return;
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
