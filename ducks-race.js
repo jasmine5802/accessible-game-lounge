@@ -20,6 +20,8 @@ const elements = {
 let room = null;
 let game = null;
 let boardIndex = 0;
+let miniAnswerIndex = 0;
+let miniGameKey = '';
 function resolvePlayerId(nextRoom = room, fallbackName = playerName, fallbackUsername = '') {
   const candidates = [];
   const storedPlayerId = sessionStorage.getItem('loungePlayerId') || '';
@@ -226,11 +228,15 @@ function renderCards() {
 function renderMiniGame() {
   const mini=game?.pendingMiniGame;
   elements.miniGame.hidden=!mini;
-  if(!mini)return elements.miniOptions.replaceChildren();
+  if(!mini){miniGameKey='';miniAnswerIndex=0;return elements.miniOptions.replaceChildren();}
+  const nextMiniGameKey=`${mini.name}|${mini.prompt}`;
+  if(nextMiniGameKey!==miniGameKey){miniGameKey=nextMiniGameKey;miniAnswerIndex=0;}
+  miniAnswerIndex=Math.min(miniAnswerIndex,Math.max(0,mini.options.length-1));
   elements.miniTitle.textContent=mini.name;
-  elements.miniPrompt.textContent=mini.canAnswer?`${mini.prompt} Choose your answer. ${mini.answeredCount} of ${mini.participantCount} players have answered.`:`${mini.prompt} Your answer is locked in. ${mini.answeredCount} of ${mini.participantCount} players have answered.`;
+  const answerChoices=mini.options.map((option,index)=>`Answer ${index+1}: ${option}`).join('. ');
+  elements.miniPrompt.textContent=mini.canAnswer?`${mini.prompt} Choices: ${answerChoices}. Use Up or Down Arrow to choose, then press Enter. ${mini.answeredCount} of ${mini.participantCount} players have answered.`:`${mini.prompt} Choices: ${answerChoices}. Your answer is locked in. ${mini.answeredCount} of ${mini.participantCount} players have answered.`;
   elements.miniOptions.replaceChildren(...mini.options.map((option,index)=>{const button=document.createElement('button');button.type='button';button.textContent=option;button.disabled=!mini.canAnswer;button.setAttribute('aria-label',`${option}. Answer ${index+1} of ${mini.options.length}${mini.canAnswer?'. Press Enter to answer.':'. Your answer is already locked in.'}`);button.addEventListener('click',()=>socket.emit('ducks-race-mini-answer',{choice:index},result=>{if(!result.ok)announcePolite(result.error)}));button.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();event.stopPropagation();const buttons=[...elements.miniOptions.querySelectorAll('button:not(:disabled)')],current=buttons.indexOf(button),direction=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;if(buttons.length)buttons[(current+direction+buttons.length)%buttons.length]?.focus()});return button}));
-  if(mini.canAnswer)requestAnimationFrame(()=>elements.miniOptions.firstElementChild?.focus());
+  if(mini.canAnswer)requestAnimationFrame(()=>elements.miniOptions.children[miniAnswerIndex]?.focus());
 }
 
 function handleMiniGameKey(event) {
@@ -239,15 +245,14 @@ function handleMiniGameKey(event) {
   if (!buttons.length) return false;
   event.preventDefault();
   event.stopPropagation();
-  const current = buttons.indexOf(document.activeElement);
   if (event.key === 'Enter') {
-    (current >= 0 ? buttons[current] : buttons[0]).click();
+    buttons[miniAnswerIndex].click();
     return true;
   }
   const direction = ['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1;
-  const next = current < 0 ? 0 : (current + direction + buttons.length) % buttons.length;
-  buttons[next].focus();
-  announcePolite(`${buttons[next].textContent}. Answer ${next + 1} of ${buttons.length}. Press Enter to answer.`);
+  miniAnswerIndex = (miniAnswerIndex + direction + buttons.length) % buttons.length;
+  buttons[miniAnswerIndex].focus();
+  announcePolite(`${buttons[miniAnswerIndex].textContent}. Answer ${miniAnswerIndex + 1} of ${buttons.length}. Press Enter to answer.`);
   return true;
 }
 
