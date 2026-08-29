@@ -10,13 +10,13 @@
 </head>
 <body>
   <a class="skip" href="#controls">Skip to game controls</a>
-  <header><h1>The Game of Life Lounge</h1><p><a href="/">Return to lounge</a> · S or Enter: spin · C: describe tile/card · H: player stats · Left/Right Arrow: choose fork</p></header>
+  <header><h1>The Game of Life Lounge</h1><p><a href="/">Return to lounge</a> · S or Enter: spin · C: describe tile/card · H: player stats · Up/Down Arrow: choose fork</p></header>
   <main tabindex="-1" role="application" aria-label="Game of Life game">
     <p id="connection" class="panel" role="status">Connecting to your game…</p>
     <section id="controls" class="panel" aria-labelledby="controls-title"><h2 id="controls-title">Life controls</h2><div class="toolbar"><button id="start" hidden>Start Life</button><button id="spin" disabled>Spin (S or Enter)</button><button id="describe">Describe Tile and Card (C)</button><button id="stats">Hear My Stats (H)</button></div><p id="turn-status">Waiting for the game.</p><div id="fork" hidden><p id="fork-prompt">Choose a path.</p><label for="route-choice">Route</label><select id="route-choice"></select><button id="choose">Take Selected Route (Enter)</button></div></section>
     <section class="panel" aria-labelledby="private-title"><h2 id="private-title">Your private assets</h2><p id="private-note">Only you receive these financial cards and investments from the server.</p><ul id="private-assets"><li>No private assets yet.</li></ul></section>
     <section class="panel" aria-labelledby="players-title"><h2 id="players-title">Players</h2><ul id="players" class="players"><li>Waiting for players.</li></ul></section>
-    <section aria-labelledby="board-title"><h2 id="board-title"><span id="theme">Life</span> branching path</h2><p id="board-help">The path is displayed in indexed order. Fork tiles announce their available destinations; use Left or Right Arrow and Enter when a choice is required.</p><ol id="board" class="board" aria-describedby="board-help"><li>Loading board…</li></ol></section>
+    <section aria-labelledby="board-title"><h2 id="board-title"><span id="theme">Life</span> branching path</h2><p id="board-help">The path is displayed in indexed order. Fork tiles announce their available destinations; use Up or Down Arrow and Enter when a choice is required.</p><ol id="board" class="board" aria-describedby="board-help"><li>Loading board…</li></ol></section>
     <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div><div id="instant-announcer" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
   </main>
   <script src="/socket.io/socket.io.js"></script><script src="lounge-accessibility.js"></script><script src="life-themes.js"></script><script src="life.js"></script><script src="game-help.js"></script>

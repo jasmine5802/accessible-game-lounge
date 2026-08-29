@@ -222,7 +222,7 @@ function renderMiniGame() {
   if(!mini)return elements.miniOptions.replaceChildren();
   elements.miniTitle.textContent=mini.name;
   elements.miniPrompt.textContent=mini.canAnswer?`${mini.prompt} Choose your answer. ${mini.answeredCount} of ${mini.participantCount} players have answered.`:`${mini.prompt} Your answer is locked in. ${mini.answeredCount} of ${mini.participantCount} players have answered.`;
-  elements.miniOptions.replaceChildren(...mini.options.map((option,index)=>{const button=document.createElement('button');button.type='button';button.textContent=option;button.disabled=!mini.canAnswer;button.setAttribute('aria-label',`${option}. Answer ${index+1} of ${mini.options.length}${mini.canAnswer?'. Press Enter to answer.':'. Your answer is already locked in.'}`);button.addEventListener('click',()=>socket.emit('ducks-race-mini-answer',{choice:index},result=>{if(!result.ok)announcePolite(result.error)}));button.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const buttons=[...elements.miniOptions.querySelectorAll('button:not(:disabled)')],current=buttons.indexOf(button),direction=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;if(buttons.length)buttons[(current+direction+buttons.length)%buttons.length]?.focus()});return button}));
+  elements.miniOptions.replaceChildren(...mini.options.map((option,index)=>{const button=document.createElement('button');button.type='button';button.textContent=option;button.disabled=!mini.canAnswer;button.setAttribute('aria-label',`${option}. Answer ${index+1} of ${mini.options.length}${mini.canAnswer?'. Press Enter to answer.':'. Your answer is already locked in.'}`);button.addEventListener('click',()=>socket.emit('ducks-race-mini-answer',{choice:index},result=>{if(!result.ok)announcePolite(result.error)}));button.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();event.stopPropagation();const buttons=[...elements.miniOptions.querySelectorAll('button:not(:disabled)')],current=buttons.indexOf(button),direction=['ArrowDown','ArrowRight'].includes(event.key)?1:-1;if(buttons.length)buttons[(current+direction+buttons.length)%buttons.length]?.focus()});return button}));
   if(mini.canAnswer)requestAnimationFrame(()=>elements.miniOptions.firstElementChild?.focus());
 }
 
@@ -475,6 +475,7 @@ elements.board.addEventListener('keydown', event => {
 });
 document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+  if (elements.miniOptions.contains(event.target)) return;
   if (accessibility?.handleKey(event)) return;
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
     event.preventDefault();

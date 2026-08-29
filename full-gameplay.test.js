@@ -71,7 +71,7 @@ async function act(socket,definition,game,hostId){
   const started=await call(socket,definition.start);if(!started.ok)throw Error(`${definition.name}: ${started.error}`);latest=started.game;
   let actions=0,lastActedSequence=-1;const deadline=Date.now()+120000;
   while(latest?.status==='playing'&&Date.now()<deadline){
-   if((latest.pendingMiniGame?.canAnswer||latest.turnPlayerId===hostId)&&latest.sequence!==lastActedSequence){lastActedSequence=latest.sequence;const result=await act(socket,definition,latest,hostId);actions++;if(!result?.ok)throw Error(`${definition.name} action ${actions}: ${result?.error}`)}
+   if((latest.pendingMiniGame?.canAnswer||latest.turnPlayerId===hostId)&&latest.sequence!==lastActedSequence){const attemptedSequence=latest.sequence;lastActedSequence=attemptedSequence;const result=await act(socket,definition,latest,hostId);actions++;if(!result?.ok){const stateAdvanced=latest.sequence!==attemptedSequence,transientRace=['Wait for your turn.','Finish the current mini-game before rolling.'].includes(result.error);if(!stateAdvanced&&!transientRace)throw Error(`${definition.name} action ${actions}: ${result?.error}`)}}
    await pause(2);
   }
   socket.off(definition.event,receive);
