@@ -306,8 +306,8 @@ function openTargetMenu(card) {
   selectedTargetIndex = 0;
   elements.targetMenu.hidden = false;
   renderTargets();
-  announcePolite('Select target. Arrow up or down to choose a duck.');
   elements.targets.firstElementChild?.focus();
+  announcePolite(`${opponents[0].name} selected. Player 1 of ${opponents.length}. Press Enter to play ${card} on this player, or use Up or Down Arrow to choose another player.`);
 }
 
 function closeTargetMenu() {
@@ -507,6 +507,14 @@ document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
   if (handleMiniGameKey(event)) return;
   if (elements.miniOptions.contains(event.target)) return;
+  if (targetingCard && (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Enter' || event.key === 'Escape')) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === 'Escape') elements.cancelTarget.click();
+    else if (event.key === 'Enter') activateSelectedTarget();
+    else cycleTarget(event.key === 'ArrowUp' ? -1 : 1);
+    return;
+  }
   if (accessibility?.handleKey(event)) return;
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
     event.preventDefault();

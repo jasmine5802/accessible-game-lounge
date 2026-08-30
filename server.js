@@ -1037,6 +1037,7 @@ io.on('connection', (socket) => {
     if (game.pendingMiniGame) return acknowledge(callback, { ok: false, error: 'Finish the current mini-game before rolling.' });
 
     const duck = game.ducks.get(playerId);
+    const completedLapsBeforeMove = Math.floor(duck.distance / BOARD_SIZE);
     const roll = Math.floor(Math.random() * 6) + 1;
     duck.distance += roll;
     duck.square = (duck.distance % BOARD_SIZE) + 1;
@@ -1135,6 +1136,16 @@ io.on('connection', (socket) => {
     let announcement = `${duck.name} rolled ${roll}. ${duck.name} landed on Space ${landingSquare}: ${landedSpace.name}! ${effectStory}${movementStory}`;
     let localAnnouncement = `You rolled a ${roll}. You landed on Space ${landingSquare}: ${landedSpace.name}! ${effectStory}${movementStory}`;
     const cue = { type: 'dice', square: duck.square, effect: landedSpace.effect, actorId: playerId, localAnnouncement };
+    const completedLapsAfterMove = Math.min(DUCK_RACE_LAPS, Math.floor(duck.distance / BOARD_SIZE));
+    if (completedLapsAfterMove > completedLapsBeforeMove && completedLapsAfterMove < DUCK_RACE_LAPS) {
+      const nextLap = completedLapsAfterMove + 1;
+      const lapStory = ` ${duck.name} completed lap ${completedLapsAfterMove} of ${DUCK_RACE_LAPS}. Lap ${nextLap} of ${DUCK_RACE_LAPS} begins now.`;
+      announcement += lapStory;
+      localAnnouncement += ` You completed lap ${completedLapsAfterMove} of ${DUCK_RACE_LAPS}. Lap ${nextLap} of ${DUCK_RACE_LAPS} begins now.`;
+      cue.localAnnouncement = localAnnouncement;
+      cue.lapComplete = true;
+      cue.activeLap = nextLap;
+    }
     if (needsQuack) cue.secondary = { type: 'quack', square: duck.square };
 
     if (duck.distance >= BOARD_SIZE * DUCK_RACE_LAPS) {

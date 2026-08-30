@@ -73,8 +73,9 @@
           </div>
           <p id="turn-status">Waiting for the race.</p>
           <div id="target-panel" hidden>
-            <label for="target">Choose opponent</label>
-            <select id="target"></select>
+            <h3 id="target-title" tabindex="-1">Choose opponent</h3>
+            <p id="target-help">Use Up or Down Arrow to choose another player, then press Enter.</p>
+            <ul id="target" class="hand" role="listbox" aria-labelledby="target-title" aria-describedby="target-help"></ul>
             <label id="target-square-label" for="target-square" hidden>Choose square for Mud Sling</label>
             <select id="target-square" hidden></select>
             <button id="confirm-target">Play on Selected Opponent</button>
