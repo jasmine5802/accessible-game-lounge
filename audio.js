@@ -43,6 +43,26 @@ function playSuccessChime() {
   });
 }
 
+function playWinnerFanfare() {
+  const context = audioContext();
+  if (!context) return;
+  const now = context.currentTime;
+  const notes = [392, 523.25, 659.25, 783.99, 1046.5];
+  notes.forEach((frequency, index) => {
+    const start = now + index * 0.13;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = index < 3 ? 'triangle' : 'sine';
+    oscillator.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.24, start + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(start); oscillator.stop(start + 0.57);
+  });
+  setTimeout(() => playToneSequence([1046.5, 1318.5, 1568], 'sine', 0.1, 0.65, 0.17), 650);
+}
+
 function playErrorBuzzer() {
   const context = audioContext();
   if (!context) return;
@@ -476,6 +496,7 @@ function playHorseNeigh(panValue = 0) {
 function playRaceChallenge() { playToneSequence([523, 659, 784], 'triangle', .09, .24, .1); }
 
 window.playSuccessChime = playSuccessChime;
+window.playWinnerFanfare = playWinnerFanfare;
 window.playErrorBuzzer = playErrorBuzzer;
 window.playDiceRoll = playDiceRoll;
 window.playCardSlide = playCardSlide;

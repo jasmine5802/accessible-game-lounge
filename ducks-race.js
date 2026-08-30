@@ -392,10 +392,11 @@ function panForSquare(square) {
 function playCue(cue) {
   if (!cue) return;
   const pan = panForSquare(cue.square);
-  if (cue.type === 'dice') { window.playDiceRoll?.(); setTimeout(() => cue.effect === 'feathers' ? window.playFeatherRustle?.(pan) : cue.effect === 'mud' ? window.playMudSquelch?.(pan) : window.playDuckSplash?.(pan), 320); }
+  if (cue.type === 'dice') { window.playDiceRoll?.(); setTimeout(() => { cue.effect === 'feathers' ? window.playFeatherRustle?.(pan) : cue.effect === 'mud' ? window.playMudSquelch?.(pan) : window.playDuckSplash?.(pan); window.playDuckQuack?.(pan); }, 320); }
   else if (cue.type === 'quack') window.playDuckQuack?.(pan);
   else if (cue.type === 'card' || cue.type === 'magic') { window.playCardSlide?.(pan); if (/Feather|Lily/.test(cue.card || '')) setTimeout(() => window.playFeatherRustle?.(pan), 180); if (/Mud|Splash/.test(cue.card || '')) setTimeout(() => cue.card === 'Big Splash' ? window.playDuckSplash?.(pan) : window.playMudSquelch?.(pan), 180); }
-  else if (cue.type === 'success' || cue.type === 'victory') { window.playSuccessChime?.(); window.playDuckQuack?.(pan); }
+  else if (cue.type === 'success') { window.playSuccessChime?.(); window.playDuckQuack?.(pan); }
+  else if (cue.type === 'victory') { window.playWinnerFanfare?.(); window.playDuckQuack?.(pan); setTimeout(() => window.playDuckQuack?.(-pan), 480); }
   else if (cue.type === 'error') window.playErrorBuzzer?.();
   if (cue.miniGame) setTimeout(() => window.playRaceChallenge?.(), 620);
   if (cue.secondary) setTimeout(() => playCue(cue.secondary), 260);

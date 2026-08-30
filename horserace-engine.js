@@ -30,7 +30,11 @@
     'Mud Sling':Object.freeze({name:'Mud Sling',move:0,target:true,placement:true,sabotage:true,description:'Place a one-use Deep Turf hazard on the selected opponent’s current square.'}),
     'Hay Bale':Object.freeze({name:'Hay Bale',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use bale on the selected opponent’s current square. Landing there sends that horse back 2 spaces.'}),
     'Speed Gate':Object.freeze({name:'Speed Gate',move:0,target:true,placement:true,description:'Drop a one-use speed gate on the selected opponent’s current square. Landing there moves that horse forward 3 spaces.'}),
-    'Trip Wire':Object.freeze({name:'Trip Wire',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use trip wire on the selected opponent’s current square. Landing there sends that horse back 4 spaces.'})
+    'Trip Wire':Object.freeze({name:'Trip Wire',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use trip wire on the selected opponent’s current square. Landing there sends that horse back 4 spaces.'}),
+    'Clover Boost':Object.freeze({name:'Clover Boost',move:0,target:false,selfPlacement:true,description:'Drop a one-use clover boost on your current space. The next horse to land there moves forward 4 spaces.'}),
+    'Loose Horseshoe':Object.freeze({name:'Loose Horseshoe',move:0,target:false,selfPlacement:true,description:'Drop a one-use loose horseshoe on your current space. The next horse to land there moves back 3 spaces.'}),
+    'Oat Snack':Object.freeze({name:'Oat Snack',move:0,target:false,selfPlacement:true,description:'Drop a one-use oat snack on your current space. The next horse to land there moves forward 2 spaces.'}),
+    'Soft Mud':Object.freeze({name:'Soft Mud',move:0,target:false,selfPlacement:true,description:'Drop one-use soft mud on your current space. The next horse to land there moves back 1 space.'})
   });
   const CARD_NAMES=Object.freeze(Object.keys(CARDS));const HAND_LIMIT=4;
   function createDeck(random=Math.random){const deck=CARD_NAMES.flatMap(name=>Array.from({length:6},()=>name));for(let i=deck.length-1;i>0;i-=1){const j=Math.floor(random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}return deck}

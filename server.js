@@ -294,16 +294,26 @@ function randomCard() {
 }
 
 const RACE_MINI_GAMES = Object.freeze([
-  { name: 'Pond Sound Match', prompt: 'Which sound belongs to a frog?', options: ['Ribbit', 'Neigh', 'Bell'], correctIndex: 0 },
-  { name: 'Lily Pad Memory', prompt: 'Remember the pattern: Left, Right, Left. Which answer matches?', options: ['Left, Right, Left', 'Right, Left, Right', 'Left, Left, Right'], correctIndex: 0 },
-  { name: 'Quick Count', prompt: 'Three ducks join two ducks. How many ducks are there?', options: ['Four', 'Five', 'Six'], correctIndex: 1 },
-  { name: 'Track Signal', prompt: 'The starter says ready, set... what comes next?', options: ['Stop', 'Go', 'Sleep'], correctIndex: 1 },
-  { name: 'Race Day Trivia', prompt: 'Which bird has webbed feet and is known for quacking?', options: ['Duck', 'Owl', 'Eagle'], correctIndex: 0 },
-  { name: 'Race Day Trivia', prompt: 'What is a young horse called?', options: ['Calf', 'Foal', 'Cub'], correctIndex: 1 },
-  { name: 'Race Day Trivia', prompt: 'How many legs does a horse have?', options: ['Two', 'Four', 'Six'], correctIndex: 1 },
-  { name: 'Race Day Trivia', prompt: 'Which body of water is smaller than a lake?', options: ['Ocean', 'Pond', 'Sea'], correctIndex: 1 },
-  { name: 'Race Day Trivia', prompt: 'What do riders usually place on a horse’s back?', options: ['Saddle', 'Anchor', 'Paddle'], correctIndex: 0 },
-  { name: 'Race Day Trivia', prompt: 'Which season comes after spring?', options: ['Summer', 'Winter', 'Autumn'], correctIndex: 0 }
+  { name: 'Trivia — Animals', prompt: 'Which bird has webbed feet and is known for quacking?', options: ['Duck', 'Owl', 'Eagle'], correctIndex: 0 },
+  { name: 'Trivia — Animals', prompt: 'What is a young horse called?', options: ['Calf', 'Foal', 'Cub'], correctIndex: 1 },
+  { name: 'Trivia — Science', prompt: 'Which planet is known as the Red Planet?', options: ['Venus', 'Mars', 'Neptune'], correctIndex: 1 },
+  { name: 'Trivia — Science', prompt: 'What gas do people breathe in to live?', options: ['Oxygen', 'Helium', 'Carbon dioxide'], correctIndex: 0 },
+  { name: 'Trivia — Geography', prompt: 'Which is the largest ocean on Earth?', options: ['Atlantic', 'Indian', 'Pacific'], correctIndex: 2 },
+  { name: 'Trivia — Geography', prompt: 'On which continent is Egypt?', options: ['Africa', 'Europe', 'Australia'], correctIndex: 0 },
+  { name: 'Trivia — History', prompt: 'Which ancient people built the pyramids at Giza?', options: ['Romans', 'Egyptians', 'Vikings'], correctIndex: 1 },
+  { name: 'Trivia — History', prompt: 'Who was the first president of the United States?', options: ['George Washington', 'Abraham Lincoln', 'Thomas Edison'], correctIndex: 0 },
+  { name: 'Trivia — Math', prompt: 'What is eight times seven?', options: ['Fifty-four', 'Fifty-six', 'Sixty-four'], correctIndex: 1 },
+  { name: 'Trivia — Math', prompt: 'How many sides does a hexagon have?', options: ['Five', 'Six', 'Eight'], correctIndex: 1 },
+  { name: 'Trivia — Language', prompt: 'Which word means the opposite of ancient?', options: ['Modern', 'Silent', 'Narrow'], correctIndex: 0 },
+  { name: 'Trivia — Books', prompt: 'Who wrote Charlotte’s Web?', options: ['E. B. White', 'Mark Twain', 'Dr. Seuss'], correctIndex: 0 },
+  { name: 'Trivia — Music', prompt: 'Which instrument has black and white keys?', options: ['Trumpet', 'Piano', 'Violin'], correctIndex: 1 },
+  { name: 'Trivia — Art', prompt: 'Mixing blue and yellow paint makes which color?', options: ['Green', 'Orange', 'Purple'], correctIndex: 0 },
+  { name: 'Trivia — Sports', prompt: 'How many points is a basketball free throw worth?', options: ['One', 'Two', 'Three'], correctIndex: 0 },
+  { name: 'Trivia — Food', prompt: 'Which fruit is dried to make a raisin?', options: ['Grape', 'Apple', 'Cherry'], correctIndex: 0 },
+  { name: 'Trivia — Technology', prompt: 'Which device is commonly used to move a pointer on a computer?', options: ['Mouse', 'Printer', 'Speaker'], correctIndex: 0 },
+  { name: 'Trivia — Nature', prompt: 'Which season comes after spring?', options: ['Summer', 'Winter', 'Autumn'], correctIndex: 0 },
+  { name: 'Trivia — Space', prompt: 'What is the name of Earth’s natural satellite?', options: ['The Moon', 'The Sun', 'Mars'], correctIndex: 0 },
+  { name: 'Trivia — Everyday Life', prompt: 'How many minutes are in one hour?', options: ['Thirty', 'Sixty', 'One hundred'], correctIndex: 1 }
 ]);
 function createRaceMiniGame(room, playerId, square) {
   const challenge = RACE_MINI_GAMES[Math.floor(Math.random() * RACE_MINI_GAMES.length)];
@@ -500,7 +510,7 @@ function beginDerby(room) {
 function emitDerbyState(room,cue=null){for(const[id,member]of room.players)if(member.socketId)io.to(member.socketId).emit('derby-state',{game:publicDerbyGame(room,id),cue})}
 function advanceDerbyTurn(game){game.sabotagePlays=0;game.cardPlayedThisTurn=false;game.turnIndex=(game.turnIndex+1)%game.turnOrder.length;return game.players.get(game.turnOrder[game.turnIndex])}
 function advanceDerbyLap(game,player){if(!player||player.completedLaps<game.activeLap||game.activeLap>=DerbyEngine.TOTAL_LAPS)return null;game.activeLap+=1;game.lapHazards=DerbyEngine.createLapHazards(game.activeLap);if(game.activeLap===6)for(const racer of game.players.values())racer.mudHazards.clear();return DerbyEngine.LAP_EVENTS[game.activeLap-1]}
-function resolveDerbyLaneCard(player){const index=player.laneCards.findIndex(card=>card.square===player.position+1);if(index<0)return'';const[placed]=player.laneCards.splice(index,1);if(placed.card==='Hay Bale'){player.position=Math.max(0,player.position-2);return`Hay Bale sent the horse back 2 spaces to space ${player.position+1}.`;}if(placed.card==='Trip Wire'){player.position=Math.max(0,player.position-4);return`Trip Wire sent the horse back 4 spaces to space ${player.position+1}.`;}if(placed.card==='Speed Gate'){const boosted=player.position+3;if(boosted>=25)player.completedLaps+=1;player.position=boosted%25;return`Speed Gate moved the horse forward 3 spaces to space ${player.position+1}.`;}return'';}
+function resolveDerbyLaneCard(player){const index=player.laneCards.findIndex(card=>card.square===player.position+1);if(index<0)return'';const[placed]=player.laneCards.splice(index,1);const moveBy=steps=>{const moved=player.position+steps;if(moved>=25)player.completedLaps+=Math.floor(moved/25);player.position=((moved%25)+25)%25};if(placed.card==='Hay Bale'){player.position=Math.max(0,player.position-2);return`Hay Bale sent the horse back 2 spaces to space ${player.position+1}.`;}if(placed.card==='Trip Wire'){player.position=Math.max(0,player.position-4);return`Trip Wire sent the horse back 4 spaces to space ${player.position+1}.`;}if(placed.card==='Speed Gate'){moveBy(3);return`Speed Gate moved the horse forward 3 spaces to space ${player.position+1}.`;}if(placed.card==='Clover Boost'){moveBy(4);return`Clover Boost moved the horse forward 4 spaces to space ${player.position+1}.`;}if(placed.card==='Loose Horseshoe'){player.position=Math.max(0,player.position-3);return`Loose Horseshoe sent the horse back 3 spaces to space ${player.position+1}.`;}if(placed.card==='Oat Snack'){moveBy(2);return`Oat Snack moved the horse forward 2 spaces to space ${player.position+1}.`;}if(placed.card==='Soft Mud'){player.position=Math.max(0,player.position-1);return`Soft Mud sent the horse back 1 space to space ${player.position+1}.`;}return'';}
 
 function publicDominoGame(room,viewerId){if(!room.dominoes)return null;const game=room.dominoes,viewer=game.players.get(viewerId);return{setName:game.setName,mode:game.mode,status:game.status,turnPlayerId:game.turnOrder[game.turnIndex]||null,winnerId:game.winnerId,announcement:game.announcement,sequence:game.sequence,board:game.board.map(tile=>({...tile})),boneyardCount:game.mode==='Block Game'?0:game.boneyard.length,myHand:viewer?viewer.hand.map(tile=>({...tile})):[],players:game.turnOrder.filter(id=>game.players.has(id)).map(id=>{const player=game.players.get(id);return{id,name:player.name,score:player.score,tileCount:player.hand.length,connected:Boolean(room.players.get(id)?.socketId)}})};}
 function beginDominoes(room){const turnOrder=[...room.players.keys()],deck=DominoesEngine.shuffle(DominoesEngine.createDeck(room.dominoSet)),handSize=turnOrder.length===2?7:5,players=new Map(turnOrder.map(id=>[id,{name:room.players.get(id).name,score:0,hand:[]} ]));for(let round=0;round<handSize;round+=1)for(const id of turnOrder)players.get(id).hand.push(deck.pop());room.dominoes={setName:room.dominoSet,mode:room.dominoMode,status:'playing',turnOrder,turnIndex:0,players,board:[],boneyard:room.dominoMode==='Block Game'?[]:deck,passCount:0,winnerId:null,sequence:1,announcement:`${room.dominoSet} ${room.dominoMode} has started. ${players.get(turnOrder[0]).name} goes first.`}}
@@ -887,7 +897,14 @@ io.on('connection', (socket) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.derby,playerId=socket.data.playerId,validationError=turnError(game,playerId,game?.turnOrder[game.turnIndex],'Horse Race');if(validationError)return acknowledge(callback,{ok:false,error:validationError});const player=game.players.get(playerId),cardIndex=Number(data.cardIndex);if(!Number.isInteger(cardIndex)||cardIndex<0||cardIndex>=player.hand.length)return acknowledge(callback,{ok:false,error:'Choose a card from your private hand.'});const cardName=player.hand[cardIndex],card=DerbyEngine.CARDS[cardName];if(game.sabotagePlays>0&&!card.sabotage)return acknowledge(callback,{ok:false,error:'The optional second play must be another Sabotage card. Otherwise, end the turn.'});let story='',cue={type:'move',terrain:'Normal Turf'};
     if(game.cardPlayedThisTurn)return acknowledge(callback,{ok:false,error:'You already played one card this turn. Roll the dice now.'});
     try{
-      if(card.target){
+      if(card.selfPlacement){
+        const square=player.position+1;
+        if(player.laneCards.some(placed=>placed.square===square))return acknowledge(callback,{ok:false,error:`Space ${square} already holds a placed card in your lane.`});
+        player.laneCards.push({card:cardName,square,ownerId:playerId});
+        story=`${player.name} dropped ${cardName} on their current space, space ${square}. The next horse to land there will activate it.`;
+        cue={type:'card',terrain:'Normal Turf'};
+      }
+      else if(card.target){
         const targetId=String(data.targetId||''),target=game.players.get(targetId);
         if(!target||targetId===playerId)return acknowledge(callback,{ok:false,error:'Choose another active horse as the target.'});
         if(cardName==='Lasso'){target.position=Math.max(0,target.position-3);story=`${player.name} played Lasso on ${target.name}, pulling that horse back to space ${target.position+1}.`;cue={type:'move',terrain:'Normal Turf'};}
