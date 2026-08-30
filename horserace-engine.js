@@ -34,7 +34,14 @@
     'Clover Boost':Object.freeze({name:'Clover Boost',move:0,target:false,selfPlacement:true,description:'Drop a one-use clover boost on your current space. The next horse to land there moves forward 4 spaces.'}),
     'Loose Horseshoe':Object.freeze({name:'Loose Horseshoe',move:0,target:false,selfPlacement:true,description:'Drop a one-use loose horseshoe on your current space. The next horse to land there moves back 3 spaces.'}),
     'Oat Snack':Object.freeze({name:'Oat Snack',move:0,target:false,selfPlacement:true,description:'Drop a one-use oat snack on your current space. The next horse to land there moves forward 2 spaces.'}),
-    'Soft Mud':Object.freeze({name:'Soft Mud',move:0,target:false,selfPlacement:true,description:'Drop one-use soft mud on your current space. The next horse to land there moves back 1 space.'})
+    'Soft Mud':Object.freeze({name:'Soft Mud',move:0,target:false,selfPlacement:true,description:'Drop one-use soft mud on your current space. The next horse to land there moves back 1 space.'}),
+    'Jump Rail':Object.freeze({name:'Jump Rail',move:0,target:false,selfPlacement:true,description:'Drop a one-use jump rail on your current space. The next horse to land there moves forward 5 spaces.'}),
+    'Rutted Track':Object.freeze({name:'Rutted Track',move:0,target:false,selfPlacement:true,description:'Drop a one-use rut on your current space. The next horse to land there moves back 2 spaces.'}),
+    'Apple Basket':Object.freeze({name:'Apple Basket',move:0,target:false,selfPlacement:true,description:'Drop a one-use apple basket on your current space. The next horse to land there moves forward 3 spaces.'}),
+    'Dust Cloud':Object.freeze({name:'Dust Cloud',move:0,target:true,sabotage:true,description:'Target another horse and push it back 5 spaces.'}),
+    'Card Swipe':Object.freeze({name:'Card Swipe',move:0,target:true,sabotage:true,description:'Target another player and take one Action Card when available.'}),
+    'Gate Lock':Object.freeze({name:'Gate Lock',move:0,target:true,placement:true,sabotage:true,description:'Drop a one-use gate lock on another horse’s current space. Landing there sends that horse back 6 spaces.'}),
+    'Golden Rail':Object.freeze({name:'Golden Rail',move:0,target:true,placement:true,description:'Drop a one-use golden rail on another horse’s current space. Landing there moves that horse forward 5 spaces.'})
   });
   const CARD_NAMES=Object.freeze(Object.keys(CARDS));const HAND_LIMIT=4;
   function createDeck(random=Math.random){const deck=CARD_NAMES.flatMap(name=>Array.from({length:6},()=>name));for(let i=deck.length-1;i>0;i-=1){const j=Math.floor(random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}return deck}

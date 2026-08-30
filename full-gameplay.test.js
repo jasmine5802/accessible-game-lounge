@@ -62,6 +62,7 @@ async function act(socket,definition,game,hostId){
  await startServer(0,'127.0.0.1');const socket=hostSocket=io(`http://127.0.0.1:${server.address().port}`,{transports:['websocket']});await new Promise(resolve=>socket.once('connect',resolve));
  const registered=await call(socket,'register',{username:`FullSuite${Date.now()}`.slice(0,24),password:'FullGame9!'});if(!registered.ok)throw Error(registered.error);
  for(const definition of definitions.filter(item=>!process.env.FULL_GAME_FILTER||item.name===process.env.FULL_GAME_FILTER)){
+  randomState=definition.name.split('').reduce((seed,character)=>((Math.imul(seed,31)+character.charCodeAt(0))>>>0),1);
   console.log(`${definition.name}: starting full-game test.`);
   const created=await call(socket,'create-game',{category:definition.category});if(!created.ok)throw Error(`${definition.name}: ${created.error}`);const hostId=created.room.hostId;
   if(definition.options){const configured=await call(socket,'set-game-options',definition.options);if(!configured.ok)throw Error(`${definition.name}: ${configured.error}`)}
