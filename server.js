@@ -393,7 +393,7 @@ function publicMonopolyGame(room) {
     turnPlayerId: game.turnOrder[game.turnIndex] || null,
     owners: { ...game.owners }, houses: { ...game.houses }, pendingPurchase: game.pendingPurchase ? { ...game.pendingPurchase } : null,
     pendingTrade: game.pendingTrade ? { ...game.pendingTrade } : null,
-    announcement: game.announcement, sequence: game.sequence,
+    announcement: game.announcement, sequence: game.sequence, history: [...(game.history || [])],
     players: game.turnOrder.filter(id => game.players.has(id)).map(id => {
       const player = game.players.get(id);
       return { id, name: player.name, token: player.token, balance: player.balance, position: player.position, inJail: player.inJail, jailTurns: player.jailTurns || 0, connected: Boolean(room.players.get(id)?.socketId) };
@@ -462,19 +462,20 @@ function publicLifeGame(room, viewerId) {
   return {
     theme: game.theme, board: game.board, status: game.status, turnPlayerId: game.turnOrder[game.turnIndex] || null, winnerId: game.winnerId || null,
     announcement: game.announcement, sequence: game.sequence,
-    pendingChoice: game.pendingChoice ? { playerId: game.pendingChoice.playerId, options: game.pendingChoice.options.map(index => game.board[index]) } : null,
+    pendingChoice: game.pendingChoice ? { playerId: game.pendingChoice.playerId, remainingSteps: game.pendingChoice.remainingSteps, options: game.pendingChoice.options.map(index => game.board[index]) } : null,
     myPrivateAssets: viewer ? viewer.privateAssets.map(asset => ({ ...asset })) : [],
     players: game.turnOrder.filter(id => game.players.has(id)).map(id => {
       const player = game.players.get(id);
-      return { id, name: player.name, position: player.position, career: player.career, salary: player.salary, pegs: player.pegs, cash: player.cash, house: player.house, assetCount: player.properties.length, finished: player.finished, connected: Boolean(room.players.get(id)?.socketId) };
+      return { id, name: player.name, position: player.position, career: player.career, salary: player.salary, pegs: player.pegs, cash: player.cash, house: player.house, houseValue: player.houseValue, assetCount: player.properties.length, finished: player.finished, connected: Boolean(room.players.get(id)?.socketId) };
     })
   };
 }
 
 function beginLife(room) {
   const turnOrder = [...room.players.keys()]; const definition = LifeThemes.definitions[room.lifeTheme];
-  const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, position: 0, career: 'Undecided', careerLevel: -1, salary: 0, pegs: 1, cash: definition.salary, house: null, properties: [], privateAssets: [], finished: false }]));
-  room.life = { theme: room.lifeTheme, board: LifeThemes.createBoard(room.lifeTheme), status: 'playing', turnOrder, turnIndex: 0, players, pendingChoice: null, winnerId: null, sequence: 1, announcement: `${room.lifeTheme} Life has started. ${players.get(turnOrder[0]).name} goes first. Press S or Enter to spin.` };
+  const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, position: 0, career: 'Undecided', careerLevel: -1, salary: 0, pegs: 1, cash: definition.salary, house: null, houseValue: 0, properties: [], privateAssets: [], finished: false }]));
+  const announcement = `${room.lifeTheme} Life has started. ${players.get(turnOrder[0]).name} goes first. Press S or Enter to spin.`;
+  room.life = { theme: room.lifeTheme, board: LifeThemes.createBoard(room.lifeTheme), status: 'playing', turnOrder, turnIndex: 0, players, pendingChoice: null, winnerId: null, sequence: 1, announcement, history: [announcement] };
 }
 
 function emitLifeState(room, cue = null) {
@@ -484,7 +485,7 @@ function emitLifeState(room, cue = null) {
 function advanceLifeTurn(game) {
   const active = game.turnOrder.filter(id => game.players.has(id) && !game.players.get(id).finished);
   if (!active.length) {
-    const standings = game.turnOrder.filter(id => game.players.has(id)).map(id => { const player=game.players.get(id),netWorth=player.cash+player.privateAssets.reduce((sum,asset)=>sum+asset.value,0);return{id,player,netWorth} }).sort((a,b)=>b.netWorth-a.netWorth);
+    const standings = game.turnOrder.filter(id => game.players.has(id)).map(id => { const player=game.players.get(id),netWorth=player.cash+player.houseValue+player.privateAssets.reduce((sum,asset)=>sum+asset.value,0);return{id,player,netWorth} }).sort((a,b)=>b.netWorth-a.netWorth);
     game.status = 'finished'; game.winnerId = standings[0]?.id || null;
     if (standings[0]) game.announcement += ` ${standings[0].player.name} wins The Game of Life with a final net worth of ${LifeThemes.formatMoney(game.theme, standings[0].netWorth)}.`;
     return null;
@@ -499,13 +500,33 @@ function applyLifeLanding(game, playerId) {
   let detail = space.description; let secondary = space.type;
   if (space.type === 'payday') { player.cash += player.salary; detail = `Collected a salary of ${LifeThemes.formatMoney(game.theme, player.salary)}.`; }
   else if (space.type === 'career') { player.careerLevel = Math.min(player.careerLevel + 1, theme.careers.length - 1); player.career = theme.careers[player.careerLevel]; player.salary = theme.salary + player.careerLevel * Math.round(theme.salary * .2); detail = `Career changed to ${player.career}, with a salary of ${LifeThemes.formatMoney(game.theme, player.salary)}.`; }
-  else if (space.type === 'passenger') { player.pegs += 1; detail = `Added a passenger peg. The car now carries ${player.pegs} pegs.`; }
-  else if (space.type === 'house') { player.house = space.name; player.properties.push(space.name); detail = `Added ${space.name} to the property portfolio.`; }
+  else if (space.type === 'passenger') { player.pegs += 1; detail = player.pegs === 2 ? `Got married and added a spouse peg. The car now carries ${player.pegs} pegs.` : `Welcomed a baby and added a family peg. The car now carries ${player.pegs} pegs.`; }
+  else if (space.type === 'house') { const propertyNumber=Math.max(0,theme.properties.indexOf(space.name));const value=Math.round(theme.salary*(.6+propertyNumber*.15));player.cash-=value;player.house=space.name;player.houseValue+=value;player.properties.push(space.name);detail=`Bought ${space.name} for ${LifeThemes.formatMoney(game.theme,value)}. Property value is included in final net worth.`; }
   else if (space.type === 'investment') { const name = theme.cards[Math.floor(Math.random() * theme.cards.length)]; const asset = { name, value: Math.round(theme.salary * (.2 + Math.random() * .4)), description: `${name} is a private investment known only to its owner.` }; player.privateAssets.push(asset); detail = 'Received a private financial card. Its identity and value were sent only to the active player.'; }
-  else if (space.type === 'event') { const amount = Math.round(theme.salary * (.08 + Math.random() * .12)) * (Math.random() < .35 ? -1 : 1); player.cash = Math.max(0, player.cash + amount); detail = amount >= 0 ? `The event paid ${LifeThemes.formatMoney(game.theme, amount)}.` : `The event cost ${LifeThemes.formatMoney(game.theme, Math.abs(amount))}.`; }
+  else if (space.type === 'event') { const events=[['Won a talent contest',.2],['Received a tax refund',.15],['Sold a family keepsake',.1],['Hosted a neighborhood celebration',-.08],['Paid for car repairs',-.12],['Took a family vacation',-.15],['Received a community award',.12],['Made a charitable donation',-.1],['Won a radio contest',.18],['Paid medical expenses',-.14],['Earned an anniversary bonus',.16],['Updated the family car',-.18]];const[name,multiplier]=events[Math.floor(Math.random()*events.length)];const amount=Math.round(theme.salary*multiplier);player.cash+=amount;detail=`Life event card: ${name}. ${amount>=0?'Collected':'Paid'} ${LifeThemes.formatMoney(game.theme,Math.abs(amount))}.`; }
   else if (space.type === 'finish') { player.finished = true; detail = 'Completed the life journey. Private investment values remain visible only to their owner.'; }
   game.announcement = `${player.name} landed on ${space.name}. ${detail}`;
   return secondary;
+}
+
+function moveLifePlayer(game, playerId, steps) {
+  const player = game.players.get(playerId); const passed = []; let remaining = steps;
+  while (remaining > 0) {
+    const current = game.board[player.position];
+    if (current.next.length > 1) {
+      game.pendingChoice = { playerId, options: [...current.next], remainingSteps: remaining };
+      return { pending: true, passed };
+    }
+    if (!current.next.length) break;
+    player.position = current.next[0]; remaining -= 1;
+    const landed = game.board[player.position]; passed.push(landed.name);
+    if (landed.type === 'payday' && remaining > 0) {
+      player.cash += player.salary;
+      passed[passed.length - 1] += `, collected ${LifeThemes.formatMoney(game.theme, player.salary)}`;
+    }
+    if (['career','house','passenger','finish'].includes(landed.type)) remaining = 0;
+  }
+  return { pending: false, passed };
 }
 
 function publicDerbyGame(room, viewerId) {
@@ -943,17 +964,17 @@ io.on('connection', (socket) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.life;const playerId=socket.data.playerId;
     const validationError=turnError(game,playerId,game?.turnOrder[game.turnIndex],'The Game of Life');if(validationError)return acknowledge(callback,{ok:false,error:validationError});
     if(game.pendingChoice)return acknowledge(callback,{ok:false,error:'Choose a route with Left or Right Arrow, then press Enter.'});
-    const player=game.players.get(playerId),result=Math.floor(Math.random()*10)+1;let steps=result;
-    while(steps>0){const space=game.board[player.position];if(space.next.length>1){game.pendingChoice={playerId,options:[...space.next]};break}if(!space.next.length)break;player.position=space.next[0];steps-=1;if(game.board[player.position].type==='fork'){game.pendingChoice={playerId,options:[...game.board[player.position].next]};break}}
-    let secondary=null;if(game.pendingChoice){game.announcement=`${player.name} spun ${result} and reached ${game.board[player.position].name}. Choose a route with Left or Right Arrow, then press Enter.`;}else{secondary=applyLifeLanding(game,playerId);if(game.status==='playing'){const next=advanceLifeTurn(game);if(next)game.announcement+=` It is ${next.name}'s turn.`}}
-    game.sequence+=1;emitLifeState(room,{type:'spinner',result,secondary});broadcastGames();acknowledge(callback,{ok:true,result});
+    const player=game.players.get(playerId),result=Math.floor(Math.random()*10)+1;
+    const movement=moveLifePlayer(game,playerId,result);
+    let secondary=null;if(movement.pending){game.announcement=`${player.name} spun ${result}. Passed ${movement.passed.length?movement.passed.join('; '):'no spaces yet'} and reached the route choice at ${game.board[player.position].name}. ${game.pendingChoice.remainingSteps} movement space${game.pendingChoice.remainingSteps===1?'':'s'} remain. Choose a route with Up or Down Arrow, then press Enter.`;}else{secondary=applyLifeLanding(game,playerId);if(movement.passed.length>1)game.announcement+=` Travel path: ${movement.passed.join('; ')}.`;if(game.status==='playing'){const next=advanceLifeTurn(game);if(next)game.announcement+=` It is ${next.name}'s turn.`}}
+    game.history.push(game.announcement);if(game.history.length>40)game.history.shift();game.sequence+=1;emitLifeState(room,{type:'spinner',result,secondary});broadcastGames();acknowledge(callback,{ok:true,result});
   });
 
   socket.on('life-choose', (data={}, callback) => {
     const room=roomForPlayer(socket,callback);if(!room)return;const game=room.life;const pending=game?.pendingChoice;
     if(!pending||pending.playerId!==socket.data.playerId)return acknowledge(callback,{ok:false,error:'No route choice is waiting for you.'});
     const choice=Number(data.choice);if(!Number.isInteger(choice)||choice<0||choice>=pending.options.length)return acknowledge(callback,{ok:false,error:'Choose one of the available routes.'});
-    const player=game.players.get(socket.data.playerId);player.position=pending.options[choice];game.pendingChoice=null;const secondary=applyLifeLanding(game,socket.data.playerId);const next=advanceLifeTurn(game);if(next&&game.status==='playing')game.announcement+=` It is ${next.name}'s turn.`;game.sequence+=1;emitLifeState(room,{type:'route',secondary});broadcastGames();acknowledge(callback,{ok:true});
+    const player=game.players.get(socket.data.playerId);player.position=pending.options[choice];const chosen=game.board[player.position];const remaining=Math.max(0,(pending.remainingSteps||1)-1);game.pendingChoice=null;const movement=moveLifePlayer(game,socket.data.playerId,remaining);let secondary=null;if(movement.pending){game.announcement=`${player.name} chose ${chosen.name}. Passed ${movement.passed.length?movement.passed.join('; '):'no additional spaces'} and reached ${game.board[player.position].name}. ${game.pendingChoice.remainingSteps} movement spaces remain. Choose the next route.`;}else{secondary=applyLifeLanding(game,socket.data.playerId);game.announcement=`${player.name} chose ${chosen.name}. ${game.announcement}${movement.passed.length?` Travel path: ${movement.passed.join('; ')}.`:''}`;const next=advanceLifeTurn(game);if(next&&game.status==='playing')game.announcement+=` It is ${next.name}'s turn.`}game.history.push(game.announcement);if(game.history.length>40)game.history.shift();game.sequence+=1;emitLifeState(room,{type:'route',secondary});broadcastGames();acknowledge(callback,{ok:true});
   });
 
   socket.on('uno-play',(data={},callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;const game=room.uno;const validationError=turnError(game,socket.data.playerId,game?.players[game.turnIndex]?.id,'UNO');if(validationError)return acknowledge(callback,{ok:false,error:validationError});try{const result=UnoRules.play(game,socket.data.playerId,data.indexes,{color:data.color,centerIndex:data.centerIndex});emitUnoState(room,result.cue);broadcastGames();acknowledge(callback,{ok:true});}catch(error){acknowledge(callback,{ok:false,error:error.message});}});
