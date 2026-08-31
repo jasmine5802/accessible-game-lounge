@@ -4,7 +4,7 @@ const socket = io();
 const gameId = new URLSearchParams(location.search).get('game') || sessionStorage.getItem('loungeGameId');
 const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
-const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','offer-panel','offer-title','offer-details','buy','decline','free-parking-status','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
+const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','house-property','buy-house','sell-house','house-status','offer-panel','offer-title','offer-details','buy','decline','free-parking-status','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null; let lastOfferKey = null; let gameplayStarted = false;
 const accessibility = window.LoungeAccessibility?.createGameStateController({
   mode: 'GAME',
@@ -17,7 +17,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Help / Instructions', type: 'help' }
   ],
   hotkeys: { scores: ['s'], players: [], help: ['?'] },
-  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P reports owned properties and color-set progress. H reports room state. Y and N answer offers. Press S for all player balances.'
+  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P reports owned properties and color-set progress. B buys a house and X sells a house on the selected property. H reports room state. Y and N answer offers. Press S for all player balances.'
 });
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
@@ -28,12 +28,13 @@ function money(amount) { return MonopolyBoards.formatMoney(game?.edition || 'Cla
 function ownerName(index) { const id = game?.owners[index]; return id ? game.players.find(player => player.id === id)?.name || 'Unknown player' : 'Unowned'; }
 function spaceDetails(space) {
   const ownerId = game?.owners[space.index];
-  const rent = ownerId ? MonopolyBoards.rentFor(game.board, game.owners, space, ownerId) : (space.rent || 0);
+  const rent = ownerId ? MonopolyBoards.rentFor(game.board, game.owners, space, ownerId, game.houses) : (space.rent || 0);
   const cost = space.price ? money(space.price) : 'Not purchasable';
   const group = space.group ? space.group.replace('-', ' ') : 'No color group';
   const occupants = game?.players.filter(player => player.position === space.index).map(player => `${player.name}, ${playerToken(player)?.name || 'token not selected'}`) || [];
   const jackpot = space.type === 'Free Parking' && game?.freeParkingJackpot ? ` Current jackpot: ${money(game.freeParkingPot || 0)}.` : '';
-  return `Type: ${space.type}. ${space.description}${jackpot} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
+  const houses = game?.houses?.[space.index] || 0;
+  return `Type: ${space.type}. ${space.description}${jackpot} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Houses: ${houses}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
 }
 function spaceLabel(space) { return `${space.name}. ${spaceDetails(space)}`; }
 function groupLabel(group) { return group.replace('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
@@ -110,11 +111,19 @@ function render() {
   elements.tokenPicker.hidden = game.status !== 'waiting';
   const winner = game.players.find(player => player.id === game.winnerId);
   elements.turnStatus.textContent = game.status === 'finished' ? (winner ? `${winner.name} won Monopoly.` : 'Monopoly has ended.') : game.status === 'waiting' ? 'Waiting for the room creator to start.' : myTurn ? (purchase ? 'Property purchase decision required. Press Y to buy or N to decline.' : incomingTrade ? 'Trade decision required. Press Y to accept or N to decline.' : 'It is your turn. Press Enter to roll.') : `Waiting for ${game.players.find(player => player.id === game.turnPlayerId)?.name}.`;
-  elements.players.replaceChildren(...game.players.map(player => { const li=document.createElement('li'),token=playerToken(player);const icon=document.createElement('span');icon.className='token-icon';icon.setAttribute('aria-hidden','true');icon.textContent=token?.icon||'○';const details=document.createElement('span');details.textContent=`${player.name}, ${token?.name||'token not selected'}: ${money(player.balance)}, space ${player.position + 1}${player.id===game.turnPlayerId?' (current turn)':''}`;li.setAttribute('aria-label',details.textContent);li.append(icon,details);return li; }));
+  elements.players.replaceChildren(...game.players.map(player => { const li=document.createElement('li'),token=playerToken(player);const icon=document.createElement('span');icon.className='token-icon';icon.setAttribute('aria-hidden','true');icon.textContent=token?.icon||'○';const details=document.createElement('span');details.textContent=`${player.name}, ${token?.name||'token not selected'}: ${money(player.balance)}, space ${player.position + 1}${player.inJail?`, in Jail${player.jailTurns?`, ${player.jailTurns} failed attempt${player.jailTurns===1?'':'s'}`:''}`:''}${player.id===game.turnPlayerId?' (current turn)':''}`;li.setAttribute('aria-label',details.textContent);li.append(icon,details);return li; }));
   elements.tradePlayer.replaceChildren(...game.players.filter(player=>player.id!==playerId).map(player=>new Option(player.name,player.id)));
   elements.tradeProperty.replaceChildren(...game.board.filter(space=>game.owners[space.index]===playerId).map(space=>new Option(space.name,String(space.index))));
   elements.trade.disabled = game.status !== 'playing' || elements.tradeProperty.options.length === 0 || Boolean(game.pendingTrade);
   const ownership = myOwnershipProgress();
+  const buildable = ownership.filter(group => group.complete && !['transit','utility'].includes(group.group)).flatMap(group => game.board.filter(space => space.type === 'Property' && space.group === group.group));
+  const selectedHouseProperty = elements.houseProperty.value;
+  elements.houseProperty.replaceChildren(...buildable.map(space => new Option(`${space.name}, ${game.houses?.[space.index] || 0} houses`, String(space.index))));
+  if (buildable.some(space => String(space.index) === selectedHouseProperty)) elements.houseProperty.value = selectedHouseProperty;
+  const houseSpace = game.board[Number(elements.houseProperty.value)], houseCount = houseSpace ? (game.houses?.[houseSpace.index] || 0) : 0;
+  elements.buyHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount >= 4 || pending;
+  elements.sellHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount < 1 || pending;
+  elements.houseStatus.textContent = houseSpace ? `${houseSpace.name} has ${houseCount} house${houseCount === 1 ? '' : 's'}. Each house costs ${money(MonopolyBoards.buildingCost(game.board, houseSpace))}; selling returns half.` : 'Complete a color group to buy houses.';
   elements.ownedSummary.textContent = ownership.length ? `You own ${ownership.flatMap(group => group.properties).length} properties in ${ownership.length} color groups.` : 'You do not own any properties yet.';
   elements.ownedProperties.replaceChildren(...ownership.map(group => {
     const item=document.createElement('li'),heading=document.createElement('strong'),properties=document.createElement('span'),progress=document.createElement('span');
@@ -174,6 +183,9 @@ function answerOffer(accept) { const event=game?.pendingTrade?.toId===playerId?'
 elements.buy.addEventListener('click', () => answerOffer(true)); elements.decline.addEventListener('click', () => answerOffer(false));
 elements.trade.addEventListener('click',()=>{elements.tradeForm.hidden=!elements.tradeForm.hidden;if(!elements.tradeForm.hidden)elements.tradePlayer.focus();});
 elements.tradeForm.addEventListener('submit',event=>{event.preventDefault();socket.emit('monopoly-trade-offer',{toId:elements.tradePlayer.value,propertyIndex:Number(elements.tradeProperty.value),amount:Number(elements.tradeAmount.value)},result=>{if(result.ok)elements.tradeForm.hidden=true;else announcePolite(result.error);});});
+function changeHouse(action) { const spaceIndex=Number(elements.houseProperty.value); socket.emit('monopoly-house',{spaceIndex,action},result=>{if(!result.ok)announcePolite(result.error);}); }
+elements.buyHouse.addEventListener('click',()=>changeHouse('buy')); elements.sellHouse.addEventListener('click',()=>changeHouse('sell'));
+elements.houseProperty.addEventListener('change',render);
 elements.balance.addEventListener('click', () => announcePolite(`Your ${game?.edition === 'Electronic Banking' ? 'banking balance' : 'balance'} is ${money(me()?.balance ?? 0)}.`));
 elements.properties.addEventListener('click', () => announcePolite(ownershipReport()));
 elements.roomState.addEventListener('click',()=>announcePolite(`Current room state. ${game?.freeParkingJackpot ? `Free Parking jackpot is ${money(game.freeParkingPot || 0)}. ` : 'Free Parking jackpot is off. '}${game?.players.map(player=>`${player.name} is using ${playerToken(player)?.name||'no token'}, has ${money(player.balance)}, and is on space ${player.position+1}${player.id===game.turnPlayerId?', with the current turn':''}`).join('. ')}.`));
@@ -189,6 +201,8 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !elements.roll.disabled && !['BUTTON','A'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.roll.click(); }
   if (key==='f') { event.preventDefault(); elements.balance.click(); } if (key==='p') { event.preventDefault(); elements.properties.click(); }
   if (key==='h') { event.preventDefault(); elements.roomState.click(); }
+  if (key==='b' && !elements.buyHouse.disabled && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.buyHouse.click(); }
+  if (key==='x' && !elements.sellHouse.disabled && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.sellHouse.click(); }
   if (key==='y' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(true); } if (key==='n' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(false); }
 });
 socket.on('connect', connectToGame); socket.on('lobby-updated', syncWaitingRoom); socket.on('table-player-joined', data => {

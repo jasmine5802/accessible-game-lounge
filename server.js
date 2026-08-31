@@ -10,6 +10,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const MonopolyBoards = require('./monopoly-boards');
 const MonopolyJackpot = require('./monopoly-jackpot');
+const MonopolyCards = require('./monopoly-cards');
 const UnoRules = require('./uno-rules');
 const LifeThemes = require('./life-themes');
 const DerbyEngine = require('./horserace-engine');
@@ -390,12 +391,12 @@ function publicMonopolyGame(room) {
     edition: game.edition, currency: MonopolyBoards.currencies[game.edition], board: game.board, status: game.status, winnerId: game.winnerId || null,
     freeParkingJackpot: game.freeParkingJackpot, freeParkingPot: game.freeParkingPot,
     turnPlayerId: game.turnOrder[game.turnIndex] || null,
-    owners: { ...game.owners }, pendingPurchase: game.pendingPurchase ? { ...game.pendingPurchase } : null,
+    owners: { ...game.owners }, houses: { ...game.houses }, pendingPurchase: game.pendingPurchase ? { ...game.pendingPurchase } : null,
     pendingTrade: game.pendingTrade ? { ...game.pendingTrade } : null,
     announcement: game.announcement, sequence: game.sequence,
     players: game.turnOrder.filter(id => game.players.has(id)).map(id => {
       const player = game.players.get(id);
-      return { id, name: player.name, token: player.token, balance: player.balance, position: player.position, inJail: player.inJail, connected: Boolean(room.players.get(id)?.socketId) };
+      return { id, name: player.name, token: player.token, balance: player.balance, position: player.position, inJail: player.inJail, jailTurns: player.jailTurns || 0, connected: Boolean(room.players.get(id)?.socketId) };
     })
   };
 }
@@ -406,8 +407,8 @@ function beginMonopoly(room) {
   const turnOrder = [...room.players.keys()];
   const configuredTestBalance = process.env.NODE_ENV === 'test' ? Number(process.env.LOUNGE_TEST_MONOPOLY_BALANCE) : 0;
   const startingBalance = Number.isFinite(configuredTestBalance) && configuredTestBalance > 0 ? configuredTestBalance : 1500;
-  const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, token: room.monopolyTokens.get(id), balance: startingBalance, position: 0, inJail: false }]));
-  room.monopoly = { edition: room.monopolyEdition, board: MonopolyBoards.createBoard(room.monopolyEdition), freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status: 'playing', turnOrder, turnIndex: 0, players, owners: {}, pendingPurchase: null, pendingTrade: null, sequence: 1, announcement: `Monopoly ${room.monopolyEdition} has started. Free Parking jackpot is ${room.freeParkingJackpot !== false ? 'on' : 'off'}. ${players.get(turnOrder[0]).name} goes first.` };
+  const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, token: room.monopolyTokens.get(id), balance: startingBalance, position: 0, inJail: false, jailTurns: 0, jailFreeCards: [] }]));
+  room.monopoly = { edition: room.monopolyEdition, board: MonopolyBoards.createBoard(room.monopolyEdition), chanceDeck: MonopolyCards.shuffle(MonopolyCards.CHANCE), communityChestDeck: MonopolyCards.shuffle(MonopolyCards.COMMUNITY_CHEST), freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status: 'playing', turnOrder, turnIndex: 0, players, owners: {}, houses: {}, pendingPurchase: null, pendingTrade: null, doublesCount: 0, sequence: 1, announcement: `Monopoly ${room.monopolyEdition} has started. Free Parking jackpot is ${room.freeParkingJackpot !== false ? 'on' : 'off'}. ${players.get(turnOrder[0]).name} goes first.` };
 }
 
 function emitMonopolyState(room, cue = null) {
@@ -417,6 +418,7 @@ function emitMonopolyState(room, cue = null) {
 
 function advanceMonopolyTurn(game) {
   game.pendingPurchase = null;
+  game.doublesCount = 0;
   game.turnIndex = (game.turnIndex + 1) % game.turnOrder.length;
   return game.players.get(game.turnOrder[game.turnIndex]);
 }
@@ -425,7 +427,7 @@ function removeBankruptMonopolyPlayer(game, playerId) {
   const player = game.players.get(playerId);
   if (!player || player.balance >= 0) return { bankrupt: false };
   const removedIndex = game.turnOrder.indexOf(playerId);
-  for (const [spaceIndex, ownerId] of Object.entries(game.owners)) if (ownerId === playerId) delete game.owners[spaceIndex];
+  for (const [spaceIndex, ownerId] of Object.entries(game.owners)) if (ownerId === playerId) { delete game.owners[spaceIndex]; delete game.houses[spaceIndex]; }
   game.players.delete(playerId);
   if (removedIndex >= 0) game.turnOrder.splice(removedIndex, 1);
   game.pendingPurchase = null;
@@ -969,30 +971,111 @@ io.on('connection', (socket) => {
     const player = game.players.get(playerId);
     const dieOne = Math.floor(Math.random() * 6) + 1;
     const dieTwo = Math.floor(Math.random() * 6) + 1;
+    const rolledDoubles = dieOne === dieTwo;
+    const usedJailFreeCard = player.inJail && player.jailFreeCards.length > 0;
+    if (usedJailFreeCard) {
+      const cardType = player.jailFreeCards.shift();
+      const deck = cardType === 'Chance' ? game.chanceDeck : game.communityChestDeck;
+      deck.push({ ...(cardType === 'Chance' ? MonopolyCards.CHANCE : MonopolyCards.COMMUNITY_CHEST).find(card => card.action === 'jail-free') });
+      player.inJail = false; player.jailTurns = 0;
+    }
+    const startedInJail = player.inJail;
+    let jailReleaseStory = usedJailFreeCard ? ` ${player.name} used a Get Out of Jail Free card.` : '';
+    if (startedInJail && !rolledDoubles) {
+      player.jailTurns = (player.jailTurns || 0) + 1;
+      if (player.jailTurns < 3) {
+        const next = advanceMonopolyTurn(game);
+        game.announcement = `${player.name} rolled ${dieOne} and ${dieTwo} while in Jail. No doubles. Jail attempt ${player.jailTurns} of 3 failed. It is now ${next.name}'s turn.`;
+        game.sequence += 1; emitMonopolyState(room, { type: 'dice', secondary: { type: 'jail' } });
+        return acknowledge(callback, { ok: true });
+      }
+      player.balance -= 50; player.inJail = false; player.jailTurns = 0;
+      jailReleaseStory = ` Third failed attempt, so ${player.name} paid ${monopolyMoney(game, 50)} and left Jail.`;
+    } else if (startedInJail) {
+      player.inJail = false; player.jailTurns = 0; game.doublesCount = 0;
+      jailReleaseStory = ` Rolled doubles and left Jail without an extra roll.`;
+    } else if (rolledDoubles) {
+      game.doublesCount = (game.doublesCount || 0) + 1;
+      if (game.doublesCount >= 3) {
+        player.position = 10; player.inJail = true; player.jailTurns = 0;
+        const next = advanceMonopolyTurn(game);
+        game.announcement = `${player.name} rolled ${dieOne} and ${dieTwo}, the third consecutive doubles roll. Go directly to Jail. It is now ${next.name}'s turn.`;
+        game.sequence += 1; emitMonopolyState(room, { type: 'dice', secondary: { type: 'jail' } });
+        return acknowledge(callback, { ok: true });
+      }
+    } else game.doublesCount = 0;
+    let earnsExtraRoll = rolledDoubles && !startedInJail;
     const oldPosition = player.position;
     player.position = (player.position + dieOne + dieTwo) % 40;
     const passedGo = player.position < oldPosition;
     if (passedGo) player.balance += 200;
     let space = game.board[player.position];
-    let story = `${player.name} rolled ${dieOne} and ${dieTwo}.${passedGo ? ` Passed GO and collected ${monopolyMoney(game, 200)}.` : ''} Landed on ${space.name}.`;
+    const landingDescription = space.type === 'Property' && space.price
+      ? `Landed on the ${space.group.replace('-', ' ')} property ${space.name}, priced at ${monopolyMoney(game, space.price)}.`
+      : `Landed on ${space.name}.`;
+    let story = `${player.name} rolled ${dieOne} and ${dieTwo}.${jailReleaseStory}${passedGo ? ` Passed GO and collected ${monopolyMoney(game, 200)}.` : ''} ${landingDescription}`;
     let cue = { type: 'dice' };
-    const ownerId = game.owners[space.index];
+    let ownerId = game.owners[space.index];
     if (space.type === 'Go to Jail') {
-      player.position = 10; player.inJail = true; story += ' Go directly to Jail.'; cue.secondary = { type: 'jail' };
+      player.position = 10; player.inJail = true; player.jailTurns = 0; earnsExtraRoll = false; game.doublesCount = 0; story += ' Go directly to Jail.'; cue.secondary = { type: 'jail' };
     } else if (space.type === 'Tax') {
       player.balance -= space.amount;
       MonopolyJackpot.collect(game, space.amount);
       story += ` Paid ${monopolyMoney(game, space.amount)} in tax.${game.freeParkingJackpot ? ` The Free Parking jackpot is now ${monopolyMoney(game, game.freeParkingPot)}.` : ''}`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
     } else if (space.type === 'Chance' || space.type === 'Community Chest') {
-      const amount = Math.random() < 0.5 ? 100 : -50; player.balance += amount;
-      if (amount < 0) MonopolyJackpot.collect(game, Math.abs(amount));
-      story += amount > 0 ? ` Received ${monopolyMoney(game, amount)}.` : ` Paid ${monopolyMoney(game, Math.abs(amount))}.${game.freeParkingJackpot ? ` The Free Parking jackpot is now ${monopolyMoney(game, game.freeParkingPot)}.` : ''}`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
+      const card = MonopolyCards.draw(game, space.type);
+      story += ` Card: ${card.text}`;
+      let destination = null;
+      if (card.action === 'money') {
+        player.balance += card.amount;
+        if (card.amount < 0) MonopolyJackpot.collect(game, Math.abs(card.amount));
+      } else if (card.action === 'move') destination = card.position;
+      else if (card.action === 'back') destination = (player.position - card.spaces + 40) % 40;
+      else if (card.action === 'nearest-transit' || card.action === 'nearest-utility') {
+        const group = card.action === 'nearest-transit' ? 'transit' : 'utility';
+        destination = game.board.find(item => item.index > player.position && item.group === group)?.index
+          ?? game.board.find(item => item.group === group).index;
+      } else if (card.action === 'jail') {
+        player.position = 10; player.inJail = true; player.jailTurns = 0; earnsExtraRoll = false; game.doublesCount = 0;
+      } else if (card.action === 'jail-free') player.jailFreeCards.push(space.type);
+      else if (card.action === 'pay-each' || card.action === 'collect-each') {
+        for (const otherId of game.turnOrder) {
+          if (otherId === playerId || !game.players.has(otherId)) continue;
+          const other = game.players.get(otherId);
+          if (card.action === 'pay-each') { player.balance -= card.amount; other.balance += card.amount; }
+          else { other.balance -= card.amount; player.balance += card.amount; }
+        }
+      } else if (card.action === 'repairs') {
+        const houses = game.board.reduce((total, item) => total + (game.owners[item.index] === playerId ? (game.houses[item.index] || 0) : 0), 0), hotels = 0;
+        const repairCost = houses * card.house + hotels * card.hotel;
+        player.balance -= repairCost;
+        if (repairCost) MonopolyJackpot.collect(game, repairCost);
+        story += ` Repair total: ${monopolyMoney(game, repairCost)}.`;
+      }
+      if (destination !== null) {
+        const cardStart = player.position;
+        player.position = destination;
+        if (card.action !== 'back' && destination < cardStart) { player.balance += 200; story += ` Passed GO and collected ${monopolyMoney(game, 200)}.`; }
+        space = game.board[destination]; ownerId = game.owners[destination];
+        story += ` Moved to ${space.name}.`;
+        if (space.price && ownerId && ownerId !== playerId) {
+          let rent = MonopolyBoards.rentFor(game.board, game.owners, space, ownerId, game.houses);
+          if (card.action === 'nearest-transit') rent *= card.rentMultiplier;
+          if (card.action === 'nearest-utility') rent = (dieOne + dieTwo) * card.rentMultiplier;
+          player.balance -= rent; game.players.get(ownerId).balance += rent;
+          story += ` Paid ${monopolyMoney(game, rent)} rent to ${game.players.get(ownerId).name}.`;
+        } else if (space.price && !ownerId && player.balance >= space.price) {
+          game.pendingPurchase = { playerId, spaceIndex: space.index, extraRoll: earnsExtraRoll };
+          story += ` It is unowned and costs ${monopolyMoney(game, space.price)}. Press Y to buy or N to decline.`;
+        }
+      }
+      cue.secondary = card.action === 'jail' ? { type: 'jail' } : { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
     } else if (space.type === 'Free Parking' && game.freeParkingJackpot) {
       const winnings = MonopolyJackpot.award(game, player);
       story += winnings > 0 ? ` Collected the Free Parking jackpot of ${monopolyMoney(game, winnings)}. The jackpot resets to zero.` : ' The Free Parking jackpot is empty.';
       cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
     } else if (space.price && ownerId && ownerId !== playerId) {
-      const rent = MonopolyBoards.rentFor(game.board, game.owners, space, ownerId);
+      const rent = MonopolyBoards.rentFor(game.board, game.owners, space, ownerId, game.houses);
       player.balance -= rent; game.players.get(ownerId).balance += rent;
       story += ` Paid ${monopolyMoney(game, rent)} rent to ${game.players.get(ownerId).name}.`; cue.secondary = { type: 'transaction', electronic: game.edition === 'Electronic Banking' };
     }
@@ -1001,13 +1084,14 @@ io.on('connection', (socket) => {
       story += ` ${bankruptcy.player.name} is bankrupt and leaves the game.`;
       if (bankruptcy.finished) story += bankruptcy.winner ? ` ${bankruptcy.winner.name} wins Monopoly!` : ' Monopoly ends with no remaining players.';
       else story += ` It is now ${bankruptcy.next.name}'s turn.`;
-    } else if (space.price && !ownerId && player.balance >= space.price) {
-      game.pendingPurchase = { playerId, spaceIndex: space.index };
+    } else if (!game.pendingPurchase && space.price && !ownerId && player.balance >= space.price) {
+      game.pendingPurchase = { playerId, spaceIndex: space.index, extraRoll: earnsExtraRoll };
       story += ` It is unowned and costs ${monopolyMoney(game, space.price)}. Press Y to buy or N to decline.`;
     }
     let next = null;
-    if (!bankruptcy.bankrupt && !game.pendingPurchase) next = advanceMonopolyTurn(game);
+    if (!bankruptcy.bankrupt && !game.pendingPurchase && !earnsExtraRoll) next = advanceMonopolyTurn(game);
     if (next) story += ` It is now ${next.name}'s turn.`;
+    else if (!bankruptcy.bankrupt && !game.pendingPurchase && earnsExtraRoll) story += ' Doubles! Roll again.';
     game.announcement = story; game.sequence += 1;
     emitMonopolyState(room, cue); acknowledge(callback, { ok: true });
   });
@@ -1021,6 +1105,7 @@ io.on('connection', (socket) => {
     const player = game.players.get(socket.data.playerId);
     const space = game.board[pending.spaceIndex];
     const accepted = data.accept === true;
+    const extraRoll = pending.extraRoll === true;
     let cue = null;
     if (accepted && !game.owners[space.index] && player.balance >= space.price) {
       player.balance -= space.price; game.owners[space.index] = socket.data.playerId;
@@ -1028,9 +1113,41 @@ io.on('connection', (socket) => {
       game.announcement = `${player.name} bought ${space.name} for ${monopolyMoney(game, space.price)}. It is in the ${space.group.replace('-', ' ')} group.${completeGroup ? ` ${player.name} completed the ${space.group.replace('-', ' ')} group!` : ` ${player.name} can press P to hear their properties and color-set progress.`}`;
       cue = { type: 'purchase', completeGroup, electronic: game.edition === 'Electronic Banking' };
     } else game.announcement = `${player.name} declined ${space.name}.`;
-    const next = advanceMonopolyTurn(game);
-    game.announcement += ` It is now ${next.name}'s turn.`; game.sequence += 1;
+    if (extraRoll) {
+      game.pendingPurchase = null;
+      game.announcement += ' Doubles! Roll again.';
+    } else {
+      const next = advanceMonopolyTurn(game);
+      game.announcement += ` It is now ${next.name}'s turn.`;
+    }
+    game.sequence += 1;
     emitMonopolyState(room, cue); acknowledge(callback, { ok: true });
+  });
+
+  socket.on('monopoly-house', (data = {}, callback) => {
+    const room = roomForPlayer(socket, callback); if (!room) return;
+    const game = room.monopoly, playerId = socket.data.playerId, player = game?.players.get(playerId);
+    if (!game || game.status !== 'playing' || !player) return acknowledge(callback, { ok: false, error: 'Monopoly is not currently playing.' });
+    if (game.pendingPurchase || game.pendingTrade) return acknowledge(callback, { ok: false, error: 'Finish the current property decision first.' });
+    const spaceIndex = Number(data.spaceIndex), space = game.board[spaceIndex], action = data.action;
+    if (!space || space.type !== 'Property' || game.owners[spaceIndex] !== playerId) return acknowledge(callback, { ok: false, error: 'Choose one of your color-group properties.' });
+    if (!MonopolyBoards.ownsGroup(game.board, game.owners, playerId, space.group)) return acknowledge(callback, { ok: false, error: `Complete the ${space.group.replace('-', ' ')} color group before buying houses.` });
+    const group = game.board.filter(item => item.type === 'Property' && item.group === space.group);
+    const counts = group.map(item => game.houses[item.index] || 0), count = game.houses[spaceIndex] || 0;
+    const cost = MonopolyBoards.buildingCost(game.board, space);
+    if (action === 'buy') {
+      if (count >= 4) return acknowledge(callback, { ok: false, error: `${space.name} already has the maximum of four houses.` });
+      if (count !== Math.min(...counts)) return acknowledge(callback, { ok: false, error: 'Build evenly: buy on a property with the fewest houses in this color group.' });
+      if (player.balance < cost) return acknowledge(callback, { ok: false, error: `You need ${monopolyMoney(game, cost)} to buy this house.` });
+      player.balance -= cost; game.houses[spaceIndex] = count + 1;
+      game.announcement = `${player.name} bought house ${count + 1} on ${space.name} in the ${space.group.replace('-', ' ')} group for ${monopolyMoney(game, cost)}. Balance: ${monopolyMoney(game, player.balance)}.`;
+    } else if (action === 'sell') {
+      if (count < 1) return acknowledge(callback, { ok: false, error: `${space.name} has no house to sell.` });
+      if (count !== Math.max(...counts)) return acknowledge(callback, { ok: false, error: 'Sell evenly: sell from a property with the most houses in this color group.' });
+      const refund = Math.floor(cost / 2); player.balance += refund; game.houses[spaceIndex] = count - 1;
+      game.announcement = `${player.name} sold one house from ${space.name} for ${monopolyMoney(game, refund)}. ${game.houses[spaceIndex]} house${game.houses[spaceIndex] === 1 ? '' : 's'} remain. Balance: ${monopolyMoney(game, player.balance)}.`;
+    } else return acknowledge(callback, { ok: false, error: 'Choose buy or sell house.' });
+    game.sequence += 1; emitMonopolyState(room, { type: 'purchase' }); acknowledge(callback, { ok: true });
   });
 
   socket.on('monopoly-trade-offer', (data = {}, callback) => {
@@ -1041,6 +1158,8 @@ io.on('connection', (socket) => {
     if (game.pendingTrade) return acknowledge(callback, { ok: false, error: 'Another trade offer is awaiting an answer.' });
     if (toId === fromId || !game.players.has(toId)) return acknowledge(callback, { ok: false, error: 'Choose another active player.' });
     if (game.owners[propertyIndex] !== fromId) return acknowledge(callback, { ok: false, error: 'You can only offer a property you own.' });
+    const tradeSpace = game.board[propertyIndex];
+    if (game.board.some(space => space.group === tradeSpace.group && (game.houses[space.index] || 0) > 0)) return acknowledge(callback, { ok: false, error: 'Sell all houses in this color group before trading one of its properties.' });
     if (game.players.get(toId).balance < amount) return acknowledge(callback, { ok: false, error: 'That player does not have enough balance for this offer.' });
     game.pendingTrade = { fromId, toId, propertyIndex, amount };
     game.announcement = `${game.players.get(fromId).name} offers ${game.board[propertyIndex].name} to ${game.players.get(toId).name} for ${monopolyMoney(game, amount)}. ${game.players.get(toId).name}, press Y to accept or N to decline.`;
@@ -1420,7 +1539,7 @@ function leaveCurrentRoom(socket, permanent) {
       const game = room.monopoly;
       const removedIndex = game.turnOrder.indexOf(playerId);
       game.turnOrder.splice(removedIndex, 1); game.players.delete(playerId);
-      Object.keys(game.owners).forEach(index => { if (game.owners[index] === playerId) delete game.owners[index]; });
+      Object.keys(game.owners).forEach(index => { if (game.owners[index] === playerId) { delete game.owners[index]; delete game.houses[index]; } });
       if (game.pendingPurchase?.playerId === playerId) game.pendingPurchase = null;
       if (game.pendingTrade && [game.pendingTrade.fromId, game.pendingTrade.toId].includes(playerId)) game.pendingTrade = null;
       if (game.turnOrder.length < 2) {

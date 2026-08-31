@@ -1033,10 +1033,17 @@
       };
     }).filter(progress => progress.owned > 0);
   }
-  function rentFor(board, owners, space, ownerId) {
+  function buildingCost(board, space) {
+    const groups = [...new Set(board.filter(item => item.type === 'Property').map(item => item.group))];
+    const index = Math.max(0, groups.indexOf(space.group));
+    return 50 + Math.floor(index / 2) * 50;
+  }
+  function rentFor(board, owners, space, ownerId, houses = {}) {
     if (!space.rent) return 0;
     if (space.group === 'transit') return 25 * (2 ** Math.max(0, board.filter(item => item.group === 'transit' && owners[item.index] === ownerId).length - 1));
     if (space.group === 'utility') return 20 * board.filter(item => item.group === 'utility' && owners[item.index] === ownerId).length;
+    const count = houses[space.index] || 0;
+    if (count > 0) return space.rent * [1, 5, 15, 45, 80][count];
     return space.rent * (ownsGroup(board, owners, ownerId, space.group) ? 2 : 1);
   }
   const audioProfiles = Object.fromEntries(editions.map(edition => [edition, / State Edition$/.test(edition) ? 'state' : (themeData[edition].audioProfile || (edition === 'Electronic Banking' ? 'electronic' : 'standard'))]));
@@ -1048,5 +1055,5 @@
     const currency = currencies[edition] || currencies.Classic;
     return currency.symbol ? `${currency.symbol}${amount}` : `${amount} ${Number(amount) === 1 ? currency.singular : currency.plural}`;
   }
-  return Object.freeze({ editions, boards, tokens, tokenCategories, audioProfiles, currencies, stateData, generateStateBoard, formatMoney, createBoard, ownsGroup, ownershipProgress, rentFor });
+  return Object.freeze({ editions, boards, tokens, tokenCategories, audioProfiles, currencies, stateData, generateStateBoard, formatMoney, createBoard, ownsGroup, ownershipProgress, buildingCost, rentFor });
 });
