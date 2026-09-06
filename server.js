@@ -408,7 +408,26 @@ function beginMonopoly(room) {
   const configuredTestBalance = process.env.NODE_ENV === 'test' ? Number(process.env.LOUNGE_TEST_MONOPOLY_BALANCE) : 0;
   const startingBalance = Number.isFinite(configuredTestBalance) && configuredTestBalance > 0 ? configuredTestBalance : 1500;
   const players = new Map(turnOrder.map(id => [id, { name: room.players.get(id).name, token: room.monopolyTokens.get(id), balance: startingBalance, position: 0, inJail: false, jailTurns: 0, jailFreeCards: [] }]));
-  room.monopoly = { edition: room.monopolyEdition, board: MonopolyBoards.createBoard(room.monopolyEdition), chanceDeck: MonopolyCards.shuffle(MonopolyCards.CHANCE), communityChestDeck: MonopolyCards.shuffle(MonopolyCards.COMMUNITY_CHEST), freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status: 'playing', turnOrder, turnIndex: 0, players, owners: {}, houses: {}, pendingPurchase: null, pendingTrade: null, doublesCount: 0, sequence: 1, announcement: `Monopoly ${room.monopolyEdition} has started. Free Parking jackpot is ${room.freeParkingJackpot !== false ? 'on' : 'off'}. ${players.get(turnOrder[0]).name} goes first.` };
+  const board = MonopolyBoards.createBoard(room.monopolyEdition);
+  room.monopoly = {
+    edition: room.monopolyEdition,
+    board,
+    chanceDeck: MonopolyCards.shuffle(MonopolyCards.getDeck(room.monopolyEdition, 'Chance', board)),
+    communityChestDeck: MonopolyCards.shuffle(MonopolyCards.getDeck(room.monopolyEdition, 'Community Chest', board)),
+    freeParkingJackpot: room.freeParkingJackpot !== false,
+    freeParkingPot: 0,
+    status: 'playing',
+    turnOrder,
+    turnIndex: 0,
+    players,
+    owners: {},
+    houses: {},
+    pendingPurchase: null,
+    pendingTrade: null,
+    doublesCount: 0,
+    sequence: 1,
+    announcement: `Monopoly ${room.monopolyEdition} has started. Free Parking jackpot is ${room.freeParkingJackpot !== false ? 'on' : 'off'}. ${players.get(turnOrder[0]).name} goes first.`
+  };
 }
 
 function emitMonopolyState(room, cue = null) {
@@ -997,7 +1016,8 @@ io.on('connection', (socket) => {
     if (usedJailFreeCard) {
       const cardType = player.jailFreeCards.shift();
       const deck = cardType === 'Chance' ? game.chanceDeck : game.communityChestDeck;
-      deck.push({ ...(cardType === 'Chance' ? MonopolyCards.CHANCE : MonopolyCards.COMMUNITY_CHEST).find(card => card.action === 'jail-free') });
+      const sourceDeck = MonopolyCards.getDeck(game.edition, cardType, game.board);
+      deck.push({ ...sourceDeck.find(card => card.action === 'jail-free') });
       player.inJail = false; player.jailTurns = 0;
     }
     const startedInJail = player.inJail;
@@ -1067,11 +1087,19 @@ io.on('connection', (socket) => {
           else { other.balance -= card.amount; player.balance += card.amount; }
         }
       } else if (card.action === 'repairs') {
-        const houses = game.board.reduce((total, item) => total + (game.owners[item.index] === playerId ? (game.houses[item.index] || 0) : 0), 0), hotels = 0;
-        const repairCost = houses * card.house + hotels * card.hotel;
+        let housesCount = 0;
+        let hotelsCount = 0;
+        for (const item of game.board) {
+          if (game.owners[item.index] === playerId) {
+            const count = game.houses[item.index] || 0;
+            if (count === 5) hotelsCount += 1;
+            else if (count > 0) housesCount += count;
+          }
+        }
+        const repairCost = housesCount * card.house + hotelsCount * card.hotel;
         player.balance -= repairCost;
         if (repairCost) MonopolyJackpot.collect(game, repairCost);
-        story += ` Repair total: ${monopolyMoney(game, repairCost)}.`;
+        story += ` Repair total: ${monopolyMoney(game, repairCost)}${housesCount ? ` (${housesCount} house${housesCount === 1 ? '' : 's'})` : ''}${hotelsCount ? ` (${hotelsCount} hotel${hotelsCount === 1 ? '' : 's'})` : ''}.`;
       }
       if (destination !== null) {
         const cardStart = player.position;
@@ -1157,16 +1185,24 @@ io.on('connection', (socket) => {
     const counts = group.map(item => game.houses[item.index] || 0), count = game.houses[spaceIndex] || 0;
     const cost = MonopolyBoards.buildingCost(game.board, space);
     if (action === 'buy') {
-      if (count >= 4) return acknowledge(callback, { ok: false, error: `${space.name} already has the maximum of four houses.` });
+      if (count >= 5) return acknowledge(callback, { ok: false, error: `${space.name} already has a hotel (maximum development).` });
       if (count !== Math.min(...counts)) return acknowledge(callback, { ok: false, error: 'Build evenly: buy on a property with the fewest houses in this color group.' });
-      if (player.balance < cost) return acknowledge(callback, { ok: false, error: `You need ${monopolyMoney(game, cost)} to buy this house.` });
-      player.balance -= cost; game.houses[spaceIndex] = count + 1;
-      game.announcement = `${player.name} bought house ${count + 1} on ${space.name} in the ${space.group.replace('-', ' ')} group for ${monopolyMoney(game, cost)}. Balance: ${monopolyMoney(game, player.balance)}.`;
+      if (player.balance < cost) return acknowledge(callback, { ok: false, error: `You need ${monopolyMoney(game, cost)} to buy this ${count === 4 ? 'hotel' : 'house'}.` });
+      player.balance -= cost;
+      game.houses[spaceIndex] = count + 1;
+      const buildingDesc = game.houses[spaceIndex] === 5 ? 'a hotel' : `house ${game.houses[spaceIndex]}`;
+      game.announcement = `${player.name} bought ${buildingDesc} on ${space.name} in the ${space.group.replace('-', ' ')} group for ${monopolyMoney(game, cost)}. Balance: ${monopolyMoney(game, player.balance)}.`;
     } else if (action === 'sell') {
-      if (count < 1) return acknowledge(callback, { ok: false, error: `${space.name} has no house to sell.` });
+      if (count < 1) return acknowledge(callback, { ok: false, error: `${space.name} has no houses or hotels to sell.` });
       if (count !== Math.max(...counts)) return acknowledge(callback, { ok: false, error: 'Sell evenly: sell from a property with the most houses in this color group.' });
-      const refund = Math.floor(cost / 2); player.balance += refund; game.houses[spaceIndex] = count - 1;
-      game.announcement = `${player.name} sold one house from ${space.name} for ${monopolyMoney(game, refund)}. ${game.houses[spaceIndex]} house${game.houses[spaceIndex] === 1 ? '' : 's'} remain. Balance: ${monopolyMoney(game, player.balance)}.`;
+      const refund = Math.floor(cost / 2);
+      player.balance += refund;
+      game.houses[spaceIndex] = count - 1;
+      if (count === 5) {
+        game.announcement = `${player.name} sold the hotel on ${space.name} for ${monopolyMoney(game, refund)}, returning to 4 houses. Balance: ${monopolyMoney(game, player.balance)}.`;
+      } else {
+        game.announcement = `${player.name} sold one house from ${space.name} for ${monopolyMoney(game, refund)}. ${game.houses[spaceIndex]} house${game.houses[spaceIndex] === 1 ? '' : 's'} remain. Balance: ${monopolyMoney(game, player.balance)}.`;
+      }
     } else return acknowledge(callback, { ok: false, error: 'Choose buy or sell house.' });
     game.sequence += 1; emitMonopolyState(room, { type: 'purchase' }); acknowledge(callback, { ok: true });
   });
@@ -1180,7 +1216,7 @@ io.on('connection', (socket) => {
     if (toId === fromId || !game.players.has(toId)) return acknowledge(callback, { ok: false, error: 'Choose another active player.' });
     if (game.owners[propertyIndex] !== fromId) return acknowledge(callback, { ok: false, error: 'You can only offer a property you own.' });
     const tradeSpace = game.board[propertyIndex];
-    if (game.board.some(space => space.group === tradeSpace.group && (game.houses[space.index] || 0) > 0)) return acknowledge(callback, { ok: false, error: 'Sell all houses in this color group before trading one of its properties.' });
+    if (game.board.some(space => space.group === tradeSpace.group && (game.houses[space.index] || 0) > 0)) return acknowledge(callback, { ok: false, error: 'Sell all houses and hotels in this color group before trading one of its properties.' });
     if (game.players.get(toId).balance < amount) return acknowledge(callback, { ok: false, error: 'That player does not have enough balance for this offer.' });
     game.pendingTrade = { fromId, toId, propertyIndex, amount };
     game.announcement = `${game.players.get(fromId).name} offers ${game.board[propertyIndex].name} to ${game.players.get(toId).name} for ${monopolyMoney(game, amount)}. ${game.players.get(toId).name}, press Y to accept or N to decline.`;

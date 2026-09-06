@@ -1043,7 +1043,7 @@
     if (space.group === 'transit') return 25 * (2 ** Math.max(0, board.filter(item => item.group === 'transit' && owners[item.index] === ownerId).length - 1));
     if (space.group === 'utility') return 20 * board.filter(item => item.group === 'utility' && owners[item.index] === ownerId).length;
     const count = houses[space.index] || 0;
-    if (count > 0) return space.rent * [1, 5, 15, 45, 80][count];
+    if (count > 0) return space.rent * ([1, 5, 15, 45, 80, 120][count] || 120);
     return space.rent * (ownsGroup(board, owners, ownerId, space.group) ? 2 : 1);
   }
   const audioProfiles = Object.fromEntries(editions.map(edition => [edition, / State Edition$/.test(edition) ? 'state' : (themeData[edition].audioProfile || (edition === 'Electronic Banking' ? 'electronic' : 'standard'))]));

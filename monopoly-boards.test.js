@@ -24,6 +24,14 @@ assert.equal(progress[0].complete, true);
 assert.equal(progress[0].needed, 0);
 assert.deepEqual(MonopolyBoards.ownershipProgress(board, owners, 'player-two'), []);
 
+const boardwalk = board.find(space => space.index === 39);
+const parkPlace = board.find(space => space.index === 37);
+const darkBlueOwners = { [boardwalk.index]: 'player-one', [parkPlace.index]: 'player-one' };
+assert.equal(MonopolyBoards.rentFor(board, darkBlueOwners, boardwalk, 'player-one', {}), 100, 'Monopoly base rent should be doubled.');
+assert.equal(MonopolyBoards.rentFor(board, darkBlueOwners, boardwalk, 'player-one', { [boardwalk.index]: 1 }), 250, '1 house should be 5x base rent.');
+assert.equal(MonopolyBoards.rentFor(board, darkBlueOwners, boardwalk, 'player-one', { [boardwalk.index]: 4 }), 4000, '4 houses should be 80x base rent.');
+assert.equal(MonopolyBoards.rentFor(board, darkBlueOwners, boardwalk, 'player-one', { [boardwalk.index]: 5 }), 6000, 'Hotel (5 buildings) should be 120x base rent.');
+
 const christmasCarol = MonopolyBoards.createBoard('A Christmas Carol');
 assert.equal(christmasCarol.length, 40);
 assert.equal(christmasCarol.filter(space => space.type === 'Property').length, 22);

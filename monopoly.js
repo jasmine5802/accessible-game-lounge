@@ -12,12 +12,12 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
   items: [
     { label: 'Roll Dice', type: 'game' },
     { label: 'Check Balance', type: 'game' },
-    { label: 'Hear Properties', type: 'game' },
-    { label: 'Hear Room State', type: 'game' },
+    { label: 'Hear Properties and Monopolies', type: 'game' },
+    { label: 'Hear Room State and Other Players', type: 'game' },
     { label: 'Help / Instructions', type: 'help' }
   ],
   hotkeys: { scores: ['s'], players: [], help: ['?'] },
-  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P reports owned properties and color-set progress. B buys a house and X sells a house on the selected property. H reports room state. Y and N answer offers. Press S for all player balances.'
+  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P reports owned properties, completed monopolies, and building progress. B buys a house or hotel and X sells a house or hotel on the selected property. H reports room state and all players\' monopolies. Y and N answer offers. Press S for all player balances.'
 });
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
@@ -26,6 +26,11 @@ function me() { return game?.players.find(player => player.id === playerId); }
 function playerToken(player) { return player?.token || player?.monopolyToken || null; }
 function money(amount) { return MonopolyBoards.formatMoney(game?.edition || 'Classic', amount); }
 function ownerName(index) { const id = game?.owners[index]; return id ? game.players.find(player => player.id === id)?.name || 'Unknown player' : 'Unowned'; }
+function formatBuilding(count) {
+  if (count === 5) return '1 Hotel';
+  if (count > 0) return `${count} house${count === 1 ? '' : 's'}`;
+  return 'no houses';
+}
 function spaceDetails(space) {
   const ownerId = game?.owners[space.index];
   const rent = ownerId ? MonopolyBoards.rentFor(game.board, game.owners, space, ownerId, game.houses) : (space.rent || 0);
@@ -34,7 +39,8 @@ function spaceDetails(space) {
   const occupants = game?.players.filter(player => player.position === space.index).map(player => `${player.name}, ${playerToken(player)?.name || 'token not selected'}`) || [];
   const jackpot = space.type === 'Free Parking' && game?.freeParkingJackpot ? ` Current jackpot: ${money(game.freeParkingPot || 0)}.` : '';
   const houses = game?.houses?.[space.index] || 0;
-  return `Type: ${space.type}. ${space.description}${jackpot} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Houses: ${houses}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
+  const buildingStatus = houses === 5 ? '1 Hotel' : houses > 0 ? `${houses} house${houses === 1 ? '' : 's'}` : 'No houses';
+  return `Type: ${space.type}. ${space.description}${jackpot} Purchase cost: ${cost}. Color group: ${group}. Current owner: ${ownerName(space.index)}. Buildings: ${buildingStatus}. Current rent: ${money(rent)}.${occupants.length ? ` Players here: ${occupants.join(', ')}.` : ''}`;
 }
 function spaceLabel(space) { return `${space.name}. ${spaceDetails(space)}`; }
 function groupLabel(group) { return group.replace('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
@@ -42,7 +48,41 @@ function myOwnershipProgress() { return game ? MonopolyBoards.ownershipProgress(
 function ownershipReport() {
   const progress = myOwnershipProgress();
   if (!progress.length) return 'You do not own any properties.';
-  return `You own ${progress.flatMap(group => group.properties).length} properties. ${progress.map(group => `${groupLabel(group.group)}: ${group.properties.join(', ')}. ${group.owned} of ${group.total}; ${group.complete ? 'color set complete' : `need ${group.needed} more to complete this set`}.`).join(' ')}`;
+  const completedMonopolies = progress.filter(group => group.complete);
+  const totalProperties = progress.flatMap(group => group.properties).length;
+  let summary = `You own ${totalProperties} property${totalProperties === 1 ? '' : 's'} across ${progress.length} color group${progress.length === 1 ? '' : 's'}.`;
+  if (completedMonopolies.length) {
+    summary += ` Completed monopolies: ${completedMonopolies.map(group => groupLabel(group.group)).join(', ')}.`;
+  }
+  const groupDetails = progress.map(group => {
+    const isSpecialGroup = ['transit', 'utility'].includes(group.group);
+    const memberSpaces = game.board.filter(space => space.group === group.group && game.owners[space.index] === playerId);
+    const propDetails = memberSpaces.map(space => {
+      const bCount = game.houses?.[space.index] || 0;
+      const rent = MonopolyBoards.rentFor(game.board, game.owners, space, playerId, game.houses);
+      const bInfo = !isSpecialGroup && group.complete ? `, ${formatBuilding(bCount)}` : '';
+      return `${space.name}${bInfo} (rent ${money(rent)})`;
+    }).join('; ');
+    if (group.complete) {
+      const cost = !isSpecialGroup ? MonopolyBoards.buildingCost(game.board, memberSpaces[0]) : 0;
+      const buildInfo = !isSpecialGroup ? ` Monopoly complete! Building cost: ${money(cost)} per house/hotel. Press B to buy houses or hotels.` : ' Full set complete!';
+      return `${groupLabel(group.group)}: ${propDetails}.${buildInfo}`;
+    }
+    return `${groupLabel(group.group)}: ${propDetails}. ${group.owned} of ${group.total}; need ${group.needed} more to complete monopoly.`;
+  }).join(' ');
+  return `${summary} ${groupDetails}`;
+}
+function roomStateReport() {
+  if (!game) return 'Room state unavailable.';
+  const jackpotText = game.freeParkingJackpot ? `Free Parking jackpot is ${money(game.freeParkingPot || 0)}. ` : 'Free Parking jackpot is off. ';
+  const playersText = game.players.map(player => {
+    const pProgress = MonopolyBoards.ownershipProgress(game.board, game.owners, player.id);
+    const pMonopolies = pProgress.filter(g => g.complete).map(g => groupLabel(g.group));
+    const pPropCount = pProgress.flatMap(g => g.properties).length;
+    const monopolySummary = pMonopolies.length ? ` (holds ${pMonopolies.join(', ')} monopol${pMonopolies.length === 1 ? 'y' : 'ies'})` : '';
+    return `${player.name} is using ${playerToken(player)?.name || 'no token'}, has ${money(player.balance)}, on space ${player.position + 1}, owns ${pPropCount} propert${pPropCount === 1 ? 'y' : 'ies'}${monopolySummary}${player.id === game.turnPlayerId ? ', with the current turn' : ''}`;
+  }).join('. ');
+  return `Current room state. ${jackpotText}${playersText}.`;
 }
 function syncAccessibilityState() {
   if (!accessibility || !game) return;
@@ -118,18 +158,47 @@ function render() {
   const ownership = myOwnershipProgress();
   const buildable = ownership.filter(group => group.complete && !['transit','utility'].includes(group.group)).flatMap(group => game.board.filter(space => space.type === 'Property' && space.group === group.group));
   const selectedHouseProperty = elements.houseProperty.value;
-  elements.houseProperty.replaceChildren(...buildable.map(space => new Option(`${space.name}, ${game.houses?.[space.index] || 0} houses`, String(space.index))));
+  elements.houseProperty.replaceChildren(...buildable.map(space => {
+    const c = game.houses?.[space.index] || 0;
+    const rent = MonopolyBoards.rentFor(game.board, game.owners, space, playerId, game.houses);
+    return new Option(`${space.name} — ${formatBuilding(c)} (rent ${money(rent)})`, String(space.index));
+  }));
   if (buildable.some(space => String(space.index) === selectedHouseProperty)) elements.houseProperty.value = selectedHouseProperty;
   const houseSpace = game.board[Number(elements.houseProperty.value)], houseCount = houseSpace ? (game.houses?.[houseSpace.index] || 0) : 0;
-  elements.buyHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount >= 4 || pending;
+  const houseCost = houseSpace ? MonopolyBoards.buildingCost(game.board, houseSpace) : 0;
+  elements.buyHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount >= 5 || pending;
   elements.sellHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount < 1 || pending;
-  elements.houseStatus.textContent = houseSpace ? `${houseSpace.name} has ${houseCount} house${houseCount === 1 ? '' : 's'}. Each house costs ${money(MonopolyBoards.buildingCost(game.board, houseSpace))}; selling returns half.` : 'Complete a color group to buy houses.';
-  elements.ownedSummary.textContent = ownership.length ? `You own ${ownership.flatMap(group => group.properties).length} properties in ${ownership.length} color groups.` : 'You do not own any properties yet.';
+  elements.buyHouse.textContent = houseCount === 4 ? 'Buy Hotel (B)' : 'Buy House (B)';
+  elements.sellHouse.textContent = houseCount === 5 ? 'Sell Hotel (X)' : 'Sell House (X)';
+  if (houseSpace) {
+    if (houseCount === 5) {
+      elements.houseStatus.textContent = `${houseSpace.name} has a Hotel (rent ${money(MonopolyBoards.rentFor(game.board, game.owners, houseSpace, playerId, game.houses))}). Selling returns ${money(Math.floor(houseCost / 2))} and reverts to 4 houses.`;
+    } else if (houseCount === 4) {
+      elements.houseStatus.textContent = `${houseSpace.name} has 4 houses. Upgrading to a Hotel costs ${money(houseCost)}. Selling returns ${money(Math.floor(houseCost / 2))}.`;
+    } else {
+      elements.houseStatus.textContent = `${houseSpace.name} has ${houseCount} house${houseCount === 1 ? '' : 's'}. Each house costs ${money(houseCost)}; selling returns ${money(Math.floor(houseCost / 2))}.`;
+    }
+  } else {
+    elements.houseStatus.textContent = buildable.length ? 'Select a property in your completed monopoly to build.' : 'Complete a color group (monopoly) to buy houses and hotels.';
+  }
+  const completedCount = ownership.filter(g => g.complete).length;
+  elements.ownedSummary.textContent = ownership.length
+    ? `You own ${ownership.flatMap(group => group.properties).length} properties in ${ownership.length} color groups.${completedCount ? ` ${completedCount} complete monopoly${completedCount === 1 ? '' : 'ies'} ready to build!` : ''}`
+    : 'You do not own any properties yet.';
   elements.ownedProperties.replaceChildren(...ownership.map(group => {
     const item=document.createElement('li'),heading=document.createElement('strong'),properties=document.createElement('span'),progress=document.createElement('span');
-    heading.textContent=`${groupLabel(group.group)} group`;
-    properties.textContent=`Properties: ${group.properties.join(', ')}. `;
-    progress.textContent=`${group.owned} of ${group.total}. ${group.complete ? 'Set complete.' : `Need ${group.needed} more to complete this set.`}`;
+    const isSpecial = ['transit','utility'].includes(group.group);
+    const memberSpaces = game.board.filter(space => space.group === group.group && game.owners[space.index] === playerId);
+    heading.textContent=`${groupLabel(group.group)} group${group.complete ? ' — MONOPOLY COMPLETE' : ''}`;
+    const propDetails = memberSpaces.map(space => {
+      const c = game.houses?.[space.index] || 0;
+      const rent = MonopolyBoards.rentFor(game.board, game.owners, space, playerId, game.houses);
+      const bInfo = !isSpecial && group.complete ? ` [${formatBuilding(c)}, rent ${money(rent)}]` : ` [rent ${money(rent)}]`;
+      return `${space.name}${bInfo}`;
+    }).join(', ');
+    properties.textContent=`Properties: ${propDetails}. `;
+    const cost = (!isSpecial && group.complete) ? MonopolyBoards.buildingCost(game.board, memberSpaces[0]) : 0;
+    progress.textContent=`${group.owned} of ${group.total}. ${group.complete ? (isSpecial ? 'Complete set.' : `Monopoly complete! Building cost: ${money(cost)} per house/hotel.`) : `Need ${group.needed} more to complete monopoly.`}`;
     item.append(heading,properties,progress); return item;
   }));
   renderBoard(); if (mine && game.sequence !== lastSequence) lastSequence = game.sequence;
@@ -188,7 +257,7 @@ elements.buyHouse.addEventListener('click',()=>changeHouse('buy')); elements.sel
 elements.houseProperty.addEventListener('change',render);
 elements.balance.addEventListener('click', () => announcePolite(`Your ${game?.edition === 'Electronic Banking' ? 'banking balance' : 'balance'} is ${money(me()?.balance ?? 0)}.`));
 elements.properties.addEventListener('click', () => announcePolite(ownershipReport()));
-elements.roomState.addEventListener('click',()=>announcePolite(`Current room state. ${game?.freeParkingJackpot ? `Free Parking jackpot is ${money(game.freeParkingPot || 0)}. ` : 'Free Parking jackpot is off. '}${game?.players.map(player=>`${player.name} is using ${playerToken(player)?.name||'no token'}, has ${money(player.balance)}, and is on space ${player.position+1}${player.id===game.turnPlayerId?', with the current turn':''}`).join('. ')}.`));
+elements.roomState.addEventListener('click', () => announcePolite(roomStateReport()));
 elements.tokenPicker.addEventListener('click',()=>{renderTokenChoices();elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())});
 elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOptions.value;if(!tokenId)return announcePolite('No token is available.');socket.emit('monopoly-select-token',{tokenId},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()})});
 elements.tokenCancel.addEventListener('click',()=>{elements.tokenDialog.close();elements.tokenPicker.focus()});

@@ -37,4 +37,18 @@ assert(server.includes("socket.on('monopoly-house'") && server.includes("action 
 assert(server.includes('count !== Math.min(...counts)') && server.includes('count !== Math.max(...counts)'), 'House buying and selling must enforce even building.');
 assert(client.includes("changeHouse('buy')") && client.includes("changeHouse('sell')"), 'Accessible client controls must expose house buying and selling.');
 
-console.log('Monopoly dice, doubles, Jail, and Free Parking jackpot rule checks passed.');
+const spongebobDeck = Cards.getDeck('SpongeBob SquarePants', 'Chance');
+assert.equal(spongebobDeck.length, 16, 'SpongeBob Chance deck must have 16 cards.');
+assert(spongebobDeck.some(card => card.text.includes("King Neptune’s Palace") || card.text.includes("King Neptune")), 'SpongeBob Chance must reference King Neptune’s Palace for space 39.');
+assert(spongebobDeck.some(card => card.text.includes('Crabby Patties') || card.text.includes('Crabby Patty')), 'SpongeBob Chance must format currency as Crabby Patties.');
+
+const halloweenChest = Cards.getDeck('Aspects of Halloween', 'Community Chest');
+assert.equal(halloweenChest.length, 16, 'Halloween Community Chest deck must have 16 cards.');
+assert(halloweenChest.some(card => card.text.includes('Happy Halloween')), 'Halloween deck must reference Happy Halloween as the Go space.');
+assert(halloweenChest.some(card => card.text.includes("Frankenstein's Lab")), 'Halloween deck must reference Frankenstein’s Lab as the Jail.');
+
+const alaskaChance = Cards.getDeck('Alaska Edition Monopoly (1996) (USAopoly)', 'Chance');
+assert.equal(alaskaChance.length, 16);
+assert(alaskaChance.some(card => card.text.includes('Mount McKinley')), 'Alaska Chance must advance to Mount McKinley.');
+
+console.log('Monopoly dice, doubles, Jail, Free Parking jackpot, themed cards, and hotel rule checks passed.');
