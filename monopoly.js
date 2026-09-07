@@ -6,6 +6,47 @@ const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
 const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','house-property','buy-house','sell-house','house-status','offer-panel','offer-title','offer-details','buy','decline','free-parking-status','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null; let lastOfferKey = null; let gameplayStarted = false;
+const propertyDialog = document.createElement('dialog');
+propertyDialog.id = 'property-dialog';
+propertyDialog.setAttribute('aria-labelledby', 'house-title');
+propertyDialog.setAttribute('aria-describedby', 'property-menu-help');
+const propertyHelp = document.createElement('p');
+propertyHelp.id = 'property-menu-help';
+propertyHelp.textContent = 'Up and Down choose your property. B buys a house or upgrades 4 houses to a hotel. X sells a building. Escape closes this menu.';
+const propertyClose = document.createElement('button');
+propertyClose.textContent = 'Close properties (Escape)';
+propertyClose.type = 'button';
+propertyDialog.append(propertyHelp, document.getElementById('house-controls'), propertyClose);
+document.body.append(propertyDialog);
+let propertyReturnFocus = null;
+propertyClose.addEventListener('click', () => propertyDialog.close());
+propertyDialog.addEventListener('close', () => {
+  if (!elements.offerPanel.hidden) elements.buy.focus();
+  else propertyReturnFocus?.focus();
+});
+function openProperties() {
+  if (!game) return announcePolite('Waiting for Monopoly to connect.');
+  if (game.pendingPurchase?.playerId === playerId || game.pendingTrade?.toId === playerId) {
+    announcePolite('Answer your current offer with Y or N before opening properties.');
+    return;
+  }
+  render();
+  propertyReturnFocus = document.activeElement;
+  if (!propertyDialog.open) propertyDialog.showModal();
+  elements.houseProperty.focus();
+  announcePolite(ownershipReport() + ' ' + propertyHelp.textContent + ' ' + elements.houseStatus.textContent);
+}
+propertyDialog.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  event.stopPropagation();
+  const key = event.key.toLowerCase();
+  if (key === 'b' || key === 'x') {
+    event.preventDefault();
+    const button = key === 'b' ? elements.buyHouse : elements.sellHouse;
+    if (button.disabled) announcePolite(elements.houseStatus.textContent);
+    else button.click();
+  }
+});
 const accessibility = window.LoungeAccessibility?.createGameStateController({
   mode: 'GAME',
   statusEl: elements.politeAnnouncer,
@@ -17,7 +58,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Help / Instructions', type: 'help' }
   ],
   hotkeys: { scores: ['s'], players: [], help: ['?'] },
-  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P reports owned properties, completed monopolies, and building progress. B buys a house or hotel and X sells a house or hotel on the selected property. H reports room state and all players\' monopolies. Y and N answer offers. Press S for all player balances.'
+  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P opens your property menu. Up and Down choose a property. B buys a house or hotel, X sells a building, and Escape closes. Outside the menu, B opens properties. H reports room state and all players\' monopolies. Y and N answer offers. Press S for all player balances.'
 });
 
 function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
@@ -132,6 +173,7 @@ function render() {
   const mine = me(); const myTurn = game.turnPlayerId === playerId; const purchase = game.pendingPurchase?.playerId === playerId ? game.pendingPurchase : null; const incomingTrade = game.pendingTrade?.toId === playerId ? game.pendingTrade : null; const pending = Boolean(purchase || incomingTrade);
   elements.roll.disabled = game.status !== 'playing' || !myTurn || pending;
   elements.offerPanel.hidden = !pending;
+  if (pending && propertyDialog.open) propertyDialog.close();
   elements.buy.textContent = incomingTrade ? 'Accept Trade (Y)' : 'Buy Property (Y)';
   elements.decline.textContent = incomingTrade ? 'Decline Trade (N)' : 'Decline Property (N)';
   if (purchase) {
@@ -156,7 +198,7 @@ function render() {
   elements.tradeProperty.replaceChildren(...game.board.filter(space=>game.owners[space.index]===playerId).map(space=>new Option(space.name,String(space.index))));
   elements.trade.disabled = game.status !== 'playing' || elements.tradeProperty.options.length === 0 || Boolean(game.pendingTrade);
   const ownership = myOwnershipProgress();
-  const buildable = ownership.filter(group => group.complete && !['transit','utility'].includes(group.group)).flatMap(group => game.board.filter(space => space.type === 'Property' && space.group === group.group));
+  const buildable = game.board.filter(space => game.owners[space.index] === playerId);
   const selectedHouseProperty = elements.houseProperty.value;
   elements.houseProperty.replaceChildren(...buildable.map(space => {
     const c = game.houses?.[space.index] || 0;
@@ -164,10 +206,13 @@ function render() {
     return new Option(`${space.name} — ${formatBuilding(c)} (rent ${money(rent)})`, String(space.index));
   }));
   if (buildable.some(space => String(space.index) === selectedHouseProperty)) elements.houseProperty.value = selectedHouseProperty;
-  const houseSpace = game.board[Number(elements.houseProperty.value)], houseCount = houseSpace ? (game.houses?.[houseSpace.index] || 0) : 0;
+  const houseSpace = elements.houseProperty.value === '' ? null : game.board[Number(elements.houseProperty.value)], houseCount = houseSpace ? (game.houses?.[houseSpace.index] || 0) : 0;
   const houseCost = houseSpace ? MonopolyBoards.buildingCost(game.board, houseSpace) : 0;
-  elements.buyHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount >= 5 || pending;
-  elements.sellHouse.disabled = game.status !== 'playing' || !buildable.length || houseCount < 1 || pending;
+  const complete = houseSpace?.type === 'Property' && MonopolyBoards.ownsGroup(game.board, game.owners, playerId, houseSpace.group);
+  const counts = complete ? game.board.filter(space => space.type === 'Property' && space.group === houseSpace.group).map(space => game.houses?.[space.index] || 0) : [];
+  const blocked = Boolean(game.pendingPurchase || game.pendingTrade);
+  elements.buyHouse.disabled = !complete || blocked || houseCount !== Math.min(...counts) || (mine?.balance || 0) < houseCost || game.status !== 'playing' || !buildable.length || houseCount >= 5 || pending;
+  elements.sellHouse.disabled = !complete || blocked || houseCount !== Math.max(...counts) || game.status !== 'playing' || !buildable.length || houseCount < 1 || pending;
   elements.buyHouse.textContent = houseCount === 4 ? 'Buy Hotel (B)' : 'Buy House (B)';
   elements.sellHouse.textContent = houseCount === 5 ? 'Sell Hotel (X)' : 'Sell House (X)';
   if (houseSpace) {
@@ -179,7 +224,16 @@ function render() {
       elements.houseStatus.textContent = `${houseSpace.name} has ${houseCount} house${houseCount === 1 ? '' : 's'}. Each house costs ${money(houseCost)}; selling returns ${money(Math.floor(houseCost / 2))}.`;
     }
   } else {
-    elements.houseStatus.textContent = buildable.length ? 'Select a property in your completed monopoly to build.' : 'Complete a color group (monopoly) to buy houses and hotels.';
+    elements.houseStatus.textContent = buildable.length ? 'Select a property in your completed monopoly to build.' : 'You do not own any properties yet. Buy properties and complete a color group to build.';
+  }
+  if (houseSpace && !complete) elements.houseStatus.textContent = houseSpace.type === 'Property'
+    ? houseSpace.name + '. Complete the ' + groupLabel(houseSpace.group) + ' group before building.'
+    : houseSpace.name + '. Houses and hotels cannot be built on this type of property.';
+  if (complete) {
+    if (blocked) elements.houseStatus.textContent += ' Finish the current property or trade decision first.';
+    if (houseCount < 5 && houseCount !== Math.min(...counts)) elements.houseStatus.textContent += ' Build evenly: choose a property with the fewest houses in this group.';
+    if (houseCount > 0 && houseCount !== Math.max(...counts)) elements.houseStatus.textContent += ' Sell evenly: choose a property with the most buildings in this group.';
+    if ((mine?.balance || 0) < houseCost && houseCount < 5) elements.houseStatus.textContent += ' You need ' + money(houseCost) + ' to build.';
   }
   const completedCount = ownership.filter(g => g.complete).length;
   elements.ownedSummary.textContent = ownership.length
@@ -254,9 +308,9 @@ elements.trade.addEventListener('click',()=>{elements.tradeForm.hidden=!elements
 elements.tradeForm.addEventListener('submit',event=>{event.preventDefault();socket.emit('monopoly-trade-offer',{toId:elements.tradePlayer.value,propertyIndex:Number(elements.tradeProperty.value),amount:Number(elements.tradeAmount.value)},result=>{if(result.ok)elements.tradeForm.hidden=true;else announcePolite(result.error);});});
 function changeHouse(action) { const spaceIndex=Number(elements.houseProperty.value); socket.emit('monopoly-house',{spaceIndex,action},result=>{if(!result.ok)announcePolite(result.error);}); }
 elements.buyHouse.addEventListener('click',()=>changeHouse('buy')); elements.sellHouse.addEventListener('click',()=>changeHouse('sell'));
-elements.houseProperty.addEventListener('change',render);
+elements.houseProperty.addEventListener('change',()=>{render();announcePolite(elements.houseStatus.textContent);});
 elements.balance.addEventListener('click', () => announcePolite(`Your ${game?.edition === 'Electronic Banking' ? 'banking balance' : 'balance'} is ${money(me()?.balance ?? 0)}.`));
-elements.properties.addEventListener('click', () => announcePolite(ownershipReport()));
+elements.properties.addEventListener('click', openProperties);
 elements.roomState.addEventListener('click', () => announcePolite(roomStateReport()));
 elements.tokenPicker.addEventListener('click',()=>{renderTokenChoices();elements.tokenDialog.showModal();requestAnimationFrame(()=>elements.tokenOptions.focus())});
 elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOptions.value;if(!tokenId)return announcePolite('No token is available.');socket.emit('monopoly-select-token',{tokenId},result=>{if(!result.ok)return announcePolite(result.error);announcePolite(`${result.message} Saved for this game.`);elements.tokenDialog.close();elements.tokenPicker.focus()})});
@@ -270,7 +324,7 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !elements.roll.disabled && !['BUTTON','A'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.roll.click(); }
   if (key==='f') { event.preventDefault(); elements.balance.click(); } if (key==='p') { event.preventDefault(); elements.properties.click(); }
   if (key==='h') { event.preventDefault(); elements.roomState.click(); }
-  if (key==='b' && !elements.buyHouse.disabled && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.buyHouse.click(); }
+  if (key==='b' && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); openProperties(); }
   if (key==='x' && !elements.sellHouse.disabled && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.sellHouse.click(); }
   if (key==='y' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(true); } if (key==='n' && !elements.offerPanel.hidden) { event.preventDefault(); answerOffer(false); }
 });

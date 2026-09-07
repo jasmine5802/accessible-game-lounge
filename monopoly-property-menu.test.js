@@ -1,0 +1,41 @@
+const fs = require('fs');
+const vm = require('vm');
+const assert = require('assert');
+const MonopolyBoards = require('./monopoly-boards');
+const source = fs.readFileSync('monopoly.js', 'utf8');
+const block = source.slice(source.indexOf('  const ownership = myOwnershipProgress();', source.indexOf('function render(')), source.indexOf('  const completedCount ='));
+const board = MonopolyBoards.boards.Classic;
+const group = board.filter(s => s.type === 'Property' && s.group === board.find(s => s.type === 'Property').group);
+const elements = {houseProperty:{value:'',replaceChildren(...options){this.options=options;this.value=options[0]?.value || '';}},buyHouse:{},sellHouse:{},houseStatus:{}};
+const game = {board,owners:{},houses:{},status:'playing'};
+const context = {game,elements,MonopolyBoards,playerId:'me',mine:{balance:5000},pending:false,myOwnershipProgress:()=>[],formatBuilding:n=>String(n),money:String,groupLabel:String,Option:function(text,value){this.text=text;this.value=value;}};
+function render(){ vm.runInNewContext("{\n" + block + "\n}",context); }
+render();
+assert(elements.buyHouse.disabled);
+game.owners[group[0].index]='me';render();
+assert.equal(elements.houseProperty.options.length,1);
+assert(elements.buyHouse.disabled);
+for(const space of group) game.owners[space.index]='me';
+render();assert.equal(elements.buyHouse.disabled,false);
+elements.houseProperty.value=String(group[1].index);render();
+assert.equal(elements.houseProperty.value,String(group[1].index));
+game.houses[group[1].index]=1;render();assert(elements.buyHouse.disabled);
+for(const space of group) game.houses[space.index]=4;
+render();assert.equal(elements.buyHouse.textContent,'Buy Hotel (B)');assert.equal(elements.buyHouse.disabled,false);
+game.houses[group[1].index]=5;render();assert(elements.buyHouse.disabled);assert.equal(elements.sellHouse.textContent,'Sell Hotel (X)');
+game.pendingPurchase={playerId:'other'};render();assert(elements.sellHouse.disabled);
+game.pendingPurchase=null;game.houses[group[1].index]=4;context.mine.balance=0;render();assert(elements.buyHouse.disabled);
+console.log('Monopoly property selection, set completion, even building, hotels, pending decisions, and affordability passed.');
+
+let menuKeyHandler;
+const menuContext = {propertyDialog:{addEventListener:(name,handler)=>{menuKeyHandler=handler;}},elements:{buyHouse:{disabled:false,click:()=>buys++},sellHouse:{disabled:false,click:()=>sells++},houseStatus:{textContent:'Build evenly.'}},announcePolite:message=>spoken=message};
+let buys=0,sells=0,spoken='';
+vm.runInNewContext(source.slice(source.indexOf("propertyDialog.addEventListener('keydown'"),source.indexOf('const accessibility =')),menuContext);
+function key(value){const event={key:value,stopPropagation(){this.stopped=true;},preventDefault(){this.prevented=true;}};menuKeyHandler(event);return event;}
+assert(key('b').prevented);assert.equal(buys,1);
+assert(key('x').prevented);assert.equal(sells,1);
+menuContext.elements.buyHouse.disabled=true;key('b');assert.equal(buys,1);assert.equal(spoken,'Build evenly.');
+assert(key('Enter').stopped, 'Enter in the property menu must not roll dice.');
+assert(!key('ArrowDown').prevented, 'Native property selection must retain arrow navigation.');
+assert(!key('Escape').prevented, 'Escape must retain native dialog closing.');
+console.log('Property-menu keyboard isolation and disabled-action announcements passed.');

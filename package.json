@@ -9,7 +9,7 @@
     "test:uno": "node uno-rules.test.js",
     "test:lobby": "node lobby-flow.test.js",
     "test:computer": "node computer-player.test.js",
-    "test:monopoly": "node monopoly-boards.test.js",
+    "test:monopoly": "node monopoly-boards.test.js && node monopoly-property-menu.test.js",
     "test:monopoly-jackpot": "node monopoly-jackpot.test.js",
     "test:multiplayer": "node multiplayer-counts.test.js",
     "test:full-gameplay": "node full-gameplay.test.js",
