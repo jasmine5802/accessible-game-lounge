@@ -3,13 +3,52 @@ const { io } = require('socket.io-client');
 const DominoesEngine = require('./dominoes-engine');
 const SkipBoEngine = require('./skipbo-engine');
 const DerbyEngine = require('./horserace-engine');
+const MonopolyBoards = require('./monopoly-boards');
+function chooseMonopolyBuilding(game, playerId) {
+ if (game?.status !== 'playing' || game.pendingPurchase || game.pendingTrade) return null;
+ const player = game.players.find(player => player.id === playerId);
+ if (!player) return null;
+ const candidates = game.board.filter(space => {
+  if (space.type !== 'Property' || game.owners[space.index] !== playerId || !MonopolyBoards.ownsGroup(game.board, game.owners, playerId, space.group)) return false;
+  const count = game.houses?.[space.index] || 0;
+  const counts = game.board.filter(member => member.type === 'Property' && member.group === space.group).map(member => game.houses?.[member.index] || 0);
+  return count < 5 && count === Math.min(...counts) && player.balance >= MonopolyBoards.buildingCost(game.board, space);
+ });
+ candidates.sort((a,b) => (game.houses?.[a.index] || 0) - (game.houses?.[b.index] || 0) || MonopolyBoards.buildingCost(game.board,a) - MonopolyBoards.buildingCost(game.board,b) || a.index-b.index);
+ return candidates[0]?.index ?? null;
+}
 const emit=(socket,event,data={})=>new Promise(resolve=>socket.emit(event,data,result=>resolve(result||{ok:false})));
 function startComputerPlayer({url,roomCode,secret,onReady}){
  const socket=io(url,{transports:['websocket'],reconnection:true});let playerId=null,busy=false;const seen=new Map(),miniBusy=new Set(),turnDelay=process.env.NODE_ENV==='test'?5:650;
  async function once(key,game,action){if(!game||game.status!=='playing'||game.turnPlayerId!==playerId||busy)return;const marker=`${game.sequence}:${game.phase||''}:${game.pendingDraw||0}:${game.movesRemaining||0}:${game.turnPlayerId||''}`;const lastMarker=seen.get(key);if(lastMarker===marker)return;seen.set(key,marker);busy=true;try{await new Promise(r=>setTimeout(r,turnDelay));busy=false;await action()}finally{busy=false}}
  socket.on('connect',()=>socket.emit('authenticate-computer',{roomCode,secret},result=>{if(!result?.ok)return socket.disconnect();playerId=result.playerId;onReady?.(result)}));
  socket.on('ducks-race-state',({game})=>{if(game?.pendingMiniGame?.canAnswer&&!miniBusy.has('duck')){miniBusy.add('duck');return setTimeout(async()=>{try{await emit(socket,'ducks-race-mini-answer',{choice:0})}finally{miniBusy.delete('duck')}},turnDelay)}return once('duck',game,()=>emit(socket,'ducks-race-roll'))});
- socket.on('monopoly-state',({game})=>{if(!game||busy)return;if(game.pendingTrade?.toId===playerId)return setTimeout(()=>emit(socket,'monopoly-trade-response',{accept:false}),turnDelay);if(game.pendingPurchase?.playerId===playerId)return setTimeout(()=>emit(socket,'monopoly-purchase-response',{accept:true}),turnDelay);return once('monopoly',game,()=>emit(socket,'monopoly-roll'))});
+ // Keep the newest snapshot while an action is awaiting acknowledgement.
+ // Building emits another state before its callback, so ordinary turn debouncing loses it.
+ let monopolyState = null, monopolyRunning = false, monopolySeen = null;
+ async function playMonopoly() {
+  if (monopolyRunning) return;
+  monopolyRunning = true;
+  try {
+   while (monopolyState && monopolyState.sequence !== monopolySeen) {
+    await new Promise(resolve => setTimeout(resolve, turnDelay));
+    const game = monopolyState;
+    if (!game) break;
+    monopolySeen = game.sequence;
+    if (game.status !== 'playing' || !game.players.some(player => player.id === playerId)) continue;
+    if (game.pendingTrade?.toId === playerId) { await emit(socket,'monopoly-trade-response',{accept:false}); continue; }
+    if (game.pendingPurchase?.playerId === playerId) { await emit(socket,'monopoly-purchase-response',{accept:true}); continue; }
+    if (game.pendingTrade || game.pendingPurchase) continue;
+    const spaceIndex = chooseMonopolyBuilding(game, playerId);
+    if (spaceIndex !== null) {
+     const result = await emit(socket,'monopoly-house',{spaceIndex,action:'buy'});
+     if (result.ok || monopolyState.sequence !== game.sequence) continue;
+    }
+    if (game.turnPlayerId === playerId) await emit(socket,'monopoly-roll');
+   }
+  } finally { monopolyRunning = false; }
+ }
+ socket.on('monopoly-state',({game})=>{monopolyState=game;if(game)void playMonopoly();});
  socket.on('life-state',({game})=>once('life',game,()=>game.pendingChoice?.playerId===playerId?emit(socket,'life-choose',{choice:0}):emit(socket,'life-spin')));
   socket.on('derby-state',({game})=>{if(game?.pendingMiniGame?.canAnswer&&!miniBusy.has('derby')){miniBusy.add('derby');return setTimeout(async()=>{try{await emit(socket,'derby-mini-answer',{choice:0})}finally{miniBusy.delete('derby')}},turnDelay)}return once('derby',game,async()=>{if(game.cardPlayedThisTurn)return emit(socket,'derby-roll');if(!game.myHand.length)return emit(socket,'derby-roll');const target=game.players.find(p=>p.id!==playerId),targetId=target?.id;for(let cardIndex=0;cardIndex<game.myHand.length;cardIndex+=1){const result=await emit(socket,'derby-play',{cardIndex,targetId});if(result.ok)return emit(socket,'derby-roll')}return emit(socket,'derby-roll')})});
  socket.on('domino-state',({game})=>once('domino',game,async()=>{for(const tile of game.myHand)for(const end of ['left','right'])for(const flipped of [false,true]){try{DominoesEngine.placeTile(game.board,tile,end,flipped)}catch{continue}return emit(socket,'domino-play',{tileId:tile.id,end,flipped})}return emit(socket,'domino-draw')}));
@@ -18,4 +57,4 @@ function startComputerPlayer({url,roomCode,secret,onReady}){
  socket.on('uno-state',({game})=>once('uno',game,async()=>{const attempts=[];if(game.variant==='Uno Dos'){for(let centerIndex=0;centerIndex<game.centerRow.length;centerIndex+=1)for(let first=0;first<game.myHand.length;first+=1){attempts.push({indexes:[first],centerIndex,color:'Red'});for(let second=first+1;second<game.myHand.length;second+=1)attempts.push({indexes:[first,second],centerIndex,color:'Red'})}}else game.myHand.forEach((_card,index)=>attempts.push({indexes:[index],color:'Red',centerIndex:0}));for(const attempt of attempts){const result=await emit(socket,'uno-play',attempt);if(result.ok)return result}return emit(socket,'uno-draw')}));
  return socket;
 }
-module.exports={startComputerPlayer};
+module.exports={startComputerPlayer,chooseMonopolyBuilding};
