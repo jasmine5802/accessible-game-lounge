@@ -2234,7 +2234,7 @@
 			"args": [
 				"-NoProfile",
 				"-Command",
-				"Remove-Item -Force -ErrorAction SilentlyContinue 'release-win-latest.log'; git add lobby.js lounge-prompt-flow.test.js; git status --short"
+				"Remove-Item -Force -ErrorAction SilentlyContinue 'release-win-latest.log'; git add package.json skipbo-engine.js skipbo.js skipbo.html server.js duck-race-accessibility.test.js test-skipbo-modes.js .vscode/tasks.json; git status --short"
 			],
 			"isBackground": false
 		},
@@ -2245,7 +2245,7 @@
 			"args": [
 				"commit",
 				"-m",
-				"Fix multiplayer setup prompts and spoken join announcements"
+				"Update Skip-Bo wildcard resolution, 12-clear rule, stock win condition, and screen reader announcements (v1.0.62)"
 			],
 			"isBackground": false
 		},

@@ -13,6 +13,8 @@ const el = {
   start: document.querySelector('#start'),
   play: document.querySelector('#play'),
   targetOptions: document.querySelector('#target-options'),
+  targetDialog: document.querySelector('#target-dialog'),
+  targetTitle: document.querySelector('#target-title'),
   selection: document.querySelector('#selection'),
   hand: document.querySelector('#hand'),
   privatePiles: document.querySelector('#private-piles'),
@@ -27,6 +29,7 @@ let handIndex = 0;
 let selection = { source: 'hand', index: 0 };
 let targetMode = false;
 let pendingTarget = null;
+let submitting = false;
 let audio = null;
 
 const accessibility = window.LoungeAccessibility?.createGameStateController({
@@ -40,7 +43,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Help / Instructions', type: 'help' }
   ],
   hotkeys: { scores: [], players: ['p'], help: ['h', '?'] },
-  helpText: 'Keyboard shortcuts: Up and Down choose a hand card. S selects stock. 1 through 4 select discard piles. Enter or Space confirms play. B reads buildings. D reads discards. O reads opponents. P reads connected players.'
+  helpText: 'Up and Down choose a hand card. Enter or Space opens destinations; use arrows and Enter to choose. B then 1 through 4 builds the selected card. D then 1 through 4 discards a hand card and ends your turn. Escape cancels. S selects stock. 1 through 4 selects a discard pile as a source. O reads opponents. P reads players.'
 });
 
 function syncAccessibilityState() {
@@ -76,11 +79,45 @@ function tone(notes, wave = 'sine', spacing = 0.08, volume = 0.1) {
 }
 
 function cue(type) {
-  if (type === 'draw') tone([180, 300, 520], 'sine', 0.055, 0.09);
+  if (type === 'draw' || type === 'hand_refill') tone([180, 300, 520], 'sine', 0.055, 0.09);
   if (type === 'place') tone([330, 145], 'triangle', 0.025, 0.13);
-  if (type === 'sweep') tone([880, 740, 620, 520], 'sine', 0.1, 0.13);
-  if (type === 'victory') tone([392, 523, 659, 784, 1047], 'triangle', 0.11, 0.14);
+  if (type === 'sweep' || type === 'pile_cleared') tone([880, 740, 620, 520], 'sine', 0.1, 0.13);
+  if (type === 'victory' || type === 'win_fanfare') tone([392, 523, 659, 784, 1047], 'triangle', 0.11, 0.14);
   if (type === 'error') tone([120, 90], 'square', 0.12, 0.12);
+}
+
+function playAudioCue(type) {
+  cue(type);
+}
+
+// Function to announce moves cleanly to screen readers without UI focus loss
+function announceGameAction(message) {
+  const liveRegion = document.getElementById('sr-announcements') || el.announcer;
+  if (liveRegion) {
+    liveRegion.textContent = ''; // Clear to force screen reader re-read
+    setTimeout(() => {
+      liveRegion.textContent = message;
+    }, 50);
+  }
+}
+
+// Example handle from server response
+function handleServerMoveResponse(data) {
+  if (!data) return;
+  if (data.pileCleared) {
+    playAudioCue('pile_cleared'); // Whoosh / clear sound
+    announceGameAction("Building pile reached 12 and was cleared. Slot is open for a 1.");
+  }
+
+  if (data.refilled) {
+    playAudioCue('hand_refill');
+    announceGameAction("All hand cards played! 5 new cards dealt to your hand.");
+  }
+
+  if (data.event === "GAME_OVER" || data.event === "VICTORY") {
+    playAudioCue('win_fanfare');
+    announceGameAction(`Game over! Player ${data.winner || data.winnerName || ''} emptied their stock pile and won!`);
+  }
 }
 
 function say(message, urgent = false) {
@@ -125,11 +162,14 @@ function render() {
   const mine = me();
   const playing = game?.status === 'playing';
   const myTurn = game?.turnPlayerId === playerId;
+  if (selection.source === 'hand') selection.index = handIndex = Math.min(handIndex, Math.max(0, (game?.myHand?.length || 0) - 1));
+  const focusedTarget = document.activeElement?.dataset?.destination;
+  const handHadFocus = el.hand.contains(document.activeElement);
 
   el.connection.textContent = gameId ? `Room ${gameId}. ${game?.status || 'waiting'}.` : 'Missing game. Return to the lounge.';
   el.turn.textContent = game?.announcement || 'Waiting for a game.';
   el.start.hidden = room?.hostId !== playerId || playing;
-  el.play.disabled = !playing || !myTurn || !selectedCard();
+  el.play.disabled = !playing || !myTurn || !selectedCard() || submitting;
 
   el.buildings.replaceChildren(
     ...Array.from({ length: 4 }, (_, index) => {
@@ -156,7 +196,7 @@ function render() {
           li.setAttribute('aria-label', `Hand card ${index + 1} of ${hand.length}, ${label(card)}`);
           li.setAttribute('aria-selected', selection.source === 'hand' && selection.index === index ? 'true' : 'false');
           li.addEventListener('click', () => select('hand', index));
-          li.append(cardNode(card, `Hand card ${index + 1}, ${label(card)}`, selection.source === 'hand' && selection.index === index));
+          li.textContent = `Card ${index + 1}: ${label(card)}`;
           return li;
         })
       : [Object.assign(document.createElement('li'), { textContent: 'No cards.' })])
@@ -195,27 +235,33 @@ function render() {
 
   const chosen = selectedCard();
   el.selection.textContent = chosen
-    ? `${selection.source} ${selection.index + 1}: ${label(chosen)} selected.${targetMode ? ' Choose B1 through B4 or D1 through D4.' : ' Press Enter or Space to choose a target.'}`
+    ? `${selection.source} ${selection.index + 1}: ${label(chosen)} selected. Enter chooses where to play. B then 1–4 builds; D then 1–4 discards and ends your turn.`
     : 'No playable card selected.';
 
   el.targetOptions.hidden = !targetMode;
   const targets = targetMode ? [
-    ...Array.from({ length: 4 }, (_, index) => ({ type: 'building', index, label: `Play on building pile ${index + 1}` })),
-    ...(selection.source === 'hand' ? Array.from({ length: 4 }, (_, index) => ({ type: 'discard', index, label: `Discard to personal pile ${index + 1}` })) : [])
+    ...Array.from({ length: 4 }, (_, index) => ({ type: 'building', index, label: `B${index + 1}: Building pile ${index + 1}, needs ${SkipBoEngine.expectedValue(game.buildingPiles[index])}${SkipBoEngine.canBuild(chosen, game.buildingPiles[index]) ? '' : ' — card does not fit'}` })),
+    ...(selection.source === 'hand' ? Array.from({ length: 4 }, (_, index) => ({ type: 'discard', index, label: `D${index + 1}: Discard pile ${index + 1}, top ${label(game.myDiscards[index].at(-1))} — ends your turn` })) : [])
   ] : [];
   el.targetOptions.replaceChildren(...targets.map(target => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'target-option';
+    button.dataset.destination = `${target.type}-${target.index}`;
+    button.disabled = submitting;
     button.textContent = target.label;
     button.addEventListener('click', () => play(target.type, target.index));
     return button;
   }));
+  if (targetMode) el.targetTitle.textContent = `Where should ${label(chosen)} go?`;
+  if (focusedTarget && targetMode) [...el.targetOptions.children].find(button => button.dataset.destination === focusedTarget)?.focus();
+  else if (handHadFocus && !targetMode) el.hand.children[handIndex]?.focus();
 
   syncAccessibilityState();
 }
 
 function select(source, index = 0) {
+  if (submitting) return;
   selection = { source, index };
   if (source === 'hand') handIndex = index;
   targetMode = false;
@@ -225,28 +271,46 @@ function select(source, index = 0) {
   say(`${source}${source === 'discard' ? ` ${index + 1}` : ''} selected: ${label(selectedCard())}.`);
 }
 
-function confirm() {
+function confirm(target = null) {
+  if (submitting) return;
   if (!selectedCard()) return fail('Select an available card first.');
-  if (game?.turnPlayerId !== playerId) return fail('It is not your turn.');
+  if (game?.status !== 'playing' || game?.turnPlayerId !== playerId) return fail('It is not your turn.');
+  if (target === 'discard' && selection.source !== 'hand') return fail('Only a hand card can be discarded. Press Up or Down to select your hand.');
   targetMode = true;
-  pendingTarget = null;
+  pendingTarget = target;
   render();
-  say('Target mode. Press B then 1 through 4 for a building pile, or D then 1 through 4 for a personal discard pile.');
-  el.targetOptions.firstElementChild?.focus();
+  if (!el.targetDialog.open) el.targetDialog.showModal();
+  [...el.targetOptions.children].find(button => button.dataset.destination === `${target || 'building'}-0`)?.focus();
+  say(target ? `Choose ${target} pile. Press 1 through 4, or use arrows and Enter. Escape cancels.` : 'Choose a destination with arrows and Enter. B then 1 through 4 builds. D then 1 through 4 discards and ends your turn. Escape cancels.');
+}
+
+function cancelTarget(restoreFocus = true) {
+  targetMode = false;
+  pendingTarget = null;
+  if (el.targetDialog.open) el.targetDialog.close();
+  render();
+  if (restoreFocus) (el.hand.children[handIndex] || document.querySelector('main')).focus();
 }
 
 function play(targetType, targetIndex) {
+  if (submitting) return;
   if (!targetMode) return fail('Select a card and press Enter or Space first.');
-  socket.emit('skipbo-play', {
+  if (targetType === 'discard' && selection.source !== 'hand') return fail('Only a hand card can be discarded.');
+  if (targetType === 'building' && !SkipBoEngine.canBuild(selectedCard(), game.buildingPiles[targetIndex])) return fail(`Building pile ${targetIndex + 1} needs ${SkipBoEngine.expectedValue(game.buildingPiles[targetIndex])}. Choose another pile or press Escape.`);
+  submitting = true;
+  render();
+  socket.timeout(5000).emit('skipbo-play', {
     source: selection.source,
     sourceIndex: selection.index,
     targetType,
     targetIndex
-  }, result => {
-    if (!result.ok) fail(result.error);
+  }, (error, result) => {
+    submitting = false;
+    if (error) { cancelTarget(); fail('The move was not confirmed. Check the updated hand before trying again.'); }
+    else if (!result.ok) { render(); fail(result.error); }
     else {
-      targetMode = false;
-      pendingTarget = null;
+      handleServerMoveResponse(result);
+      cancelTarget();
     }
   });
 }
@@ -272,13 +336,15 @@ function readOpponents() {
 }
 
 el.start.addEventListener('click', () => socket.emit('start-skipbo', {}, result => { if (!result.ok) fail(result.error); }));
-el.play.addEventListener('click', confirm);
+el.play.addEventListener('click', () => confirm());
+document.querySelector('#cancel-target').addEventListener('click', () => cancelTarget());
+el.targetDialog.addEventListener('cancel', event => { event.preventDefault(); if (!submitting) cancelTarget(); });
 document.querySelector('#read-buildings').addEventListener('click', readBuildings);
 document.querySelector('#read-discards').addEventListener('click', readDiscards);
 document.querySelector('#read-opponents').addEventListener('click', readOpponents);
 
 el.hand.addEventListener('keydown', event => {
-  if (event.key !== 'Enter') return;
+  if (!['Enter', ' '].includes(event.key) || event.defaultPrevented) return;
   const option = event.target.closest('[role="option"]');
   if (!option || !el.hand.contains(option)) return;
   event.preventDefault();
@@ -291,10 +357,15 @@ el.hand.addEventListener('keydown', event => {
 }, true);
 
 document.addEventListener('keydown', event => {
-  if (event.target.matches('input,select,textarea')) return;
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.target.isContentEditable || event.target.matches('input,select,textarea')) return;
+  const dialog = event.target.closest?.('dialog[open]');
+  if (dialog && dialog !== el.targetDialog) return;
+  if (submitting) return;
   if (accessibility?.handleKey(event)) return;
 
   const key = event.key.toLowerCase();
+  if (targetMode && key === 'escape') { event.preventDefault(); cancelTarget(); return; }
+  if (targetMode && key === 's') { event.preventDefault(); return; }
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
     event.preventDefault();
     el.start.click();
@@ -328,6 +399,7 @@ document.addEventListener('keydown', event => {
   }
 
   if (key === 'enter' || key === ' ') {
+    if (event.target.closest?.('button,a')) return;
     event.preventDefault();
     if (targetMode && document.activeElement?.classList?.contains('target-option')) {
       document.activeElement.click();
@@ -339,15 +411,13 @@ document.addEventListener('keydown', event => {
 
   if (key === 'b') {
     event.preventDefault();
-    if (targetMode) pendingTarget = 'building';
-    else readBuildings();
+    confirm('building');
     return;
   }
 
   if (key === 'd') {
     event.preventDefault();
-    if (targetMode) pendingTarget = 'discard';
-    else readDiscards();
+    confirm('discard');
     return;
   }
 
@@ -378,18 +448,29 @@ function connect() {
 }
 
 socket.on('skipbo-state', payload => {
+  const previousCardId = selectedCard()?.id;
   game = payload.game;
+  if (targetMode && (game.status !== 'playing' || game.turnPlayerId !== playerId || selectedCard()?.id !== previousCardId)) cancelTarget();
   if (game.status === 'playing') {
     window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));
   }
   cue(payload.cue?.type);
+  if (payload.cue) {
+    if (payload.cue.pileCleared || payload.cue.type === 'sweep') {
+      announceGameAction("Building pile reached 12 and was cleared. Slot is open for a 1.");
+    } else if (payload.cue.refilled) {
+      announceGameAction("All hand cards played! 5 new cards dealt to your hand.");
+    } else if (payload.cue.type === 'victory' || payload.cue.event === 'GAME_OVER') {
+      const winnerName = payload.cue.winnerName || game.players?.find(p => p.id === game.winnerId)?.name || payload.cue.winner || 'Player';
+      announceGameAction(`Game over! Player ${winnerName} emptied their stock pile and won!`);
+    }
+  }
   render();
   say(game.announcement);
 });
 
 socket.on('lobby-updated', updated => {
   room = updated;
-  playerId = playerId || room.players.find(p => p.name === username)?.id || null;
   if (!game || game.status === 'waiting') {
     game = room.skipbo || null;
     render();
@@ -401,7 +482,7 @@ socket.on('table-player-joined', data => {
     game = room.skipbo || null;
     render();
   }
-  announce(data.message);
+  say(data.message);
   window.LoungeAccessibility?.speak?.(data.message);
 });
 
