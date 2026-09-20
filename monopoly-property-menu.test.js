@@ -39,3 +39,27 @@ assert(key('Enter').stopped, 'Enter in the property menu must not roll dice.');
 assert(!key('ArrowDown').prevented, 'Native property selection must retain arrow navigation.');
 assert(!key('Escape').prevented, 'Escape must retain native dialog closing.');
 console.log('Property-menu keyboard isolation and disabled-action announcements passed.');
+
+// Exercise the actual page handler: form input and modal keys must never roll
+// or trigger game shortcuts, while Enter on the game surface still rolls.
+let pageKeyHandler, rolls = 0;
+const pageContext = {
+  document: { activeElement: { tagName: 'DIV' }, addEventListener: (_type, handler) => { pageKeyHandler = handler; } },
+  accessibility: { handleKey: () => false },
+  game: { status: 'playing' },
+  elements: { board: { contains: () => false }, roll: { disabled: false, click: () => rolls++ }, offerPanel: { hidden: true } }
+};
+vm.runInNewContext(source.slice(source.indexOf("document.addEventListener('keydown'"), source.indexOf("socket.on('connect'")), pageContext);
+for (const tagName of ['INPUT', 'SELECT', 'TEXTAREA']) {
+  pageContext.document.activeElement = { tagName };
+  for (const value of ['Enter', 'f', 'p', 'h', 'y', 'n']) {
+    pageKeyHandler({ key: value, preventDefault() { throw Error('Form keys must retain native behavior.'); } });
+  }
+}
+pageContext.document.activeElement = { tagName: 'DIV', closest: () => ({ open: true }) };
+pageKeyHandler({ key: 'Enter', preventDefault() { throw Error('Modal keys must stay in the modal.'); } });
+assert.equal(rolls, 0);
+pageContext.document.activeElement = { tagName: 'DIV' };
+pageKeyHandler({ key: 'Enter', preventDefault() {} });
+assert.equal(rolls, 1, 'Enter on the game surface must still roll.');
+console.log('Monopoly form and modal keyboard isolation passed.');

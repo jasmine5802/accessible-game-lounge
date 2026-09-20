@@ -317,6 +317,7 @@ elements.tokenSave.addEventListener('click',()=>{const tokenId=elements.tokenOpt
 elements.tokenCancel.addEventListener('click',()=>{elements.tokenDialog.close();elements.tokenPicker.focus()});
 document.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.defaultPrevented || document.activeElement?.closest?.('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) return;
   if (accessibility?.handleKey(event)) return;
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) { event.preventDefault(); elements.start.click(); return; }

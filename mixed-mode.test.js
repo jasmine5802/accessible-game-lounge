@@ -164,21 +164,28 @@ function createClientContext(pathname) {
   return { context, document, localStore };
 }
 
-const accessibleClient = createClientContext('/ducks-race.html');
-const visualClient = createClientContext('/ducks-race.html');
+for (const page of ['monopoly', 'ducks-race', 'uno', 'life', 'horserace', 'dominoes', 'skipbo', 'mallmadness']) {
+  const accessibleClient = createClientContext(`/${page}.html`);
+  const visualClient = createClientContext(`/${page}.html`);
 
-assert(accessibleClient.context.window.LoungeAccessibility, 'Accessible client did not initialize the shared accessibility layer.');
-assert(visualClient.context.window.LoungeAccessibility, 'Visual client did not initialize the shared accessibility layer.');
+  assert(accessibleClient.context.window.LoungeAccessibility, 'Accessible client did not initialize the shared accessibility layer.');
+  assert(visualClient.context.window.LoungeAccessibility, 'Visual client did not initialize the shared accessibility layer.');
 
-accessibleClient.context.window.LoungeAccessibility.setAccessibleMode(true);
-visualClient.context.window.LoungeAccessibility.setAccessibleMode(false);
+  accessibleClient.context.window.LoungeAccessibility.setAccessibleMode(true);
+  visualClient.context.window.LoungeAccessibility.setAccessibleMode(false);
 
-assert.strictEqual(accessibleClient.context.window.LoungeAccessibility.accessibleMode, true, 'Accessible client did not stay in accessible mode.');
-assert.strictEqual(visualClient.context.window.LoungeAccessibility.accessibleMode, false, 'Visual client did not stay in visual mode.');
-assert(accessibleClient.document.documentElement.classList.contains('lounge-accessible-mode'), 'Accessible client did not get the accessible-mode class.');
-assert(!visualClient.document.documentElement.classList.contains('lounge-accessible-mode'), 'Visual client incorrectly inherited the accessible-mode class.');
-assert.strictEqual(accessibleClient.localStore.get('loungeAccessibleMode'), '1', 'Accessible client did not persist accessible mode locally.');
-assert.strictEqual(visualClient.localStore.get('loungeAccessibleMode'), '0', 'Visual client did not persist visual mode locally.');
+  assert.strictEqual(accessibleClient.context.window.LoungeAccessibility.accessibleMode, true, 'Accessible client did not stay in accessible mode.');
+  assert.strictEqual(visualClient.context.window.LoungeAccessibility.accessibleMode, false, 'Visual client did not stay in visual mode.');
+  assert(accessibleClient.document.documentElement.classList.contains('lounge-accessible-mode'), 'Accessible client did not get the accessible-mode class.');
+  assert(!visualClient.document.documentElement.classList.contains('lounge-accessible-mode'), 'Visual client incorrectly inherited the accessible-mode class.');
+  assert.strictEqual(accessibleClient.localStore.get('loungeAccessibleMode'), '1', 'Accessible client did not persist accessible mode locally.');
+  assert.strictEqual(visualClient.localStore.get('loungeAccessibleMode'), '0', 'Visual client did not persist visual mode locally.');
+  accessibleClient.context.window.LoungeAccessibility.setAccessibleMode(false);
+  assert.strictEqual(visualClient.context.window.LoungeAccessibility.accessibleMode, false, `${page}: changing another client's mode must not affect this client.`);
+  visualClient.context.window.LoungeAccessibility.setAccessibleMode(true);
+  assert.strictEqual(accessibleClient.context.window.LoungeAccessibility.accessibleMode, false, `${page}: mode preferences must stay independent after switching.`);
+  assert(visualClient.document.documentElement.classList.contains('lounge-accessible-mode'), `${page}: switching modes must update the page.`);
+}
 
 process.env.LOUNGE_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'lounge-mixed-mode-'));
 const { startServer, server } = require('./server');
@@ -213,7 +220,7 @@ const wait = (socket, event, predicate = () => true, timeout = 6000) =>
     if (!hostLogin.ok) throw new Error(hostLogin.error);
     if (!guestLogin.ok) throw new Error(guestLogin.error);
 
-    const created = await call(host, 'create-game', { category: 'ducks-race' });
+    const created = await call(host, 'create-game', { category: 'monopoly' });
     if (!created.ok) throw new Error(created.error);
 
     const joinedEvent = wait(host, 'table-player-joined');
