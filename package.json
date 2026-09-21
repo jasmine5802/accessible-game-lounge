@@ -7,6 +7,7 @@
     "start": "electron .",
     "start:server": "node server.js",
     "test:uno": "node uno-rules.test.js",
+    "test:skipbo": "node skipbo-connection.test.js && node skipbo-keyboard.test.js && node skipbo-announcements.test.js && node test-skipbo-modes.js && node skipbo-multiplayer-regression.test.js",
     "test:lobby": "node lobby-flow.test.js",
     "test:computer": "node computer-player.test.js",
     "test:monopoly": "node monopoly-boards.test.js && node monopoly-property-menu.test.js && node monopoly-computer-building.test.js && node monopoly-gameplay-regression.test.js && node monopoly-exhaustive.test.js",

@@ -31,6 +31,7 @@ let targetMode = false;
 let pendingTarget = null;
 let submitting = false;
 let audio = null;
+let connectionReady = false;
 
 const accessibility = window.LoungeAccessibility?.createGameStateController({
   mode: 'GAME',
@@ -43,7 +44,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Help / Instructions', type: 'help' }
   ],
   hotkeys: { scores: [], players: ['p'], help: ['h', '?'] },
-  helpText: 'Up and Down choose a hand card. Enter or Space opens destinations; use arrows and Enter to choose. B then 1 through 4 builds the selected card. D then 1 through 4 discards a hand card and ends your turn. Escape cancels. S selects stock. 1 through 4 selects a discard pile as a source. O reads opponents. P reads players.'
+  helpText: 'Up and Down choose a hand card. Enter or Space opens destinations; use arrows and Enter to choose. B then 1 through 4 builds the selected card. D then 1 through 4 discards a hand card and ends your turn. Escape cancels. S then 1 through 4 plays the stock card onto a building pile and reveals the next stock card. 1 through 4 selects the top card of a discard pile; B then 1 through 4 plays it onto a building pile. O reads opponents. P reads players.'
 });
 
 function syncAccessibilityState() {
@@ -91,37 +92,53 @@ function playAudioCue(type) {
 }
 
 // Function to announce moves cleanly to screen readers without UI focus loss
+let announcementTimer = null;
+let pendingAnnouncements = [];
 function announceGameAction(message) {
+  if (!message) return;
   const liveRegion = document.getElementById('sr-announcements') || el.announcer;
   if (liveRegion) {
+    pendingAnnouncements.push(message);
+    clearTimeout(announcementTimer);
     liveRegion.textContent = ''; // Clear to force screen reader re-read
-    setTimeout(() => {
-      liveRegion.textContent = message;
+    announcementTimer = setTimeout(() => {
+      liveRegion.textContent = pendingAnnouncements.join(' ');
+      pendingAnnouncements = [];
+      announcementTimer = null;
     }, 50);
   }
 }
 
-// Example handle from server response
+// State broadcasts deliver each move to every player, including its author.
 function handleServerMoveResponse(data) {
   if (!data) return;
-  if (data.pileCleared) {
+  const messages = [];
+  const won = data.event === 'GAME_OVER' || data.event === 'VICTORY' || data.type === 'victory';
+  if (data.pileCleared || data.type === 'sweep') {
     playAudioCue('pile_cleared'); // Whoosh / clear sound
-    announceGameAction("Building pile reached 12 and was cleared. Slot is open for a 1.");
+    messages.push("Building pile reached 12 and was cleared. Slot is open for a 1.");
   }
 
-  if (data.refilled) {
+  if (data.refilled && !won) {
     playAudioCue('hand_refill');
-    announceGameAction("All hand cards played! 5 new cards dealt to your hand.");
+    const recipient = game?.players?.find(player => player.id === game.turnPlayerId)?.name || 'The active player';
+    const count = Number.isInteger(data.drawn) && data.drawn >= 0 ? data.drawn : null;
+    messages.push(count === null
+      ? `${recipient} played all hand cards and drew new cards.`
+      : `${recipient} played all hand cards and drew ${count} new card${count === 1 ? '' : 's'}.`);
   }
 
-  if (data.event === "GAME_OVER" || data.event === "VICTORY") {
+  if (won) {
     playAudioCue('win_fanfare');
-    announceGameAction(`Game over! Player ${data.winner || data.winnerName || ''} emptied their stock pile and won!`);
+    const winner = data.winnerName || game?.players?.find(player => player.id === (data.winner || game?.winnerId))?.name || data.winner || 'The winner';
+    messages.push(`Game over! ${winner} emptied their stock pile and won!`);
   }
+  if (!messages.length) cue(data.type);
+  announceGameAction([data.announcement, ...messages].filter(Boolean).join(' '));
 }
 
 function say(message, urgent = false) {
-  const node = urgent ? el.urgent : el.announcer;
+  const node = el.targetDialog.open ? document.getElementById('target-announcement') : urgent ? el.urgent : el.announcer;
   node.textContent = '';
   requestAnimationFrame(() => {
     node.textContent = message;
@@ -169,6 +186,7 @@ function render() {
   el.connection.textContent = gameId ? `Room ${gameId}. ${game?.status || 'waiting'}.` : 'Missing game. Return to the lounge.';
   el.turn.textContent = game?.announcement || 'Waiting for a game.';
   el.start.hidden = room?.hostId !== playerId || playing;
+  el.start.disabled = !connectionReady;
   el.play.disabled = !playing || !myTurn || !selectedCard() || submitting;
 
   el.buildings.replaceChildren(
@@ -284,6 +302,16 @@ function confirm(target = null) {
   say(target ? `Choose ${target} pile. Press 1 through 4, or use arrows and Enter. Escape cancels.` : 'Choose a destination with arrows and Enter. B then 1 through 4 builds. D then 1 through 4 discards and ends your turn. Escape cancels.');
 }
 
+function playSelectedCardToBuildPile() {
+  confirm('building');
+}
+
+function playStockCardToBuildPile() {
+  if (submitting || targetMode) return;
+  select('stock', 0);
+  playSelectedCardToBuildPile();
+}
+
 function cancelTarget(restoreFocus = true) {
   targetMode = false;
   pendingTarget = null;
@@ -309,7 +337,6 @@ function play(targetType, targetIndex) {
     if (error) { cancelTarget(); fail('The move was not confirmed. Check the updated hand before trying again.'); }
     else if (!result.ok) { render(); fail(result.error); }
     else {
-      handleServerMoveResponse(result);
       cancelTarget();
     }
   });
@@ -335,7 +362,15 @@ function readOpponents() {
     .join('. ') || 'No opponents are present.');
 }
 
-el.start.addEventListener('click', () => socket.emit('start-skipbo', {}, result => { if (!result.ok) fail(result.error); }));
+function startSkipBoGame() {
+  if (!connectionReady || !socket.connected) {
+    fail('Reconnecting to your game. Please wait, then press Enter to start.');
+    return;
+  }
+  socket.emit('start-skipbo', {}, result => { if (!result.ok) fail(result.error); });
+}
+
+el.start.addEventListener('click', startSkipBoGame);
 el.play.addEventListener('click', () => confirm());
 document.querySelector('#cancel-target').addEventListener('click', () => cancelTarget());
 el.targetDialog.addEventListener('cancel', event => { event.preventDefault(); if (!submitting) cancelTarget(); });
@@ -388,7 +423,7 @@ document.addEventListener('keydown', event => {
 
   if (key === 's') {
     event.preventDefault();
-    select('stock', 0);
+    playStockCardToBuildPile();
     return;
   }
 
@@ -411,7 +446,7 @@ document.addEventListener('keydown', event => {
 
   if (key === 'b') {
     event.preventDefault();
-    confirm('building');
+    playSelectedCardToBuildPile();
     return;
   }
 
@@ -430,11 +465,12 @@ document.addEventListener('keydown', event => {
   if (/^[1-4]$/.test(key) && targetMode && pendingTarget) {
     event.preventDefault();
     play(pendingTarget, Number(key) - 1);
-    pendingTarget = null;
   }
 });
 
 function connect() {
+  connectionReady = false;
+  render();
   if (!token || !gameId) return fail('Missing login or game. Return to the lounge.');
   socket.emit('authenticate-token', { token }, auth => {
     if (!auth.ok) return fail(auth.error);
@@ -442,6 +478,7 @@ function connect() {
       if (!joined.ok) return fail(joined.error);
       room = joined.room;
       game = room.skipbo || null;
+      connectionReady = true;
       render();
     });
   });
@@ -449,24 +486,17 @@ function connect() {
 
 socket.on('skipbo-state', payload => {
   const previousCardId = selectedCard()?.id;
+  const previousStockId = game?.myStockTop?.id;
   game = payload.game;
   if (targetMode && (game.status !== 'playing' || game.turnPlayerId !== playerId || selectedCard()?.id !== previousCardId)) cancelTarget();
   if (game.status === 'playing') {
     window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));
   }
-  cue(payload.cue?.type);
-  if (payload.cue) {
-    if (payload.cue.pileCleared || payload.cue.type === 'sweep') {
-      announceGameAction("Building pile reached 12 and was cleared. Slot is open for a 1.");
-    } else if (payload.cue.refilled) {
-      announceGameAction("All hand cards played! 5 new cards dealt to your hand.");
-    } else if (payload.cue.type === 'victory' || payload.cue.event === 'GAME_OVER') {
-      const winnerName = payload.cue.winnerName || game.players?.find(p => p.id === game.winnerId)?.name || payload.cue.winner || 'Player';
-      announceGameAction(`Game over! Player ${winnerName} emptied their stock pile and won!`);
-    }
-  }
   render();
-  say(game.announcement);
+  handleServerMoveResponse({ ...payload.cue, announcement: game.announcement });
+  if (previousStockId && game.myStockTop && game.myStockTop.id !== previousStockId) {
+    announceGameAction(`Your next stock card is ${label(game.myStockTop)}. Press S then 1 through 4 to play it on a building pile.`);
+  }
 });
 
 socket.on('lobby-updated', updated => {
@@ -488,6 +518,8 @@ socket.on('table-player-joined', data => {
 
 socket.on('connect', connect);
 socket.on('disconnect', () => {
+  connectionReady = false;
+  render();
   el.connection.textContent = 'Connection lost. Reconnecting…';
 });
 

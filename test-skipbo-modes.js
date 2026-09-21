@@ -88,8 +88,37 @@ const moveClear = SkipBoEngine.playCardToBuildPile(testClearState, playerClear, 
 assert.strictEqual(moveClear.success, true, '12 should successfully play on 11');
 assert.strictEqual(moveClear.pileCleared, true, 'Pile should be cleared when 12 is played');
 assert.strictEqual(testClearState.buildingPiles[0].length, 0, 'Building pile slot should be reset to empty');
-assert.strictEqual(testClearState.completedCards.length, 12, 'Completed cards array should have 12 cards');
+assert.strictEqual(playerClear.hand.length, 5, 'Completed pile should refill the empty hand');
+assert.strictEqual(testClearState.drawDeck.length, 7, 'Remaining completed cards should be recycled into the draw deck');
+assert.strictEqual(testClearState.completedCards.length, 0, 'Recycled completed cards must be removed');
 assert.strictEqual(moveClear.nextRequiredValue, 1, 'Next required value for cleared pile should be 1');
+
+const winningState = {
+  buildingPiles: [Array.from({ length: 11 }, (_, i) => ({ value: i + 1 }))],
+  completedCards: [], drawDeck: [{ value: 4 }], turnOrder: ['p1', 'p2'], turnIndex: 0
+};
+const winningPlayer = { id: 'p1', hand: [], stockPile: [{ value: 'W' }], discardPiles: [[], [], [], []] };
+const winningMove = SkipBoEngine.playCardToBuildPile(winningState, winningPlayer, 'stock', 0, 0);
+assert.strictEqual(winningMove.event, 'GAME_OVER');
+assert.strictEqual(winningMove.pileCleared, true);
+assert.strictEqual(winningState.buildingPiles[0].length, 0);
+assert.strictEqual(winningState.completedCards[11].effectiveValue, 12);
+assert.strictEqual(winningPlayer.hand.length, 0, 'Winning must not refill the hand');
+assert.strictEqual(winningState.turnIndex, 0);
+assert.strictEqual(SkipBoEngine.discardToEndTurn(winningState, winningPlayer, 0, 0).success, false);
+
+const snapshot = JSON.stringify({ testClearState, playerClear });
+for (const invalidIndex of [-1, 4, 0.5, undefined]) {
+  assert.strictEqual(SkipBoEngine.playCardToBuildPile(testClearState, playerClear, 'hand', 0, invalidIndex).success, false);
+  assert.strictEqual(SkipBoEngine.discardToEndTurn(testClearState, playerClear, 0, invalidIndex).success, false);
+}
+assert.strictEqual(JSON.stringify({ testClearState, playerClear }), snapshot, 'Invalid moves must not mutate state');
+
+const recycleState = { drawDeck: [], completedCards: [{ id: 'wild', value: 'W', effectiveValue: 12, playedAs: 12 }] };
+const recyclePlayer = { hand: [] };
+assert.strictEqual(SkipBoEngine.refillHand(recycleState, recyclePlayer), 1);
+assert.deepStrictEqual(recyclePlayer.hand, [{ id: 'wild', value: 'W' }]);
+assert.strictEqual(SkipBoEngine.playToBuilding(recyclePlayer.hand[0], []).playedAs, 1);
 
 console.log('Skip-Bo engine unit checks passed.');
 
@@ -140,8 +169,10 @@ console.log('Skip-Bo engine unit checks passed.');
 
     console.log('--- 4. Testing Gameplay Actions, Building, Discarding, and Turn Advance ---');
     const currentTurnPlayer = hostInitState.game.turnPlayerId;
-    const activeSocket = currentTurnPlayer === hostAuth.playerId ? hostSocket : guestSocket;
-    const inactiveSocket = currentTurnPlayer === hostAuth.playerId ? guestSocket : hostSocket;
+    const hostId = roomCreated.room.hostId;
+    const guestId = hostInitState.game.players.find(player => player.id !== hostId).id;
+    const activeSocket = currentTurnPlayer === hostId ? hostSocket : guestSocket;
+    const inactiveSocket = currentTurnPlayer === hostId ? guestSocket : hostSocket;
 
     // Discard a card to end turn and verify turn advances
     const nextTurnPromise = wait(inactiveSocket, 'skipbo-state', payload => payload.game?.turnPlayerId !== currentTurnPlayer);
@@ -155,13 +186,14 @@ console.log('Skip-Bo engine unit checks passed.');
     assert.strictEqual(discardResult.event, 'TURN_ENDED', 'Discard must end the turn');
 
     const nextState = await nextTurnPromise;
-    assert.strictEqual(nextState.game.turnPlayerId, inactiveSocket === hostSocket ? hostAuth.playerId : guestAuth.playerId, 'Turn must advance to the other player');
+    assert.strictEqual(nextState.game.turnPlayerId, inactiveSocket === hostSocket ? hostId : guestId, 'Turn must advance to the other player');
     assert(nextState.game.myHand.length > 0, 'Player who received turn must have their hand refilled to 5 cards');
 
     console.log('All Accessible, Visual, and Mixed Mode Skip-Bo tests completed successfully!');
   } finally {
     hostSocket?.disconnect();
     guestSocket?.disconnect();
+    server.closeAllConnections?.();
     if (server.listening) await new Promise(resolve => server.close(resolve));
   }
 })().catch(err => {

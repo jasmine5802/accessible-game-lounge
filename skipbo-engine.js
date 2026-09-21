@@ -92,7 +92,7 @@
     while (player.hand.length < count) {
       if (drawDeck && drawDeck.length === 0) {
         if (!completedCards || completedCards.length === 0) break; // Out of cards
-        const recycled = shuffle(completedCards);
+        const recycled = recycleCompleted(completedCards, []);
         drawDeck.push(...recycled);
         completedCards.length = 0;
       }
@@ -117,6 +117,15 @@
 
   // 1 & 2: Wildcard resolution and 12-clear rule
   function playCardToBuildPile(gameState, player, cardSource, sourceIndex, targetPileIndex) {
+    if (gameState.isGameOver || gameState.status === 'finished') {
+      return { success: false, reason: "Game is over" };
+    }
+    if (!Number.isInteger(targetPileIndex) || targetPileIndex < 0 || targetPileIndex >= BUILDING_PILES || !Array.isArray(gameState.buildingPiles[targetPileIndex])) {
+      return { success: false, reason: "Invalid building pile" };
+    }
+    if (cardSource !== 'stock' && (!Number.isInteger(sourceIndex) || sourceIndex < 0)) {
+      return { success: false, reason: "Invalid source index" };
+    }
     const pile = gameState.buildingPiles[targetPileIndex];
     const nextRequiredValue = getBuildingPileNextValue(pile);
 
@@ -136,8 +145,7 @@
     if (!card) return { success: false, reason: "Card not found" };
 
     // Check validity: card must match nextRequiredValue OR be a Skip-Bo wild ('W' or 0)
-    const isWild = isWildCard(card);
-    if (!isWild && card.value !== nextRequiredValue) {
+    if (!canBuild(card, pile)) {
       return { success: false, reason: `Invalid move. Pile needs ${nextRequiredValue}` };
     }
 
@@ -159,6 +167,15 @@
 
     pile.push(playedCard);
 
+    // Complete the pile even when this move also wins the game.
+    let pileCleared = false;
+    if (nextRequiredValue === 12) {
+      const completed = gameState.completedCards || gameState.completed || (gameState.completedCards = []);
+      completed.push(...pile);
+      gameState.buildingPiles[targetPileIndex] = [];
+      pileCleared = true;
+    }
+
     // Fix 4: Instant Win Condition Check (if card came from stock)
     const stockRemaining = stock ? stock.length : 0;
     if (cardSource === 'stock' && stockRemaining === 0) {
@@ -168,24 +185,13 @@
       }
       gameState.isGameOver = true;
       gameState.status = 'finished';
-      return { success: true, event: "GAME_OVER", winner: player.id };
-    }
-
-    // Fix 1: Auto-clear pile if it reaches 12
-    let pileCleared = false;
-    if (nextRequiredValue === 12) {
-      // Move cards to completed/discard deck to reshuffle when draw deck empties
-      const completed = gameState.completedCards || gameState.completed;
-      if (completed) completed.push(...pile);
-      gameState.buildingPiles[targetPileIndex] = []; // Reset to empty slot
-      pileCleared = true;
+      return { success: true, event: "GAME_OVER", winner: player.id, pileCleared, refilled: false };
     }
 
     // Fix 3: Hand refill mid-turn if all 5 cards played
     let refilled = false;
     if (player.hand.length === 0) {
-      refillHand(gameState, player, 5);
-      refilled = true;
+      refilled = refillHand(gameState, player, 5) > 0;
     }
 
     return {
@@ -198,14 +204,20 @@
 
   // Fix 3: Proper turn end on discard only
   function discardToEndTurn(gameState, player, handIndex, discardPileIndex) {
-    if (handIndex < 0 || handIndex >= player.hand.length) {
+    if (gameState.isGameOver || gameState.status === 'finished') {
+      return { success: false, reason: "Game is over" };
+    }
+    if (!Number.isInteger(handIndex) || handIndex < 0 || handIndex >= player.hand.length) {
       return { success: false, reason: "Invalid hand card" };
     }
-    if (discardPileIndex < 0 || discardPileIndex > 3) {
+    if (!Number.isInteger(discardPileIndex) || discardPileIndex < 0 || discardPileIndex > 3) {
       return { success: false, reason: "Invalid discard pile" };
     }
 
     const discards = player.discardPiles || player.discards;
+    if (!discards || !Array.isArray(discards[discardPileIndex])) {
+      return { success: false, reason: "Invalid discard pile" };
+    }
     const [discardedCard] = player.hand.splice(handIndex, 1);
     discards[discardPileIndex].push(discardedCard);
 
