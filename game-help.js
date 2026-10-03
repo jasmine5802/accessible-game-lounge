@@ -100,5 +100,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('keypress',event=>{if(!['how','keys','options','computer'].includes(startStage))return;if(parseYesNoKey(event))handlePromptKeys(event,false);},true);
   document.addEventListener('keyup',event=>{if(['y','n','Y','N'].includes(event.key))handlePromptKeys(event,true);},true);
   if(typeof socket!=='undefined'&&socket&&typeof socket.on==='function')['ducks-race-state','monopoly-state','uno-state','life-state','derby-state','domino-state','skipbo-state','mall-state'].forEach(eventName=>socket.on(eventName,payload=>{const status=payload?.game?.status;if(status==='playing'){if(startDialog.open)finishPrompts();setCleanGameplayLayout(true)}else if(status==='waiting')setCleanGameplayLayout(false)}));
-  startDialog.showModal();ask('how');
+  if (typeof game !== 'undefined' && game && ['playing','finished'].includes(game.status)) {
+    startStage = null; setCleanGameplayLayout(true);
+  } else { startDialog.showModal();ask('how'); }
 });

@@ -6,6 +6,27 @@ const token = sessionStorage.getItem('loungeSessionToken');
 const username = sessionStorage.getItem('loungeUsername');
 const elements = Object.fromEntries(['connection','announcement','start','token-picker','token-dialog','token-options','token-save','token-cancel','roll','balance','properties','room-state','trade','trade-form','trade-player','trade-property','trade-amount','house-property','buy-house','sell-house','house-status','offer-panel','offer-title','offer-details','buy','decline','free-parking-status','turn-status','players','owned-summary','owned-properties','edition','board','game-announcer','polite-announcer'].map(id => [id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), document.getElementById(id)]));
 let room = null; let game = null; let playerId = null; let boardIndex = 0; let lastSequence = 0; let themedEdition = null; let lastOfferKey = null; let gameplayStarted = false;
+const compactStyle = document.createElement('style');
+compactStyle.textContent = `
+html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-board-panel:not(.monopoly-board-open),
+html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-owned-panel,
+html.lounge-accessible-mode body.rs-clean-gameplay #connection,
+html.lounge-accessible-mode body.rs-clean-gameplay #free-parking-status,
+html.lounge-accessible-mode body.rs-clean-gameplay #controls-title { display:none!important; }
+html.lounge-accessible-mode body.rs-clean-gameplay #game > .panel > .toolbar { display:flex;flex-direction:column;align-items:stretch;gap:.25rem;max-width:36rem; }
+html.lounge-accessible-mode body.rs-clean-gameplay #game { max-width:56rem; }
+`;
+document.head.append(compactStyle);
+const exploreBoard = document.createElement('button');
+exploreBoard.type = 'button'; exploreBoard.id = 'explore-board';
+exploreBoard.textContent = 'Explore Board (V)';
+elements.roll.parentElement.append(exploreBoard);
+function openBoard() {
+  if (document.querySelector('dialog[open]') || !elements.offerPanel.hidden) return;
+  document.getElementById('monopoly-board-panel').classList.add('monopoly-board-open');
+  elements.board.children[boardIndex]?.focus();
+}
+exploreBoard.addEventListener('click', openBoard);
 const propertyDialog = document.createElement('dialog');
 propertyDialog.id = 'property-dialog';
 propertyDialog.setAttribute('aria-labelledby', 'house-title');
@@ -283,7 +304,7 @@ function syncWaitingRoom(updated) {
   }
 }
 function receiveState(payload) {
-  const wasMyTurn = game?.status === 'playing' && game.turnPlayerId === playerId;
+  const wasMyTurn = gameplayStarted && game?.status === 'playing' && game.turnPlayerId === playerId;
   const isNewGameplayUpdate = payload.game.sequence !== lastSequence;
   game = payload.game;
   if(game.status==='playing'&&!gameplayStarted){gameplayStarted=true;window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));}
@@ -308,6 +329,7 @@ function connectToGame() {
       room = result.room; playerId = room.players.find(player => player.name === username)?.id || room.players.find(player => player.name === auth.username)?.id;
       game = room.monopoly || { edition: room.monopolyEdition, board: MonopolyBoards.boards[room.monopolyEdition], freeParkingJackpot: room.freeParkingJackpot !== false, freeParkingPot: 0, status:'waiting', players:room.players.map(player => ({...player,balance:1500,position:0})), owners:{}, announcement:`Waiting to start ${room.monopolyEdition} Monopoly.`, sequence:0 };
       elements.connection.textContent = `Connected to room ${room.code}.`; render(); renderTokenChoices();
+      if (game.status === 'playing') receiveState({ game, cue: null });
     });
   });
 }
@@ -331,6 +353,11 @@ document.addEventListener('keydown', event => {
   if (event.defaultPrevented || document.activeElement?.closest?.('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) return;
   if (accessibility?.handleKey(event)) return;
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);
+  if (onBoard && key === 'escape') {
+    event.preventDefault(); document.getElementById('monopoly-board-panel').classList.remove('monopoly-board-open');
+    exploreBoard.focus(); return;
+  }
+  if (key === 'v') { event.preventDefault(); openBoard(); return; }
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) { event.preventDefault(); elements.start.click(); return; }
   if (onBoard && ['arrowleft','arrowup','arrowright','arrowdown'].includes(key)) { event.preventDefault(); const delta={arrowleft:-1,arrowright:1,arrowup:-10,arrowdown:10}[key]; boardIndex=(boardIndex+delta+40)%40; elements.board.querySelectorAll('.space').forEach((space,index)=>space.tabIndex=index===boardIndex?0:-1); elements.board.children[boardIndex].focus(); return; }
   if (['arrowup','arrowdown'].includes(key) && elements.offerPanel.hidden && game?.status === 'playing') {
