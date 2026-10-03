@@ -167,6 +167,7 @@ function renderBoard() {
 }
 function render() {
   if (!game) return;
+  const offerHadFocus = elements.offerPanel.contains(document.activeElement);
   applyEditionTheme(game.edition);
   elements.edition.textContent = `${game.edition} edition`;
   elements.announcement.textContent = game.announcement;
@@ -186,8 +187,13 @@ function render() {
     elements.offerDetails.textContent=`${seller?.name||'Another player'} offers ${space?.name||'a property'} for ${money(incomingTrade.amount)}.`;
   }
   const offerKey=purchase?`purchase-${purchase.spaceIndex}-${game.sequence}`:incomingTrade?`trade-${incomingTrade.fromId}-${incomingTrade.propertyIndex}-${game.sequence}`:null;
-  if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(()=>elements.buy.focus());}
+  if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(()=>{if(!elements.offerPanel.hidden)elements.buy.focus();});}
   if(!offerKey)lastOfferKey=null;
+  if (!pending && offerHadFocus) requestAnimationFrame(() => {
+    if (document.querySelector('dialog[open]') || !elements.offerPanel.hidden) return;
+    if (!elements.roll.disabled) elements.roll.focus();
+    else { elements.turnStatus.tabIndex = -1; elements.turnStatus.focus(); }
+  });
   elements.start.hidden = game.status !== 'waiting' || room?.hostId !== playerId;
   elements.freeParkingStatus.textContent = game.freeParkingJackpot ? `Free Parking jackpot: ${money(game.freeParkingPot || 0)}. Taxes and negative Chance or Community Chest payments go into the pot.` : 'Free Parking jackpot is off.';
   elements.tokenPicker.hidden = game.status !== 'waiting';
@@ -277,6 +283,7 @@ function syncWaitingRoom(updated) {
   }
 }
 function receiveState(payload) {
+  const wasMyTurn = game?.status === 'playing' && game.turnPlayerId === playerId;
   const isNewGameplayUpdate = payload.game.sequence !== lastSequence;
   game = payload.game;
   if(game.status==='playing'&&!gameplayStarted){gameplayStarted=true;window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));}
@@ -286,6 +293,10 @@ function receiveState(payload) {
   if (cue?.type === 'jail') window.playJailSlam?.();
   if (cue?.type === 'purchase') window.playMonopolyEditionCue?.(payload.cue?.edition || game.edition, cue.completeGroup ? 'group' : 'purchase');
   render();
+  if (game.status === 'playing' && game.turnPlayerId === playerId && !wasMyTurn) requestAnimationFrame(() => {
+    if (game.status !== 'playing' || game.turnPlayerId !== playerId || elements.roll.disabled || document.querySelector('dialog[open]')) return;
+    elements.roll.focus();
+  });
   if (isNewGameplayUpdate && game.announcement) announceGameplay(game.announcement);
 }
 function connectToGame() {
@@ -322,6 +333,16 @@ document.addEventListener('keydown', event => {
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) { event.preventDefault(); elements.start.click(); return; }
   if (onBoard && ['arrowleft','arrowup','arrowright','arrowdown'].includes(key)) { event.preventDefault(); const delta={arrowleft:-1,arrowright:1,arrowup:-10,arrowdown:10}[key]; boardIndex=(boardIndex+delta+40)%40; elements.board.querySelectorAll('.space').forEach((space,index)=>space.tabIndex=index===boardIndex?0:-1); elements.board.children[boardIndex].focus(); return; }
+  if (['arrowup','arrowdown'].includes(key) && elements.offerPanel.hidden && game?.status === 'playing') {
+    const controls = [...elements.roll.parentElement.querySelectorAll('button')].filter(button => !button.disabled && !button.hidden);
+    if (controls.length) {
+      event.preventDefault();
+      const current = controls.indexOf(document.activeElement);
+      const next = current < 0 ? 0 : (current + (key === 'arrowdown' ? 1 : -1) + controls.length) % controls.length;
+      controls[next].focus();
+    }
+    return;
+  }
   if (event.key === 'Enter' && !elements.roll.disabled && !['BUTTON','A'].includes(document.activeElement.tagName)) { event.preventDefault(); elements.roll.click(); }
   if (key==='f') { event.preventDefault(); elements.balance.click(); } if (key==='p') { event.preventDefault(); elements.properties.click(); }
   if (key==='h') { event.preventDefault(); elements.roomState.click(); }
