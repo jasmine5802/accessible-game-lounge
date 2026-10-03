@@ -48,3 +48,30 @@ for (const selector of ['button:not', '.qcp-side', '#cards-panel', '.action-menu
   assert(!hiddenBlocks.some(block => block.includes(selector)), `${selector} must remain available to keyboard and screen-reader users.`);
 }
 console.log('Accessible controls and mini-game answer routing regressions passed.');
+
+const shortcutHandlers = [];
+let hasGameChat = false;
+let settingsOpened = 0;
+const shortcutContext = {
+  document: {
+    addEventListener(type, handler) { shortcutHandlers.push(handler); },
+    querySelector(selector) {
+      if (selector === '#game-chat') return hasGameChat ? {} : null;
+      if (selector === '.lounge-settings-button') return { click() { settingsOpened++; } };
+      return null;
+    }
+  }
+};
+vm.createContext(shortcutContext);
+vm.runInContext(accessibility.slice(accessibility.lastIndexOf("  document.addEventListener('keydown'"), accessibility.lastIndexOf('})();')), shortcutContext);
+function pressF2() {
+  let prevented = false;
+  shortcutHandlers[0]({key:'F2', preventDefault() { prevented = true; }});
+  return prevented;
+}
+assert.equal(pressF2(), true, 'F2 must open settings in the lobby.');
+assert.equal(settingsOpened, 1);
+hasGameChat = true;
+assert.equal(pressF2(), false, 'F2 must be left to the game player-roster handler.');
+assert.equal(settingsOpened, 1, 'F2 in a game must not also open a settings modal.');
+console.log('F2 settings/player-roster shortcut isolation passed.');

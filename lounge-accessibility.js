@@ -658,7 +658,7 @@
     button.type = 'button';
     button.className = 'lounge-settings-button';
     button.textContent = 'Settings';
-    button.setAttribute('aria-keyshortcuts', 'F2');
+    if (!document.querySelector('#game-chat')) button.setAttribute('aria-keyshortcuts', 'F2');
 
     const dialog = document.createElement('dialog');
     dialog.id = 'lounge-audio-settings';
@@ -805,7 +805,7 @@
   document.addEventListener('DOMContentLoaded', () => { addStyles(); installDesktopFrame(); replaceLobbyLinksWithDesktopControl(); installGameplayApplicationMode(); addSettings(); applyAccessibleMode(accessibleMode); });
   document.addEventListener('keydown', event => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    if (event.key === 'F2') {
+    if (event.key === 'F2' && !document.querySelector('#game-chat')) {
       event.preventDefault();
       document.querySelector('.lounge-settings-button')?.click();
       return;
