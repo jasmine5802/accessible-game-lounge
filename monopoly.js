@@ -188,7 +188,7 @@ function renderBoard() {
 }
 function render() {
   if (!game) return;
-  const offerHadFocus = elements.offerPanel.contains(document.activeElement);
+  const offerWasOpen = !elements.offerPanel.hidden;
   applyEditionTheme(game.edition);
   elements.edition.textContent = `${game.edition} edition`;
   elements.announcement.textContent = game.announcement;
@@ -210,7 +210,7 @@ function render() {
   const offerKey=purchase?`purchase-${purchase.spaceIndex}-${game.sequence}`:incomingTrade?`trade-${incomingTrade.fromId}-${incomingTrade.propertyIndex}-${game.sequence}`:null;
   if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(()=>{if(!elements.offerPanel.hidden)elements.buy.focus();});}
   if(!offerKey)lastOfferKey=null;
-  if (!pending && offerHadFocus) requestAnimationFrame(() => {
+  if (!pending && offerWasOpen) requestAnimationFrame(() => {
     if (document.querySelector('dialog[open]') || !elements.offerPanel.hidden) return;
     if (!elements.roll.disabled) elements.roll.focus();
     else { elements.turnStatus.tabIndex = -1; elements.turnStatus.focus(); }
