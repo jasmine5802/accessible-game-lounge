@@ -22,6 +22,10 @@ html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-command-focus { dis
 #monopoly-message-history { flex:1;max-height:60vh;overflow:auto; }
 #monopoly-message-history p { margin:.25rem 0; }
 #monopoly-command-hint { border-top:1px solid #777;padding-top:.5rem;margin-top:.75rem; }
+#accessible-property-list { display:none; }
+html.lounge-accessible-mode #accessible-property-list { display:block;list-style:none;padding:0;font:1rem/1.5 Consolas,monospace; }
+html.lounge-accessible-mode #accessible-property-list [aria-selected="true"] { outline:2px solid currentColor; }
+html.lounge-accessible-mode #property-dialog :is(#house-property,label[for="house-property"],.toolbar,button) { display:none!important; }
 html.lounge-accessible-mode body.rs-clean-gameplay #game > .panel > .toolbar { display:flex;flex-direction:column;align-items:stretch;gap:.25rem;max-width:36rem; }
 html.lounge-accessible-mode body.rs-clean-gameplay #game { max-width:56rem; }
 `;
@@ -78,6 +82,21 @@ propertyClose.textContent = 'Close properties (Escape)';
 propertyClose.type = 'button';
 propertyDialog.append(propertyHelp, document.getElementById('house-controls'), propertyClose);
 document.body.append(propertyDialog);
+const propertyList = document.createElement('ul');
+propertyList.id = 'accessible-property-list'; propertyList.tabIndex = 0;
+propertyList.setAttribute('role', 'listbox'); propertyList.setAttribute('aria-label', 'Your properties');
+document.getElementById('house-controls').prepend(propertyList);
+function syncPropertyList() {
+  const options = [...elements.houseProperty.options];
+  propertyList.replaceChildren(...options.map(option => {
+    const item = document.createElement('li'); item.id = `accessible-property-${option.value}`;
+    item.setAttribute('role', 'option'); item.setAttribute('aria-selected', String(option.value === elements.houseProperty.value));
+    item.textContent = option.textContent; return item;
+  }));
+  const selected = propertyList.querySelector('[aria-selected="true"]');
+  if (selected) propertyList.setAttribute('aria-activedescendant', selected.id);
+  else { propertyList.removeAttribute('aria-activedescendant'); propertyList.textContent = 'You do not own any properties yet.'; }
+}
 let propertyReturnFocus = null;
 propertyClose.addEventListener('click', () => propertyDialog.close());
 propertyDialog.addEventListener('close', () => {
@@ -93,13 +112,36 @@ function openProperties() {
   render();
   propertyReturnFocus = document.activeElement;
   if (!propertyDialog.open) propertyDialog.showModal();
-  elements.houseProperty.focus();
-  announcePolite(ownershipReport() + ' ' + propertyHelp.textContent + ' ' + elements.houseStatus.textContent);
+  propertyHelp.textContent = window.LoungeAccessibility?.accessibleMode
+    ? 'Up and Down choose a property. Enter buys the next house or upgrades four houses to a hotel. X sells a building. Escape closes this list.'
+    : 'Up and Down choose your property. B buys a house or upgrades 4 houses to a hotel. X sells a building. Escape closes this menu.';
+  if (window.LoungeAccessibility?.accessibleMode) {
+    propertyList.focus();
+    if (!elements.houseProperty.options.length) announcePolite('You do not own any properties yet.');
+  } else {
+    elements.houseProperty.focus();
+    announcePolite(ownershipReport() + ' ' + propertyHelp.textContent + ' ' + elements.houseStatus.textContent);
+  }
 }
 propertyDialog.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
   event.stopPropagation();
   const key = event.key.toLowerCase();
+  if (typeof window !== 'undefined' && window.LoungeAccessibility?.accessibleMode && ['arrowup','arrowdown','home','end','enter','escape'].includes(key)) {
+    event.preventDefault();
+    if (key === 'escape') { propertyDialog.close(); return; }
+    if (key === 'enter') {
+      if (elements.buyHouse.disabled) announcePolite(elements.houseStatus.textContent);
+      else elements.buyHouse.click();
+      return;
+    }
+    const count = elements.houseProperty.options.length;
+    if (!count) return;
+    const index = elements.houseProperty.selectedIndex;
+    elements.houseProperty.selectedIndex = key === 'home' ? 0 : key === 'end' ? count - 1 : (index + (key === 'arrowdown' ? 1 : -1) + count) % count;
+    render();
+    return;
+  }
   if (key === 'b' || key === 'x') {
     event.preventDefault();
     const button = key === 'b' ? elements.buyHouse : elements.sellHouse;
@@ -324,6 +366,7 @@ function render() {
     item.append(heading,properties,progress); return item;
   }));
   renderBoard(); if (mine && game.sequence !== lastSequence) lastSequence = game.sequence;
+  syncPropertyList();
   syncAccessibilityState();
 }
 function renderTokenChoices(openWhenMissing=false) {

@@ -39,6 +39,23 @@ assert(key('Enter').stopped, 'Enter in the property menu must not roll dice.');
 assert(!key('ArrowDown').prevented, 'Native property selection must retain arrow navigation.');
 assert(!key('Escape').prevented, 'Escape must retain native dialog closing.');
 console.log('Property-menu keyboard isolation and disabled-action announcements passed.');
+menuContext.window = { LoungeAccessibility: { accessibleMode: true } };
+menuContext.elements.houseProperty = { options: [{}, {}], selectedIndex: 0 };
+let menuRenders = 0, menuCloses = 0;
+menuContext.render = () => menuRenders++;
+menuContext.propertyDialog.close = () => menuCloses++;
+assert(key('ArrowDown').prevented);
+assert.equal(menuContext.elements.houseProperty.selectedIndex, 1);
+key('ArrowDown'); assert.equal(menuContext.elements.houseProperty.selectedIndex, 0);
+key('ArrowUp'); assert.equal(menuContext.elements.houseProperty.selectedIndex, 1);
+assert.equal(menuRenders, 3);
+menuContext.elements.buyHouse.disabled = false;
+const previousBuys = buys;
+assert(key('Enter').prevented); assert.equal(buys, previousBuys + 1);
+menuContext.elements.buyHouse.disabled = true;
+key('Enter'); assert.equal(buys, previousBuys + 1, 'Enter must obey even-building and affordability checks.');
+assert(key('Escape').prevented); assert.equal(menuCloses, 1);
+console.log('Accessible property-list arrows, Enter building, disabled purchases, and Escape checks passed.');
 
 // Exercise the actual page handler: form input and modal keys must never roll
 // or trigger game shortcuts, while Enter on the game surface still rolls.
