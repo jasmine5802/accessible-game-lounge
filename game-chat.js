@@ -97,7 +97,13 @@
     playersList.replaceChildren(...room.players.map(player => Object.assign(document.createElement('li'), { textContent: `${player.name}${player.id === room.hostId ? ' (host)' : ''}${player.connected === false ? ' (reconnecting)' : ''}` })));
   }
 
-  input.addEventListener('keydown', event => event.stopPropagation());
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeChat();
+    }
+    event.stopPropagation();
+  });
   form.addEventListener('submit', event => {
     event.preventDefault();
     socket.emit('chat-message', { text: input.value, recipientId: recipient.value }, result => {
