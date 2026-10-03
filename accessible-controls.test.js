@@ -11,7 +11,7 @@ const buttons = ['Calf', 'Foal', 'Cub'].map((textContent, index) => ({
   textContent, focus() { focused = index; }, click() { choices.push(index); }
 }));
 const context = {
-  game: { pendingMiniGame: { canAnswer: true } }, miniAnswerIndex: 0,
+  game: { status: 'playing', pendingMiniGame: { canAnswer: true } }, miniAnswerIndex: 0,
   elements: { miniOptions: { querySelectorAll: () => buttons } },
   announcePolite() {},
   document: {
@@ -41,6 +41,10 @@ assert.deepEqual(choices, [1]);
 context.game.pendingMiniGame.canAnswer = false;
 dialogOpen = false;
 assert.equal(press('Enter'), false, 'Locked answers must not be submitted twice.');
+context.game.status = 'finished';
+context.game.pendingMiniGame.canAnswer = true;
+assert.equal(press('Enter'), false, 'A finished race must not submit a stale mini-game answer.');
+assert.deepEqual(choices, [1]);
 
 const accessibility = fs.readFileSync(require.resolve('./lounge-accessibility.js'), 'utf8');
 const hiddenBlocks = [...accessibility.matchAll(/([^{}]+)\{\s*display:none!important;\s*\}/g)].map(match => match[1]);

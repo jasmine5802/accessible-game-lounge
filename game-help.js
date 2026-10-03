@@ -34,6 +34,97 @@ document.addEventListener('DOMContentLoaded',()=>{
   style.textContent+=' .lounge-accessible-command-surface{display:none} html.lounge-accessible-mode body.rs-clean-gameplay .lounge-accessible-command-surface{display:block!important;border:2px solid #24558f;background:#fffdf5;color:#111;padding:1rem;margin:.5rem 0;font-size:1.1rem;line-height:1.5} body.rs-clean-gameplay .lounge-client-titlebar,body.rs-clean-gameplay .lounge-client-menubar{display:none!important} body.rs-clean-gameplay .lounge-client-shell,body.rs-clean-gameplay .lounge-client-workspace,body.rs-clean-gameplay main{display:block!important}';
   function syncAccessibleSurface(){const statusIds=['announcement','turn','turn-status','status'],messages=statusIds.map(id=>document.getElementById(id)?.textContent?.trim()).filter(Boolean),unique=[...new Set(messages)];accessibleStatus.textContent=unique.join(' ')||'Waiting for the next game update.';const playerList=document.getElementById('players'),names=playerList?[...playerList.querySelectorAll('li')].map(item=>item.textContent.trim()).filter(Boolean):[];accessiblePlayers.textContent=`Players: ${names.length?names.join(' '):'waiting for players.'}`}
   ['announcement','turn','turn-status','status','players'].forEach(id=>{const source=document.getElementById(id);if(source)new MutationObserver(syncAccessibleSurface).observe(source,{childList:true,characterData:true,subtree:true})});syncAccessibleSurface();
+  // Every game keeps its own meaningful choices and shortcuts. The shared
+  // accessible window replaces decorative chrome and general command buttons.
+  if (location.pathname !== '/monopoly.html') {
+    const commandIds = ['start','roll','draw','act','spin','director','action','show-cards','feathers','describe','standings','end-turn','play','read-buildings','read-discards','read-opponents','play-left','play-right','ends','board-report','hand-report','declare-uno','declare-dos','center-report','score-report','stats','list-button','position','opponents'];
+    commandIds.forEach(id => document.getElementById(id)?.classList.add('lounge-visual-command'));
+    document.querySelectorAll('#board, #track, #mall-map, #map').forEach(board => {
+      const panel = board.closest('section');
+      if (panel && !panel.querySelector('#hand, #cards, #mini-options, #fork, #target-options')) panel.classList.add('lounge-visual-board');
+    });
+    document.querySelectorAll('main h2, main h3').forEach(title => {
+      if (!title.closest('dialog, #mini-game, #race-results, #offer-panel, #fork, #target-menu, #target-panel')) title.classList.add('lounge-decorative-title');
+    });
+    accessibleSurface.setAttribute('role', 'application');
+    accessibleSurface.removeAttribute('aria-labelledby');
+    accessibleSurface.setAttribute('aria-label', help.name);
+    accessibleSurface.tabIndex = 0;
+    accessibleTitle.hidden = accessibleStatus.hidden = accessiblePlayers.hidden = true;
+    const history = document.createElement('div');
+    history.className = 'lounge-game-message-history';
+    history.setAttribute('role', 'log'); history.setAttribute('aria-label', 'Game messages'); history.setAttribute('aria-live', 'off');
+    accessibleSurface.insertBefore(history, accessibleCommands);
+    const lastMessages = new Map();
+    const updateHistory = () => {
+      ['announcement','turn','turn-status','status','move-status'].forEach(id => {
+        const message = document.getElementById(id)?.textContent?.trim();
+        if (!message || lastMessages.get(id) === message) return;
+        lastMessages.set(id, message);
+        const line = document.createElement('p'); line.textContent = message; history.append(line);
+      });
+      while (history.children.length > 100) history.firstElementChild.remove();
+      history.scrollTop = history.scrollHeight;
+    };
+    const playing = () => typeof game !== 'undefined' && game?.status === 'playing';
+    const accessiblePlaying = () => window.LoungeAccessibility?.accessibleMode && document.body.classList.contains('rs-clean-gameplay');
+    const visualWindowLabel = document.body.getAttribute('aria-label');
+    const focusWindow = () => {
+      if (!accessiblePlaying()) return document.querySelector('main')?.focus();
+      if (document.querySelector('dialog[open]')) return;
+      document.body.setAttribute('aria-label', help.name);
+      if (document.activeElement !== accessibleSurface) accessibleSurface.focus();
+    };
+    window.focusLoungeGameplay = focusWindow;
+    let navigatingChoice = false;
+    document.addEventListener('keydown', event => {
+      if (!accessiblePlaying()) return;
+      navigatingChoice = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key);
+      setTimeout(() => { navigatingChoice = false; }, 0);
+    }, true);
+    document.addEventListener('focus', event => {
+      if (!accessiblePlaying() || !playing() || document.querySelector('dialog[open]')) return;
+      const automaticRoll = event.target.closest?.('[data-hand-action="roll"]') && !navigatingChoice;
+      if (event.target === document.querySelector('main') || automaticRoll || event.target.classList?.contains('lounge-visual-command')) {
+        event.stopImmediatePropagation(); focusWindow();
+      }
+    }, true);
+    new MutationObserver(() => {
+      updateHistory();
+      if (accessiblePlaying() && playing() && document.activeElement === document.body && !document.querySelector('dialog[open]')) focusWindow();
+    }).observe(document.querySelector('main'), {childList:true,subtree:true,characterData:true});
+    const modeObserver = new MutationObserver(() => {
+      if (accessiblePlaying() && playing() && !document.activeElement?.closest('dialog[open]')) focusWindow();
+      else if (!window.LoungeAccessibility?.accessibleMode && visualWindowLabel) document.body.setAttribute('aria-label', visualWindowLabel);
+    });
+    modeObserver.observe(document.documentElement, {attributes:true,attributeFilter:['class']});
+    modeObserver.observe(document.body, {attributes:true,attributeFilter:['class']});
+    if (typeof socket !== 'undefined' && socket?.on) {
+      ['ducks-race-state','uno-state','life-state','derby-state','domino-state','skipbo-state','mall-state'].forEach(eventName => socket.on(eventName, payload => {
+        const ended = payload?.game?.status === 'finished';
+        document.body.classList.toggle('lounge-game-ended', ended);
+        if (ended && location.pathname !== '/ducks-race.html' && window.LoungeAccessibility?.accessibleMode) requestAnimationFrame(focusWindow);
+      }));
+    }
+    updateHistory();
+    style.textContent += `
+      html.lounge-accessible-mode body.rs-clean-gameplay .lounge-visual-command,
+      html.lounge-accessible-mode body.rs-clean-gameplay .lounge-visual-board,
+      html.lounge-accessible-mode body.rs-clean-gameplay .lounge-decorative-title,
+      html.lounge-accessible-mode body.rs-clean-gameplay header,
+      html.lounge-accessible-mode body.rs-clean-gameplay .game-help-bar,
+      html.lounge-accessible-mode body.rs-clean-gameplay #connection,
+      html.lounge-accessible-mode body.rs-clean-gameplay #controls-title,
+      html.lounge-accessible-mode body.rs-clean-gameplay #players-title {display:none!important;}
+      html.lounge-accessible-mode body.rs-clean-gameplay .lounge-accessible-command-surface {font:1rem/1.5 Consolas,monospace;border:1px solid #777!important;}
+      .lounge-game-message-history {max-height:55vh;overflow:auto;min-height:12rem;}
+      .lounge-game-message-history p {margin:.25rem 0;}
+      html.lounge-accessible-mode body.rs-clean-gameplay .qcp-layout:not([hidden]) {display:block!important;}
+      html.lounge-accessible-mode body.rs-clean-gameplay :is(.cards,.hand):not([hidden]) {display:block!important;}
+      html.lounge-accessible-mode body.rs-clean-gameplay :is(.card,.hand li,.cards li) {border:0!important;background:transparent!important;box-shadow:none!important;padding:.25rem!important;}
+      html.lounge-accessible-mode body.lounge-game-ended :is(#hand,#cards,#mini-game,#target-panel,#target-menu,#fork) {display:none!important;}
+    `;
+  }
   const setupState={active:true,step:'INSTRUCTIONS',game:help.name};window.gameSetupState=setupState;
   const setupDisplay=document.createElement('div'),setupAnnouncer=document.createElement('div'),visualPrompt=document.createElement('div'),setupTitle=document.createElement('h2'),promptDisplay=document.createElement('p'),promptHint=document.createElement('p');setupDisplay.className='game-setup-display';setupAnnouncer.className='game-prompt-sr';setupAnnouncer.setAttribute('role','alert');setupAnnouncer.setAttribute('aria-live','assertive');setupAnnouncer.setAttribute('aria-atomic','true');visualPrompt.className='game-visual-prompt';setupTitle.textContent=`${help.name} Setup`;promptDisplay.className='game-prompt-text';promptDisplay.textContent='Loading game prompt...';promptHint.className='game-prompt-hint';promptHint.textContent='[ Press Y for Yes | Press N for No ]';visualPrompt.append(setupTitle,promptDisplay,promptHint);setupDisplay.append(setupAnnouncer,visualPrompt);startDialog.insertBefore(setupDisplay,startContent);startContent.classList.add('game-prompt-source');startContent.removeAttribute('role');startContent.setAttribute('aria-live','off');
   let previousSetupText='';function syncSetupDisplay(){const text=startContent.textContent.trim();setupState.active=startDialog.open;setupState.step=!startDialog.open?'LOBBY':startStage==='how'?'INSTRUCTIONS':startStage==='keys'?'KEYBOARD':'OPTIONS';if(!text||text===previousSetupText)return;previousSetupText=text;promptDisplay.textContent=text;setupAnnouncer.textContent='';requestAnimationFrame(()=>{setupAnnouncer.textContent=text})}new MutationObserver(syncSetupDisplay).observe(startContent,{childList:true,characterData:true,subtree:true});new MutationObserver(syncSetupDisplay).observe(startDialog,{attributes:true,attributeFilter:['open']});
