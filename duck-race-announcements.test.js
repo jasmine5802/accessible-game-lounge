@@ -18,7 +18,7 @@ const context = vm.createContext({
 });
 vm.runInContext(receive, context);
 const state = (sequence, turnPlayerId, story, actorId, localAnnouncement) => ({
-  game: {sequence, status: 'playing', turnPlayerId, announcement: story},
+  game: {sequence, status: 'playing', turnPlayerId, announcement: story, players: [{id: 'human', name: 'Human'}]},
   cue: {type: 'dice', actorId, localAnnouncement}
 });
 context.receiveState(state(1, 'human', 'Race started.'));
@@ -34,6 +34,7 @@ assert.equal(messages.length, 1, 'Duplicate state must not repeat the roll resul
 context.receiveState(state(3, 'human', "Computer rolled 4. It is now Human's turn.", 'computer'));
 assert.match(messages.at(-1), /^Computer rolled 4/);
 assert.match(messages.at(-1), /It is your turn/);
+assert.doesNotMatch(messages.at(-1), /selected|Press Enter|Human's turn/);
 assert.equal(timers.length, 0, 'Old dice stories must not be delayed past the next turn');
 context.receiveState(state(4, 'computer', "Human rolled 2. It is now Computer's turn.", 'human', "You rolled a 2. It is now Computer's turn."));
 frames.splice(0).forEach(fn => fn());

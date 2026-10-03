@@ -506,7 +506,13 @@ function receiveState(payload) {
     let story = payload.cue?.actorId === playerId && payload.cue.localAnnouncement
       ? payload.cue.localAnnouncement
       : game.announcement;
-    if (isNowMyTurn && !wasMyTurn && !game.pendingMiniGame) story += ' It is your turn. Roll the Dice selected. Press Enter to roll, or use Up and Down Arrow to choose a card.';
+    const currentPlayer = game.players?.find(player => player.id === playerId);
+    const namedTurn = currentPlayer ? `It is now ${currentPlayer.name}'s turn.` : '';
+    if (isNowMyTurn && !game.pendingMiniGame && namedTurn && story.endsWith(namedTurn)) {
+      story = `${story.slice(0, -namedTurn.length)}It is your turn.`;
+    } else if (isNowMyTurn && !wasMyTurn && !game.pendingMiniGame && !story.includes('It is your turn.')) {
+      story += ' It is your turn.';
+    }
     // Publish the action before the computer's next state can arrive. A delayed
     // previous-turn message must never overwrite the current turn announcement.
     elements.polite.textContent = '';
