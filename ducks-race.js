@@ -256,6 +256,14 @@ function handleMiniGameKey(event) {
   return true;
 }
 
+// Route answers before each button's arrow handler so focus and the submitted
+// answer use the same selection, including when gameplay focus is elsewhere.
+document.addEventListener('keydown', event => {
+  if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+  if (document.querySelector('dialog[open], [role="alertdialog"]')) return;
+  if (handleMiniGameKey(event)) event.stopImmediatePropagation();
+}, true);
+
 function cycleCard(direction) {
   const me = game?.players.find(player => player.id === playerId);
   const handCount = me?.hand.length || 0;

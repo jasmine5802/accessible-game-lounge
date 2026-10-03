@@ -535,6 +535,10 @@
         border-radius:2px!important;
         text-shadow:none!important;
       }
+      html.lounge-desktop-client .card:not([aria-selected="true"]):not(.selected-card) {
+        background:#fffdf5!important;
+        color:#111!important;
+      }
       .lounge-settings-button { position:fixed; right:1rem; top:1rem; z-index:900; width:auto!important; }
       .lounge-accessible-mode-button { position:fixed; right:1rem; top:4.15rem; z-index:900; width:auto!important; }
       .lounge-dialog { color:#111; background:#ece6d9; border:2px solid #8b8578; border-radius:2px; width:min(34rem,92vw); }
@@ -549,18 +553,23 @@
       html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .lounge-client-menubar,
       html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay header h1,
       html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay header p,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .toolbar,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .controls,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .actions,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .action-menu,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #board,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #players,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #cards-panel,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .qcp-side,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay button:not(.lounge-settings-button),
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay select,
-      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay input {
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #players {
         display:none!important;
+      }
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay #board:not(:focus-within) {
+        position:absolute!important;
+        width:1px!important;
+        height:1px!important;
+        overflow:hidden!important;
+        clip:rect(0,0,0,0)!important;
+        white-space:nowrap!important;
+      }
+      /* Keep interactive controls in the accessibility tree and focus order.
+         Hiding their ancestors also hides mini-game answers and modal choices. */
+      html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay :is(.toolbar,.controls,.actions,.action-menu,#cards-panel) {
+        border:none!important;
+        box-shadow:none!important;
+        background:transparent!important;
       }
       html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay .panel,
       html.lounge-desktop-client.lounge-accessible-mode body.rs-clean-gameplay section.panel {
