@@ -227,7 +227,15 @@ function renderCards() {
     button.addEventListener('click', () => { selectedCardIndex = index; activateSelectedCard(); });
     item.append(button); return item;
   });
-  elements.cards.replaceChildren(rollItem, ...cardItems);
+  const existingRoll = elements.cards.querySelector('[data-hand-action="roll"]');
+  if (existingRoll) {
+    existingRoll.className = rollItem.className;
+    existingRoll.tabIndex = rollItem.tabIndex;
+    existingRoll.setAttribute('aria-selected', rollItem.getAttribute('aria-selected'));
+    existingRoll.querySelector('button').disabled = rollButton.disabled;
+    [...elements.cards.children].filter(item => item !== existingRoll).forEach(item => item.remove());
+    elements.cards.append(...cardItems);
+  } else elements.cards.replaceChildren(rollItem, ...cardItems);
 }
 
 function renderMiniGame() {
@@ -486,20 +494,23 @@ function receiveState(payload) {
     selectedCardIndex = -1;
     renderCards();
     requestAnimationFrame(() => {
+      if (game.status !== 'playing' || game.turnPlayerId !== playerId || game.pendingMiniGame) return;
       if (document.querySelector('dialog[open], [role="alertdialog"]')) return;
       const rollOption = elements.cards.querySelector('[data-hand-action="roll"]');
       rollOption?.focus();
-      announcePolite('It is your turn. Roll the Dice selected. Press Enter to roll, or use Up and Down Arrow to choose a card.');
     });
   }
   if (game.sequence !== lastSequence) {
     lastSequence = game.sequence;
     playCue(payload.cue);
-    const story = payload.cue?.actorId === playerId && payload.cue.localAnnouncement
+    let story = payload.cue?.actorId === playerId && payload.cue.localAnnouncement
       ? payload.cue.localAnnouncement
       : game.announcement;
-    const delay = payload.cue?.type === 'dice' ? 720 : 0;
-    setTimeout(() => { elements.announcement.textContent = story; }, delay);
+    if (isNowMyTurn && !wasMyTurn && !game.pendingMiniGame) story += ' It is your turn. Roll the Dice selected. Press Enter to roll, or use Up and Down Arrow to choose a card.';
+    // Publish the action before the computer's next state can arrive. A delayed
+    // previous-turn message must never overwrite the current turn announcement.
+    elements.polite.textContent = '';
+    elements.announcement.textContent = story;
   }
 }
 
