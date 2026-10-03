@@ -13,10 +13,36 @@ html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-owned-panel,
 html.lounge-accessible-mode body.rs-clean-gameplay #connection,
 html.lounge-accessible-mode body.rs-clean-gameplay #free-parking-status,
 html.lounge-accessible-mode body.rs-clean-gameplay #controls-title { display:none!important; }
+html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-turn-controls,
+html.lounge-accessible-mode body.rs-clean-gameplay #offer-panel .toolbar,
+html.lounge-accessible-mode body.rs-clean-gameplay .game-help-bar,
+html.lounge-accessible-mode body.rs-clean-gameplay #game .lounge-accessible-command-surface { display:none!important; }
+#monopoly-command-focus { display:none; }
+html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-command-focus { display:block;min-height:8rem;padding:1rem; }
+html.lounge-accessible-mode #monopoly-command-focus #game-announcer { position:static;width:auto;height:auto;margin:0;clip:auto;overflow:visible;white-space:normal; }
 html.lounge-accessible-mode body.rs-clean-gameplay #game > .panel > .toolbar { display:flex;flex-direction:column;align-items:stretch;gap:.25rem;max-width:36rem; }
 html.lounge-accessible-mode body.rs-clean-gameplay #game { max-width:56rem; }
 `;
 document.head.append(compactStyle);
+elements.roll.parentElement.id = 'monopoly-turn-controls';
+const commandFocus = document.createElement('div');
+commandFocus.id = 'monopoly-command-focus'; commandFocus.tabIndex = 0;
+commandFocus.setAttribute('role', 'application'); commandFocus.setAttribute('aria-label', 'Monopoly');
+document.querySelector('main').prepend(commandFocus);
+commandFocus.append(elements.gameAnnouncer);
+function focusGameplayControls() {
+  if (window.LoungeAccessibility?.accessibleMode) {
+    if (document.activeElement !== commandFocus) commandFocus.focus();
+  } else if (!elements.roll.disabled) elements.roll.focus();
+  else { elements.turnStatus.tabIndex = -1; elements.turnStatus.focus(); }
+}
+window.focusLoungeGameplay = focusGameplayControls;
+function focusOffer() {
+  if (elements.offerPanel.hidden) return;
+  if (window.LoungeAccessibility?.accessibleMode) { elements.offerDetails.tabIndex = -1; elements.offerDetails.focus(); }
+  else elements.buy.focus();
+}
+document.addEventListener('DOMContentLoaded', () => { document.body.setAttribute('aria-label', 'Monopoly'); });
 const exploreBoard = document.createElement('button');
 exploreBoard.type = 'button'; exploreBoard.id = 'explore-board';
 exploreBoard.textContent = 'Explore Board (V)';
@@ -42,7 +68,7 @@ document.body.append(propertyDialog);
 let propertyReturnFocus = null;
 propertyClose.addEventListener('click', () => propertyDialog.close());
 propertyDialog.addEventListener('close', () => {
-  if (!elements.offerPanel.hidden) elements.buy.focus();
+  if (!elements.offerPanel.hidden) focusOffer();
   else propertyReturnFocus?.focus();
 });
 function openProperties() {
@@ -208,12 +234,11 @@ function render() {
     elements.offerDetails.textContent=`${seller?.name||'Another player'} offers ${space?.name||'a property'} for ${money(incomingTrade.amount)}.`;
   }
   const offerKey=purchase?`purchase-${purchase.spaceIndex}-${game.sequence}`:incomingTrade?`trade-${incomingTrade.fromId}-${incomingTrade.propertyIndex}-${game.sequence}`:null;
-  if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(()=>{if(!elements.offerPanel.hidden)elements.buy.focus();});}
+  if(offerKey&&offerKey!==lastOfferKey){lastOfferKey=offerKey;requestAnimationFrame(focusOffer);}
   if(!offerKey)lastOfferKey=null;
   if (!pending && offerWasOpen) requestAnimationFrame(() => {
     if (document.querySelector('dialog[open]') || !elements.offerPanel.hidden) return;
-    if (!elements.roll.disabled) elements.roll.focus();
-    else { elements.turnStatus.tabIndex = -1; elements.turnStatus.focus(); }
+    focusGameplayControls();
   });
   elements.start.hidden = game.status !== 'waiting' || room?.hostId !== playerId;
   elements.freeParkingStatus.textContent = game.freeParkingJackpot ? `Free Parking jackpot: ${money(game.freeParkingPot || 0)}. Taxes and negative Chance or Community Chest payments go into the pot.` : 'Free Parking jackpot is off.';
@@ -316,7 +341,7 @@ function receiveState(payload) {
   render();
   if (game.status === 'playing' && game.turnPlayerId === playerId && !wasMyTurn) requestAnimationFrame(() => {
     if (game.status !== 'playing' || game.turnPlayerId !== playerId || elements.roll.disabled || document.querySelector('dialog[open]')) return;
-    elements.roll.focus();
+    focusGameplayControls();
   });
   if (isNewGameplayUpdate && game.announcement) announceGameplay(game.announcement);
 }
@@ -355,12 +380,13 @@ document.addEventListener('keydown', event => {
   const key=event.key.toLowerCase(); const onBoard=elements.board.contains(document.activeElement);
   if (onBoard && key === 'escape') {
     event.preventDefault(); document.getElementById('monopoly-board-panel').classList.remove('monopoly-board-open');
-    exploreBoard.focus(); return;
+    if (window.LoungeAccessibility?.accessibleMode) focusGameplayControls(); else exploreBoard.focus(); return;
   }
   if (key === 'v') { event.preventDefault(); openBoard(); return; }
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) { event.preventDefault(); elements.start.click(); return; }
   if (onBoard && ['arrowleft','arrowup','arrowright','arrowdown'].includes(key)) { event.preventDefault(); const delta={arrowleft:-1,arrowright:1,arrowup:-10,arrowdown:10}[key]; boardIndex=(boardIndex+delta+40)%40; elements.board.querySelectorAll('.space').forEach((space,index)=>space.tabIndex=index===boardIndex?0:-1); elements.board.children[boardIndex].focus(); return; }
   if (['arrowup','arrowdown'].includes(key) && elements.offerPanel.hidden && game?.status === 'playing') {
+    if (window.LoungeAccessibility?.accessibleMode) { event.preventDefault(); return; }
     const controls = [...elements.roll.parentElement.querySelectorAll('button')].filter(button => !button.disabled && !button.hidden);
     if (controls.length) {
       event.preventDefault();
