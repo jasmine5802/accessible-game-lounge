@@ -52,7 +52,7 @@ function focusGameplayControls() {
 window.focusLoungeGameplay = focusGameplayControls;
 function focusOffer() {
   if (elements.offerPanel.hidden) return;
-  if (window.LoungeAccessibility?.accessibleMode) { elements.offerDetails.tabIndex = -1; elements.offerDetails.focus(); }
+  if (window.LoungeAccessibility?.accessibleMode) focusGameplayControls();
   else elements.buy.focus();
 }
 document.addEventListener('DOMContentLoaded', () => { document.body.setAttribute('aria-label', 'Monopoly'); });
@@ -234,6 +234,9 @@ function render() {
   const mine = me(); const myTurn = game.turnPlayerId === playerId; const purchase = game.pendingPurchase?.playerId === playerId ? game.pendingPurchase : null; const incomingTrade = game.pendingTrade?.toId === playerId ? game.pendingTrade : null; const pending = Boolean(purchase || incomingTrade);
   elements.roll.disabled = game.status !== 'playing' || !myTurn || pending;
   elements.offerPanel.hidden = !pending;
+  elements.offerPanel.setAttribute('role', window.LoungeAccessibility?.accessibleMode ? 'group' : 'alertdialog');
+  if (window.LoungeAccessibility?.accessibleMode) elements.offerPanel.removeAttribute('aria-modal');
+  else elements.offerPanel.setAttribute('aria-modal', 'true');
   if (pending && propertyDialog.open) propertyDialog.close();
   elements.buy.textContent = incomingTrade ? 'Accept Trade (Y)' : 'Buy Property (Y)';
   elements.decline.textContent = incomingTrade ? 'Decline Trade (N)' : 'Decline Property (N)';
