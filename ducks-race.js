@@ -191,6 +191,10 @@ function playCard(card, targetId, targetSquare) {
 }
 
 function renderCards() {
+  if (game?.status === 'finished') {
+    elements.cards.replaceChildren();
+    return;
+  }
   const me = game?.players.find(player => player.id === playerId);
   const hand = me?.hand || [];
   if (selectedCardIndex >= hand.length) selectedCardIndex = hand.length - 1;
@@ -227,7 +231,7 @@ function renderCards() {
 }
 
 function renderMiniGame() {
-  const mini=game?.pendingMiniGame;
+  const mini=game?.status === 'playing' ? game.pendingMiniGame : null;
   elements.miniGame.hidden=!mini;
   if(!mini){miniGameKey='';miniAnswerIndex=0;return elements.miniOptions.replaceChildren();}
   const nextMiniGameKey=`${mini.name}|${mini.prompt}`;
@@ -241,6 +245,7 @@ function renderMiniGame() {
 }
 
 function handleMiniGameKey(event) {
+  if (game?.status !== 'playing') return false;
   if (!game?.pendingMiniGame?.canAnswer || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(event.key)) return false;
   const buttons = [...elements.miniOptions.querySelectorAll('button:not(:disabled)')];
   if (!buttons.length) return false;
@@ -266,6 +271,7 @@ document.addEventListener('keydown', event => {
 }, true);
 
 function cycleCard(direction) {
+  if (game?.status !== 'playing') return;
   const me = game?.players.find(player => player.id === playerId);
   const handCount = me?.hand.length || 0;
   const count = handCount + 1;
@@ -374,8 +380,19 @@ function render() {
   const finished = game.status === 'finished';
   raceResults.hidden = !finished;
   document.querySelector('.qcp-layout').hidden = finished;
+  document.querySelector('.qcp-layout').inert = finished;
+  if (finished) document.querySelector('.qcp-layout').setAttribute('aria-hidden', 'true');
+  else document.querySelector('.qcp-layout').removeAttribute('aria-hidden');
   document.body.classList.toggle('duck-race-finished', finished);
   if (finished) {
+    selectedCardIndex = -1;
+    targetingCard = null;
+    targetingSquareCard = null;
+    elements.cardsPanel.hidden = true;
+    elements.showCards.setAttribute('aria-expanded', 'false');
+    elements.targetMenu.hidden = true;
+    elements.targets.replaceChildren();
+    elements.polite.textContent = '';
     const winner = game.players.find(player => player.id === game.winnerId);
     document.querySelector('#race-winner').textContent = `${winner?.name || 'A player'} won the race. Press Tab for Return to Game List, or Q to quit.`;
     const standings = [...game.players].sort((a, b) => {
@@ -560,6 +577,7 @@ elements.board.addEventListener('keydown', event => {
 });
 document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+  if (game?.status === 'finished') return;
   if (handleMiniGameKey(event)) return;
   if (elements.miniOptions.contains(event.target)) return;
   if (targetingCard && (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'Enter' || event.key === 'Escape')) {
