@@ -16,6 +16,7 @@ const elements = {
   miniGame: document.querySelector('#mini-game'), miniTitle: document.querySelector('#mini-title'), miniPrompt: document.querySelector('#mini-prompt'), miniOptions: document.querySelector('#mini-options'),
   players: document.querySelector('#players'), board: document.querySelector('#board'), polite: document.querySelector('#polite-announcer')
 };
+const raceResults = document.querySelector('#race-results');
 
 let room = null;
 let game = null;
@@ -369,6 +370,30 @@ function moveActionSelection(direction) {
 
 function render() {
   if (!game) return;
+  const resultsWereHidden = raceResults.hidden;
+  const finished = game.status === 'finished';
+  raceResults.hidden = !finished;
+  document.querySelector('.qcp-layout').hidden = finished;
+  document.body.classList.toggle('duck-race-finished', finished);
+  if (finished) {
+    const winner = game.players.find(player => player.id === game.winnerId);
+    document.querySelector('#race-winner').textContent = `${winner?.name || 'A player'} won the race. Press Tab for Return to Game List, or Q to quit.`;
+    const standings = [...game.players].sort((a, b) => {
+      if (a.id === game.winnerId) return -1;
+      if (b.id === game.winnerId) return 1;
+      return ((b.lap || 1) - (a.lap || 1)) || (b.square - a.square);
+    });
+    document.querySelector('#race-standings').replaceChildren(...standings.map(player => {
+      const item = document.createElement('li');
+      item.textContent = `${player.name}${player.id === game.winnerId ? ', winner' : ''}: lap ${player.lap || 1} of ${game.totalLaps || 1}, square ${player.square}, ${player.feathers} feathers.`;
+      return item;
+    }));
+    if (resultsWereHidden) requestAnimationFrame(() => raceResults.focus());
+  }
+  const previousFocus = document.activeElement;
+  const focusedCard = previousFocus?.closest('[data-card-index], [data-hand-action]');
+  const focusedSquare = previousFocus?.closest('[data-square]');
+  const hadGameFocus = elements.cards.contains(previousFocus) || elements.board.contains(previousFocus) || elements.miniOptions.contains(previousFocus);
   const me = game.players.find(player => player.id === playerId);
   const myTurn = game.status === 'playing' && game.turnPlayerId === playerId;
   const hostView = room?.hostId === playerId;
@@ -391,7 +416,28 @@ function render() {
   }
   renderPlayers(); renderCards(); renderBoard(); renderMiniGame();
   syncAccessibilityState();
+  // Replacing hand, board, or answer nodes drops browser focus onto the body.
+  // Keep the player inside the application when a turn or challenge updates.
+  if (hadGameFocus && !previousFocus.isConnected) requestAnimationFrame(() => {
+    if (document.querySelector('dialog[open], [role="alertdialog"]')) return;
+    if (document.activeElement !== document.body && document.activeElement !== previousFocus) return;
+    if (game.pendingMiniGame?.canAnswer) {
+      elements.miniOptions.children[miniAnswerIndex]?.focus();
+    } else if (game.status === 'finished') {
+      raceResults.focus();
+    } else if (focusedSquare) {
+      elements.board.querySelector(`[data-square="${focusedSquare.dataset.square}"]`)?.focus();
+    } else {
+      const cardIndex = focusedCard?.dataset.cardIndex;
+      const card = cardIndex === undefined ? null : elements.cards.querySelector(`[data-card-index="${cardIndex}"]`);
+      (card || elements.cards.querySelector('[data-hand-action="roll"]'))?.focus();
+    }
+  });
 }
+
+document.querySelector('#race-return').addEventListener('click', () => {
+  window.LoungeAccessibility?.leaveGameAndReturn?.();
+});
 
 function panForSquare(square) {
   return Math.max(-1, Math.min(1, ((Number(square) - 1) / 39) * 2 - 1));
