@@ -18,8 +18,10 @@ html.lounge-accessible-mode body.rs-clean-gameplay #offer-panel .toolbar,
 html.lounge-accessible-mode body.rs-clean-gameplay .game-help-bar,
 html.lounge-accessible-mode body.rs-clean-gameplay #game .lounge-accessible-command-surface { display:none!important; }
 #monopoly-command-focus { display:none; }
-html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-command-focus { display:block;min-height:8rem;padding:1rem; }
-html.lounge-accessible-mode #monopoly-command-focus #game-announcer { position:static;width:auto;height:auto;margin:0;clip:auto;overflow:visible;white-space:normal; }
+html.lounge-accessible-mode body.rs-clean-gameplay #monopoly-command-focus { display:flex;flex-direction:column;min-height:18rem;padding:1rem;border:1px solid #777;background:#fffdf5;color:#111;font:1rem/1.5 Consolas,monospace; }
+#monopoly-message-history { flex:1;max-height:60vh;overflow:auto; }
+#monopoly-message-history p { margin:.25rem 0; }
+#monopoly-command-hint { border-top:1px solid #777;padding-top:.5rem;margin-top:.75rem; }
 html.lounge-accessible-mode body.rs-clean-gameplay #game > .panel > .toolbar { display:flex;flex-direction:column;align-items:stretch;gap:.25rem;max-width:36rem; }
 html.lounge-accessible-mode body.rs-clean-gameplay #game { max-width:56rem; }
 `;
@@ -29,7 +31,18 @@ const commandFocus = document.createElement('div');
 commandFocus.id = 'monopoly-command-focus'; commandFocus.tabIndex = 0;
 commandFocus.setAttribute('role', 'application'); commandFocus.setAttribute('aria-label', 'Monopoly');
 document.querySelector('main').prepend(commandFocus);
-commandFocus.append(elements.gameAnnouncer);
+const messageHistory = document.createElement('div');
+messageHistory.id = 'monopoly-message-history'; messageHistory.setAttribute('role', 'log');
+messageHistory.setAttribute('aria-label', 'Game messages'); messageHistory.setAttribute('aria-live', 'off');
+const commandHint = document.createElement('p'); commandHint.id = 'monopoly-command-hint';
+commandHint.textContent = 'Enter: roll | Y/N: answer | F: balance | P: properties | H: room | Q: quit';
+commandFocus.append(messageHistory, commandHint);
+function recordGameMessage(message) {
+  if (!message) return;
+  const line = document.createElement('p'); line.textContent = message; messageHistory.append(line);
+  while (messageHistory.children.length > 100) messageHistory.firstElementChild.remove();
+  messageHistory.scrollTop = messageHistory.scrollHeight;
+}
 function focusGameplayControls() {
   if (window.LoungeAccessibility?.accessibleMode) {
     if (document.activeElement !== commandFocus) commandFocus.focus();
@@ -108,8 +121,8 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
   helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P opens your property menu. Up and Down choose a property. B buys a house or hotel, X sells a building, and Escape closes. Outside the menu, B opens properties. H reports room state and all players\' monopolies. Y and N answer offers. Press S for all player balances.'
 });
 
-function announcePolite(message) { elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
-function announceGameplay(message) { elements.gameAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.gameAnnouncer.textContent = message; }); }
+function announcePolite(message) { recordGameMessage(message); elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
+function announceGameplay(message) { recordGameMessage(message); elements.gameAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.gameAnnouncer.textContent = message; }); }
 function me() { return game?.players.find(player => player.id === playerId); }
 function playerToken(player) { return player?.token || player?.monopolyToken || null; }
 function money(amount) { return MonopolyBoards.formatMoney(game?.edition || 'Classic', amount); }
