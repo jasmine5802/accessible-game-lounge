@@ -118,14 +118,26 @@
   function play(game, playerId, indexes, options = {}, random = Math.random) {
     if (game.status !== 'playing') throw new Error('The game is finished.');
     const player = activePlayer(game); if (player.id !== playerId) throw new Error('Wait for your turn.');
+    if (game.pendingChallenge) throw new Error('Accept or challenge the Wild Draw Four first.');
     const unique = [...new Set((Array.isArray(indexes) ? indexes : [indexes]).map(Number))];
     if (game.variant === 'Uno Dos') return finish(game, playDos(game, player, unique, options.centerIndex));
     if (unique.length !== 1 || !player.hand[unique[0]]) throw new Error('Choose one card to play.');
     const selected = player.hand[unique[0]]; const shown = face(game, selected);
     if (game.pendingDraw && !isDrawValue(shown.value)) throw new Error(`Stack a draw card or draw the pending ${game.pendingDraw} cards.`);
     if (!game.pendingDraw && !canMatch(game, selected)) throw new Error(`${describeCard(game, selected)} does not match the discard.`);
-    player.hand.splice(unique[0],1); if (shown.color === 'Wild') shown.chosenColor = options.color || (game.side === 'dark' ? DARK_COLORS[0] : LIGHT_COLORS[0]);
+    const top = face(game,game.discard.at(-1));
+    const illegalDrawFour = game.variant === 'Classic Uno' && shown.value === 'Wild Draw 4' && player.hand.some(item=>face(game,item).color===(top.chosenColor||top.color));
+    if (shown.color === 'Wild') {
+      const colors = game.side === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+      if (options.color && !colors.includes(options.color)) throw new Error('Choose a valid wild color for this side.');
+      shown.chosenColor = options.color || colors[0];
+    }
+    player.hand.splice(unique[0],1);
     game.discard.push(selected); let cue = { type: 'card', pan: .75 }; let message = `${player.name} played ${describeCard(game, selected)}.`;
+    if (game.variant === 'Classic Uno' && shown.value === 'Wild Draw 4') {
+      advance(game);game.pendingChallenge={offenderId:player.id,targetId:activePlayer(game).id,illegal:illegalDrawFour,hand:player.hand.map(item=>describeCard(game,item))};
+      return finish(game,{message:message+` ${activePlayer(game).name} must accept four cards or challenge.`,cue});
+    }
     if (game.variant === 'Uno Flip!' && shown.value === 'Flip') { game.side = game.side === 'light' ? 'dark' : 'light'; cue = { type:'flip' }; message += ` Every hand and deck flipped to the ${game.side === 'light' ? 'Light Side' : 'Dark Side'}.`; }
     if (game.variant === 'Uno Flip!' && shown.value === 'Skip Everyone') { message += ' Everyone else was skipped.'; }
     else if (shown.value === 'Reverse') { game.direction *= -1; if (game.players.filter(item=>!item.eliminated).length === 2) advance(game); advance(game); }
@@ -143,13 +155,26 @@
   function draw(game, playerId, random = Math.random) {
     if (game.status !== 'playing') throw new Error('The game is finished.');
     const player=activePlayer(game);if(player.id!==playerId)throw new Error('Wait for your turn.');
+    if(game.pendingChallenge)return resolveDrawFour(game,playerId,false);
     let amount=game.pendingDraw || 1; let cue={type:'warning'};
     if(game.variant==='Uno Attack'&&!game.pendingDraw){amount=Math.floor(random()*9);cue={type:'launcher',amount};}
     drawCards(game,player,amount);game.pendingDraw=0;let message=`${player.name} drew ${amount} card${amount===1?'':'s'}.`;
     if(game.variant==="Show 'Em No Mercy"&&player.hand.length>=10){player.eliminated=true;message+=` ${player.name} reached 10 cards and was eliminated.`;}
     if(!checkWinner(game,player))advance(game);return finish(game,{message,cue});
   }
+  function resolveDrawFour(game,playerId,challenge){
+    const pending=game.pendingChallenge;
+    if(game.status!=='playing'||!pending)throw new Error('There is no Wild Draw Four to resolve.');
+    if(pending.targetId!==playerId||activePlayer(game).id!==playerId)throw new Error('Only the next player can accept or challenge.');
+    const offender=game.players.find(player=>player.id===pending.offenderId),target=activePlayer(game);
+    if(!offender)throw new Error('The player who played Draw Four has left.');
+    game.pendingChallenge=null;let message;
+    if(challenge&&pending.illegal){drawCards(game,offender,4);message=`${target.name} won the challenge. ${offender.name} drew four cards. ${target.name} keeps the turn.`;}
+    else {const amount=challenge?6:4;drawCards(game,target,amount);message=challenge?`${target.name} lost the challenge, drew six cards, and was skipped.`:`${target.name} accepted four cards and was skipped.`;advance(game);}
+    if(checkWinner(game,offender))message+=` ${offender.name} wins!`;
+    return finish(game,{message,cue:{type:'warning'},revealedHand:challenge?pending.hand:null});
+  }
   function declare(game,playerId,word){const player=game.players.find(item=>item.id===playerId);if(!player)throw new Error('Player not found.');const expected=game.variant==='Uno Dos'?'DOS':'UNO';if(word!==expected)throw new Error(`Declare ${expected} in this variant.`);const required=expected==='DOS'?2:1;if(player.hand.length!==required)throw new Error(`${expected} must be declared with exactly ${required} cards remaining.`);player.declaration=expected;return finish(game,{message:`${player.name} declared ${expected}!`,cue:{type:'declare'}});}
   function finish(game,result){game.announcement=result.message;game.sequence+=1;return result;}
-  return Object.freeze({ VARIANTS, LIGHT_COLORS, DARK_COLORS, createGame, face, describeCard, canMatch, play, draw, declare });
+  return Object.freeze({ VARIANTS, LIGHT_COLORS, DARK_COLORS, createGame, face, describeCard, canMatch, play, draw, declare, resolveDrawFour });
 });

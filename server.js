@@ -464,7 +464,7 @@ function publicUnoGame(room, viewerId) {
   if (!room.uno) return null;
   const game=room.uno; const visibleCard=item=>item ? { ...UnoRules.face(game,item) } : null;
   const viewer=game.players.find(player=>player.id===viewerId);
-  return { variant:game.variant,status:game.status,side:game.side,turnPlayerId:game.players[game.turnIndex]?.id||null,winnerId:game.winnerId,pendingDraw:game.pendingDraw,announcement:game.announcement,sequence:game.sequence,discard:game.discard.length?visibleCard(game.discard[game.discard.length-1]):null,centerRow:game.centerRow.map(visibleCard),myHand:viewer?viewer.hand.map(visibleCard):[],players:game.players.map(player=>({id:player.id,name:player.name,cardCount:player.hand.length,eliminated:player.eliminated,declaration:player.declaration,connected:Boolean(room.players.get(player.id)?.socketId)})) };
+  return { variant:game.variant,status:game.status,side:game.side,turnPlayerId:game.players[game.turnIndex]?.id||null,winnerId:game.winnerId,pendingDraw:game.pendingDraw,pendingChallenge:game.pendingChallenge?{offenderId:game.pendingChallenge.offenderId,targetId:game.pendingChallenge.targetId}:null,announcement:game.announcement,sequence:game.sequence,discard:game.discard.length?visibleCard(game.discard[game.discard.length-1]):null,centerRow:game.centerRow.map(visibleCard),myHand:viewer?viewer.hand.map(visibleCard):[],players:game.players.map(player=>({id:player.id,name:player.name,cardCount:player.hand.length,eliminated:player.eliminated,declaration:player.declaration,connected:Boolean(room.players.get(player.id)?.socketId)})) };
 }
 
 function beginUno(room) {
@@ -998,6 +998,7 @@ io.on('connection', (socket) => {
 
   socket.on('uno-play',(data={},callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;const game=room.uno;const validationError=turnError(game,socket.data.playerId,game?.players[game.turnIndex]?.id,'UNO');if(validationError)return acknowledge(callback,{ok:false,error:validationError});try{const result=UnoRules.play(game,socket.data.playerId,data.indexes,{color:data.color,centerIndex:data.centerIndex});emitUnoState(room,result.cue);broadcastGames();acknowledge(callback,{ok:true});}catch(error){acknowledge(callback,{ok:false,error:error.message});}});
   socket.on('uno-draw',(_data,callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;const game=room.uno;const validationError=turnError(game,socket.data.playerId,game?.players[game.turnIndex]?.id,'UNO');if(validationError)return acknowledge(callback,{ok:false,error:validationError});try{const result=UnoRules.draw(game,socket.data.playerId);emitUnoState(room,result.cue);broadcastGames();acknowledge(callback,{ok:true});}catch(error){acknowledge(callback,{ok:false,error:error.message});}});
+  socket.on('uno-challenge',(data={},callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;try{if(typeof data.challenge!=='boolean')throw new Error('Choose yes to challenge or no to accept.');const result=UnoRules.resolveDrawFour(room.uno,socket.data.playerId,data.challenge);emitUnoState(room,result.cue);broadcastGames();acknowledge(callback,{ok:true,revealedHand:result.revealedHand});}catch(error){acknowledge(callback,{ok:false,error:error.message});}});
   socket.on('uno-declare',(data={},callback)=>{const room=roomForPlayer(socket,callback);if(!room)return;try{const result=UnoRules.declare(room.uno,socket.data.playerId,String(data.word||'').toUpperCase());emitUnoState(room,result.cue);acknowledge(callback,{ok:true});}catch(error){acknowledge(callback,{ok:false,error:error.message});}});
 
   socket.on('monopoly-roll', (_data, callback) => {
@@ -1608,7 +1609,7 @@ function leaveCurrentRoom(socket, permanent) {
       game.sequence += 1; emitMonopolyState(room);
     }
     if (room.uno?.players.some(player=>player.id===playerId)) {
-      const game=room.uno;const removedIndex=game.players.findIndex(player=>player.id===playerId);const removed=game.players.splice(removedIndex,1)[0];
+      const game=room.uno;if(game.pendingChallenge&&(game.pendingChallenge.targetId===playerId||game.pendingChallenge.offenderId===playerId))game.pendingChallenge=null;const removedIndex=game.players.findIndex(player=>player.id===playerId);const removed=game.players.splice(removedIndex,1)[0];
       if(game.players.length<2){game.status='finished';game.announcement='The UNO game ended because fewer than two players remain.';}
       else{if(removedIndex<game.turnIndex||game.turnIndex>=game.players.length)game.turnIndex=Math.max(0,game.turnIndex-1);game.announcement=`${removed.name} left. It is ${game.players[game.turnIndex].name}'s turn.`;}
       game.sequence+=1;emitUnoState(room);

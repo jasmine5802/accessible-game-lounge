@@ -69,4 +69,23 @@ for (const variant of rules.VARIANTS) {
   assert.equal(game.players[1].hand.length, before + 8);
   assert.deepEqual(result.cue, { type: 'launcher', amount: 8 });
 }
+{
+  const make=(illegal=false)=>{const game=rules.createGame('Classic Uno',players,()=>0.42);game.discard=[{color:'Red',value:5}];game.players[0].hand=[{color:'Wild',value:'Wild Draw 4'},{color:illegal?'Red':'Blue',value:5}];return game;};
+  for(const [illegal,challenge,penalty] of [[false,false,4],[true,false,4],[false,true,6],[true,true,4]]){
+    const game=make(illegal),before=game.players.map(p=>p.hand.length);rules.play(game,'a',0,{color:'Yellow'});
+    assert.equal(game.turnIndex,1);assert.equal(game.pendingChallenge.illegal,illegal);assert.equal(game.players[1].hand.length,before[1]);
+    assert.throws(()=>rules.play(game,'b',0),/Accept or challenge/);assert.throws(()=>rules.resolveDrawFour(game,'a',challenge),/Only the next/);
+    const result=rules.resolveDrawFour(game,'b',challenge);assert.equal(game.pendingChallenge,null);
+    if(illegal&&challenge){assert.equal(game.players[0].hand.length,before[0]-1+penalty);assert.equal(game.turnIndex,1);assert.equal(game.players[1].hand.length,before[1]);}
+    else{assert.equal(game.players[1].hand.length,before[1]+penalty);assert.equal(game.turnIndex,0);}
+    assert.equal(game.discard.at(-1).chosenColor,'Yellow');assert.equal(game.pendingDraw,0);
+    assert.deepEqual(result.revealedHand,challenge?[`${illegal?'Red':'Blue'} 5`]:null);
+    assert.throws(()=>rules.resolveDrawFour(game,'b',challenge),/no Wild Draw Four/);
+  }
+  const final=make();final.players[0].hand.length=1;rules.play(final,'a',0,{color:'Blue'});assert.equal(final.status,'playing');rules.resolveDrawFour(final,'b',true);assert.equal(final.status,'finished');assert.equal(final.winnerId,'a');
+  const draw=make();rules.play(draw,'a',0,{color:'Blue'});const count=draw.players[1].hand.length;rules.draw(draw,'b');assert.equal(draw.players[1].hand.length,count+4);
+  const regular=make(true);regular.players[0].hand[0].value='Wild';rules.play(regular,'a',0,{color:'Green'});assert.equal(regular.pendingChallenge,undefined);assert.equal(regular.discard.at(-1).chosenColor,'Green');
+  const invalid=make();const snapshot=JSON.stringify(invalid);assert.throws(()=>rules.play(invalid,'a',0,{color:'Pink'}),/valid wild color/);assert.equal(JSON.stringify(invalid),snapshot);
+
+}
 console.log('UNO rules regression checks passed.');
