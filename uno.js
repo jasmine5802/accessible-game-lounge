@@ -2,6 +2,20 @@
 const socket=io(),gameId=new URLSearchParams(location.search).get('game')||sessionStorage.getItem('loungeGameId'),token=sessionStorage.getItem('loungeSessionToken'),username=sessionStorage.getItem('loungeUsername');
 const $=id=>document.getElementById(id),el={connection:$('connection'),announcement:$('announcement'),live:$('live'),start:$('start'),act:$('act'),uno:$('declare-uno'),dos:$('declare-dos'),centerReport:$('center-report'),handReport:$('hand-report'),scoreReport:$('score-report'),voice:$('voice'),wild:$('wild-color'),centerChoice:$('center-choice'),turn:$('turn-status'),center:$('center'),players:$('players'),hand:$('hand')};
 let room=null,game=null,playerId=null,selected=0,marked=new Set(),lastSequence=0;
+window.getUnoGameHelp=function(){
+  const variant=game?.variant||room?.unoVariant||'Classic Uno';
+  const base='Empty your hand to win. On your turn, match the showing card by color, number, or symbol. A regular Wild lets you choose the next color even if you have another playable card. ';
+  const instructions={
+    'Classic Uno':base+'Wild Draw Four opens a challenge for the next player. They may accept four cards and lose their turn, or challenge. A successful challenge means the player who used Draw Four had a card matching the previous color: that player draws four, and the challenger keeps their turn. A failed challenge makes the challenger draw six and lose their turn. Draw Two makes the next player draw two and lose their turn. Draw penalties do not stack. Declare UNO with one card left.',
+    'Uno Flip!':base+'Flip cards switch every hand and pile between the light and dark sides. Light colors are Red, Yellow, Green, and Blue; dark colors are Pink, Teal, Orange, and Purple. The color menu uses the current side. Light-side Draw One and Wild Draw Two become dark-side Draw Five and Wild Draw Color. Wild Draw Color makes the next player draw until they find the chosen color and lose their turn. Dark-side Skip Everyone gives you another turn. Declare UNO with one card left.',
+    'Uno Dos':'Match either center pile with one number card or two cards whose values add to the center card. Use Space to mark the first card of a pair, select the second, and press Enter. The center-pile menu announces whether the chosen pile matches; Up and Down change piles and Enter confirms. Matching colors gives a discard bonus. Draw Card draws and ends the turn. Declare DOS with two cards left.',
+    "Show 'Em No Mercy":base+'Draw cards build a pending penalty stack. Play another draw card to add to it, or choose the Draw Cards menu item to take the accumulated penalty. This game eliminates a player who reaches ten cards when taking a draw penalty. Declare UNO with one card left.',
+    'Uno Attack':base+'Activate Card Launcher replaces drawing a single card: it can deal zero through eight cards. An Attack card activates the launcher for the next player and skips them. Wild cards open a color menu. Declare UNO with one card left.'
+  };
+  const common='In accessible mode, Up and Down select a card or the draw action. Enter activates the selection. C reads the showing card or center piles. H reads your hand. S reads opponent card counts. P reads connected players. T reports whose turn it is. ';
+  const special=variant==='Uno Dos'?'Space marks or unmarks a card for a two-card match. Enter opens the center-pile menu; Up and Down select a pile, Enter confirms, and Escape cancels. D declares DOS with two cards left. ':'Space activates the draw action. U declares UNO with one card left. Playing a Wild opens a color menu; Up and Down select the color, Enter confirms, and Escape cancels. ';
+  return {name:variant,how:instructions[variant]||base,keys:common+special+(variant==='Classic Uno'?'At a Draw Four challenge, Y challenges and N accepts. You can also use Up or Down and Enter. ':'')+(variant==='Uno Attack'?'The draw action is Activate Card Launcher. ':'')+(variant==="Show 'Em No Mercy"?'The draw action names the accumulated number of cards owed. ':'')+'Question mark reads these keyboard commands.'};
+};
 const accessibility = window.LoungeAccessibility?.createGameStateController({
 	mode: 'GAME',
 	statusEl: el.live,
@@ -15,6 +29,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
 		{ label: 'Help / Instructions', type: 'help' }
 	],
 	hotkeys: { scores: ['s'], players: ['p'], help: ['?'] },
+	getHelpText: () => window.getUnoGameHelp().keys,
 	helpText: 'Keyboard shortcuts: Up or Down choose a card or Draw Card. Enter activates the selection. Wild cards open a color choice: Up or Down selects, Enter confirms, Escape cancels. Space draws in Uno; T reports the turn. In DOS, Space marks a pair and Enter opens the center-pile menu. C reports center cards. H reads your hand. S reads opponent tallies. U declares UNO. D declares DOS. P reads connected players.'
 });
 const symbols={Red:'●',Yellow:'▲',Green:'■',Blue:'◆',Pink:'♥',Teal:'⬟',Orange:'⬢',Purple:'✦',Wild:'★'};
