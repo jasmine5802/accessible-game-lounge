@@ -83,7 +83,8 @@ async function set(socket, data, label) {
   console.log(`Monopoly: all ${MonopolyBoards.editions.length} boards, unique tokens, and both Free Parking jackpot options saved and started with 2 players.`);
 
   for (const variant of UnoRules.VARIANTS) {
-    await roomWithTwo('uno-classic');
+    const category = {'Classic Uno':'uno-classic','Uno Flip!':'uno-flip','Uno Dos':'uno-dos',"Show 'Em No Mercy":'uno-no-mercy','Uno Attack':'uno-attack'}[variant];
+    await roomWithTwo(category);
     await set(sockets[0], { type:variant, secondary:'Standard deck' }, `UNO ${variant}`);
     const started = await call(sockets[0], 'start-uno');
     if (!started.ok || started.game.variant !== variant || started.game.players.length !== 2) throw new Error(`UNO ${variant} did not save/start correctly.`);

@@ -67,7 +67,7 @@
           <div class="action-menu" role="menu" aria-label="Horse Race actions">
             <button id="draw" class="action-option" role="menuitem" disabled>Roll Dice</button>
             <button id="describe" class="action-option" role="menuitem">Describe Space and Lap</button>
-            <button id="standings" class="action-option" role="menuitem">Six-Lap Leaderboard</button>
+            <button id="standings" class="action-option" role="menuitem">Race Leaderboard</button>
             <button id="start" class="action-option" role="menuitem" hidden>Start Derby</button>
             <button id="end-turn" class="action-option" role="menuitem" hidden>End Sabotage Turn</button>
           </div>
@@ -84,7 +84,7 @@
         </section>
 
         <section class="panel" aria-labelledby="players-title">
-          <h2 id="players-title">Six-lap race standings</h2>
+          <h2 id="players-title">Race standings</h2>
           <ol id="players" class="players"><li>Waiting for horses.</li></ol>
         </section>
 
@@ -111,5 +111,5 @@
     <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="urgent" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
   </main>
-  <script src="/socket.io/socket.io.js"></script><script src="audio.js"></script><script src="lounge-accessibility.js"></script><script src="horserace-engine.js"></script><script src="horserace.js"></script><script src="game-help.js"></script>
+  <script src="/socket.io/socket.io.js"></script><script src="audio.js"></script><script src="lounge-accessibility.js"></script><script src="horserace-engine.js"></script><script src="horserace.js"></script><script src="race-accessible.js"></script><script src="game-help.js"></script>
 </body></html>

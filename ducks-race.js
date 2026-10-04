@@ -59,7 +59,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Check Feathers', type: 'game' },
     { label: 'Help / Instructions', type: 'help' }
   ],
-  helpText: 'Keyboard shortcuts: Up or Down arrows choose cards or targets. Enter confirms or rolls. Press S for current feathers leaderboard. Press P for connected players. Press H for help.'
+  helpText: 'Keyboard shortcuts: Up or Down arrows choose cards or targets. Enter confirms or rolls. Accessible mode: D describes the selected card, I reports your duck, O opens player reports, T reports the turn, and S reads race rankings. Press P for connected players. Press H for help.'
 });
 
 function syncAccessibilityState() {
@@ -126,6 +126,7 @@ function waitingAnnouncementText() {
 function waitingGame() {
   return {
     boardSize: 40,
+    totalLaps: room?.raceSettings?.totalLaps || 3,
     boardSpaces: room?.boardSpaces || [],
     trapSquares: [],
     status: 'waiting',
