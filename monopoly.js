@@ -48,6 +48,7 @@ function recordGameMessage(message) {
   messageHistory.scrollTop = messageHistory.scrollHeight;
 }
 function focusGameplayControls() {
+  if (document.querySelector('dialog[open]')) return;
   if (window.LoungeAccessibility?.accessibleMode) {
     if (document.activeElement !== commandFocus) commandFocus.focus();
   } else if (!elements.roll.disabled) elements.roll.focus();
@@ -160,7 +161,7 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Help / Instructions', type: 'help' }
   ],
   hotkeys: { scores: ['s'], players: [], help: ['?'] },
-  helpText: 'Keyboard shortcuts: Arrow keys explore the board. Enter rolls. F reports your balance. P opens your property menu. Up and Down choose a property. B buys a house or hotel, X sells a building, and Escape closes. Outside the menu, B opens properties. H reports room state and all players\' monopolies. Y and N answer offers. Press S for all player balances.'
+  getHelpText: () => window.getMonopolyKeyboardHelp?.() || 'Enter rolls. B or P opens properties. F reports balance. H reports the room. Y and N answer offers.',
 });
 
 function announcePolite(message) { recordGameMessage(message); elements.politeAnnouncer.textContent = ''; requestAnimationFrame(() => { elements.politeAnnouncer.textContent = message; }); }
