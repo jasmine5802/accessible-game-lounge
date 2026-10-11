@@ -9,3 +9,5 @@ installer-dist/
 .codex/
 .env
 .env.*
+
+.tmp/
