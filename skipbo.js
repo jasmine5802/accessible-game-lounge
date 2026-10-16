@@ -32,6 +32,7 @@ let pendingTarget = null;
 let submitting = false;
 let audio = null;
 let connectionReady = false;
+let lastSequence = null;
 
 const accessibility = window.LoungeAccessibility?.createGameStateController({
   mode: 'GAME',
@@ -43,8 +44,8 @@ const accessibility = window.LoungeAccessibility?.createGameStateController({
     { label: 'Read Opponents', type: 'game' },
     { label: 'Help / Instructions', type: 'help' }
   ],
-  hotkeys: { scores: [], players: ['p'], help: ['h', '?'] },
-  helpText: 'Up and Down choose a hand card. Enter or Space opens destinations; use arrows and Enter to choose. B then 1 through 4 builds the selected card. D then 1 through 4 discards a hand card and ends your turn. Escape cancels. S then 1 through 4 plays the stock card onto a building pile and reveals the next stock card. 1 through 4 selects the top card of a discard pile; B then 1 through 4 plays it onto a building pile. O reads opponents. P reads players.'
+  hotkeys: { scores: [], players: ['p'], help: ['?'] },
+  helpText: 'Up and Down choose a hand card. Enter or Space opens destinations; use arrows and Enter to choose. B then 1 through 4 builds the selected card. D then 1 through 4 discards a hand card and ends your turn. Escape cancels. S then 1 through 4 plays the stock card onto a building pile and reveals the next stock card. 1 through 4 selects the top card of a discard pile; B then 1 through 4 plays it onto a building pile. C reads building piles and the next numbers needed. R reads your discard piles. H reads your hand. I reads your stock. T reports whose turn it is. O reads opponents. P reads players. Question mark or F1 reads help.'
 });
 
 function syncAccessibilityState() {
@@ -137,11 +138,13 @@ function handleServerMoveResponse(data) {
   announceGameAction([data.announcement, ...messages].filter(Boolean).join(' '));
 }
 
+let speechRevision = 0;
 function say(message, urgent = false) {
+  const revision = ++speechRevision;
   const node = el.targetDialog.open ? document.getElementById('target-announcement') : urgent ? el.urgent : el.announcer;
   node.textContent = '';
   requestAnimationFrame(() => {
-    node.textContent = message;
+    if (revision === speechRevision) node.textContent = message;
   });
 }
 
@@ -258,8 +261,8 @@ function render() {
 
   el.targetOptions.hidden = !targetMode;
   const targets = targetMode ? [
-    ...Array.from({ length: 4 }, (_, index) => ({ type: 'building', index, label: `B${index + 1}: Building pile ${index + 1}, needs ${SkipBoEngine.expectedValue(game.buildingPiles[index])}${SkipBoEngine.canBuild(chosen, game.buildingPiles[index]) ? '' : ' — card does not fit'}` })),
-    ...(selection.source === 'hand' ? Array.from({ length: 4 }, (_, index) => ({ type: 'discard', index, label: `D${index + 1}: Discard pile ${index + 1}, top ${label(game.myDiscards[index].at(-1))} — ends your turn` })) : [])
+    ...(pendingTarget !== 'discard' ? Array.from({ length: 4 }, (_, index) => ({ type: 'building', index, label: `B${index + 1}: Building pile ${index + 1}, needs ${SkipBoEngine.expectedValue(game.buildingPiles[index])}${SkipBoEngine.canBuild(chosen, game.buildingPiles[index]) ? '' : ' — card does not fit'}` })) : []),
+    ...(selection.source === 'hand' && pendingTarget !== 'building' ? Array.from({ length: 4 }, (_, index) => ({ type: 'discard', index, label: `D${index + 1}: Discard pile ${index + 1}, top ${label(game.myDiscards[index].at(-1))} — ends your turn` })) : [])
   ] : [];
   el.targetOptions.replaceChildren(...targets.map(target => {
     const button = document.createElement('button');
@@ -271,7 +274,7 @@ function render() {
     button.addEventListener('click', () => play(target.type, target.index));
     return button;
   }));
-  if (targetMode) el.targetTitle.textContent = `Where should ${label(chosen)} go?`;
+  if (targetMode) el.targetTitle.textContent = pendingTarget === 'discard' ? `Discard ${label(chosen)} and end your turn` : pendingTarget === 'building' ? `Build with ${label(chosen)}` : `Where should ${label(chosen)} go?`;
   if (focusedTarget && targetMode) [...el.targetOptions.children].find(button => button.dataset.destination === focusedTarget)?.focus();
   else if (handHadFocus && !targetMode) el.hand.children[handIndex]?.focus();
 
@@ -348,7 +351,7 @@ function fail(message) {
 }
 
 function readBuildings() {
-  say((game?.buildingPiles || []).map((pile, index) => `Building ${index + 1}: ${pile.length ? pile.at(-1).playedAs : 'empty'}`).join('. '));
+  say((game?.buildingPiles || []).map((pile, index) => `Building ${index + 1}: ${pile.length ? pile.at(-1).playedAs : 'empty'}; needs ${SkipBoEngine.expectedValue(pile)}`).join('. '));
 }
 
 function readDiscards() {
@@ -360,6 +363,21 @@ function readOpponents() {
     .filter(player => player.id !== playerId)
     .map(player => `${player.name}: ${player.stockCount} stock cards, top ${label(player.stockTop)}`)
     .join('. ') || 'No opponents are present.');
+}
+
+function readHand() {
+  const hand = game?.myHand || [];
+  say(hand.length ? `Your hand: ${hand.map((card, index) => `card ${index + 1}, ${label(card)}`).join('; ')}.` : 'Your hand is empty.');
+}
+
+function readStock() {
+  say(`Your stock has ${me()?.stockCount || 0} cards. Top card: ${label(game?.myStockTop)}.`);
+}
+
+function readTurn() {
+  if (!game || game.status === 'waiting') return say('Waiting for the game to start.');
+  if (game.status === 'finished') return say(`${game.players.find(player => player.id === game.winnerId)?.name || 'A player'} won.`);
+  say(game.turnPlayerId === playerId ? 'Your turn.' : `${game.players.find(player => player.id === game.turnPlayerId)?.name || 'Another player'}'s turn.`);
 }
 
 function startSkipBoGame() {
@@ -380,6 +398,7 @@ document.querySelector('#read-opponents').addEventListener('click', readOpponent
 
 el.hand.addEventListener('keydown', event => {
   if (!['Enter', ' '].includes(event.key) || event.defaultPrevented) return;
+  if (event.repeat) { event.preventDefault(); return; }
   const option = event.target.closest('[role="option"]');
   if (!option || !el.hand.contains(option)) return;
   event.preventDefault();
@@ -399,6 +418,9 @@ document.addEventListener('keydown', event => {
   if (accessibility?.handleKey(event)) return;
 
   const key = event.key.toLowerCase();
+  if (event.repeat && ['enter',' ','b','d','s','1','2','3','4'].includes(key)) { event.preventDefault(); return; }
+  const reports = {c:readBuildings, r:readDiscards, h:readHand, i:readStock, t:readTurn};
+  if (reports[key]) { event.preventDefault(); reports[key](); return; }
   if (targetMode && key === 'escape') { event.preventDefault(); cancelTarget(); return; }
   if (targetMode && key === 's') { event.preventDefault(); return; }
   if (event.key === 'Enter' && game?.status === 'waiting' && room?.hostId === playerId && !['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName || '')) {
@@ -408,9 +430,10 @@ document.addEventListener('keydown', event => {
   }
   if (['arrowup', 'arrowdown'].includes(key)) {
     event.preventDefault();
-    if (targetMode && document.activeElement?.classList?.contains('target-option')) {
+    if (targetMode) {
       const options = [...el.targetOptions.children];
-      const current = Math.max(0, options.indexOf(document.activeElement));
+      const focused = options.indexOf(document.activeElement);
+      const current = focused < 0 ? (key === 'arrowdown' ? -1 : 0) : focused;
       options[(current + (key === 'arrowdown' ? 1 : -1) + options.length) % options.length]?.focus();
       return;
     }
@@ -487,13 +510,15 @@ function connect() {
 socket.on('skipbo-state', payload => {
   const previousCardId = selectedCard()?.id;
   const previousStockId = game?.myStockTop?.id;
+  const fresh = payload.game.sequence !== lastSequence;
   game = payload.game;
+  lastSequence = game.sequence;
   if (targetMode && (game.status !== 'playing' || game.turnPlayerId !== playerId || selectedCard()?.id !== previousCardId)) cancelTarget();
   if (game.status === 'playing') {
     window.dispatchEvent(new CustomEvent('lounge-gameplay-started'));
   }
   render();
-  handleServerMoveResponse({ ...payload.cue, announcement: game.announcement });
+  if (fresh) handleServerMoveResponse({ ...payload.cue, announcement: game.announcement });
   if (previousStockId && game.myStockTop && game.myStockTop.id !== previousStockId) {
     announceGameAction(`Your next stock card is ${label(game.myStockTop)}. Press S then 1 through 4 to play it on a building pile.`);
   }
