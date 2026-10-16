@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     accessibleSurface.insertBefore(history, accessibleCommands);
     const lastMessages = new Map();
     const updateHistory = () => {
-      ['announcement','turn','turn-status','status','move-status'].forEach(id => {
+      (location.pathname==='/uno.html'?['announcement']:['announcement','turn','turn-status','status','move-status']).forEach(id => {
         const message = document.getElementById(id)?.textContent?.trim();
         if (!message || lastMessages.get(id) === message) return;
         lastMessages.set(id, message);
